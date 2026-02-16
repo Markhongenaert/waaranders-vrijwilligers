@@ -142,7 +142,7 @@ export default function ActiviteitenPage() {
 
   return (
     <main className="p-8 max-w-3xl">
-      <h1 className="text-3xl font-bold mb-4">Wat er te doen is</h1>
+      <h1 className="text-3xl font-bold mb-4">Wat er te doen is in Waaranders</h1>
    
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
 
