@@ -142,9 +142,8 @@ export default function ActiviteitenPage() {
 
   return (
     <main className="p-8 max-w-3xl">
-      <h1 className="text-3xl font-bold mb-4">Activiteiten</h1>
-      <p className="text-gray-600 mb-6">Alleen toekomstige activiteiten worden getoond.</p>
-
+      <h1 className="text-3xl font-bold mb-4">Wat er te doen is</h1>
+   
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
 
       {loading ? (
