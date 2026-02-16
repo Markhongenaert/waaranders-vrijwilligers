@@ -7,6 +7,7 @@ import { isAdminUser } from "@/lib/auth";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userNaam, setUserNaam] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -16,11 +17,26 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
       if (!user) {
         setUserEmail(null);
+        setUserNaam(null);
         setIsAdmin(false);
         return;
       }
 
       setUserEmail(user.email ?? null);
+
+      // Naam ophalen uit vrijwilligers
+      const { data: prof, error: profErr } = await supabase
+        .from("vrijwilligers")
+        .select("naam")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profErr) {
+        console.error("Kon naam niet laden:", profErr.message);
+        setUserNaam(null);
+      } else {
+        setUserNaam(prof?.naam ?? null);
+      }
 
       const admin = await isAdminUser(user.id);
       setIsAdmin(admin);
@@ -33,6 +49,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
+
+  const displayUser =
+    userNaam && userNaam.trim().length > 0
+      ? `${userNaam}${userEmail ? ` (${userEmail})` : ""}`
+      : userEmail;
 
   return (
     <html lang="nl">
@@ -61,7 +82,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="flex gap-4 items-center">
             {userEmail && (
               <>
-                <span className="text-sm text-gray-600">{userEmail}</span>
+                <span className="text-sm text-gray-600">{displayUser}</span>
                 <button
                   onClick={logout}
                   className="border rounded-xl px-3 py-1 text-sm"

@@ -6,74 +6,61 @@ import { supabase } from "@/lib/supabaseClient";
 type Activiteit = {
   id: string;
   titel: string;
-  wanneer: string; // "YYYY-MM-DD"
+  wanneer: string; // date in DB -> comes as "YYYY-MM-DD"
   doelgroep: string | null;
-  aantal_vrijwilligers: number;
+  aantal_vrijwilligers: number | null;
 };
 
 type MeedoenRow = {
   activiteit_id: string;
   vrijwilliger_id: string;
-  vrijwilligers: { naam: string | null }[]; // <-- array!
+  vrijwilligers: any; // kan object of array zijn; we normaliseren met helper
 };
 
+function volunteerNaamFromRow(r: any): string | null {
+  const v = r?.vrijwilligers;
+  if (Array.isArray(v)) return v[0]?.naam ?? null; // vaak: [{ naam }]
+  if (v && typeof v === "object") return v.naam ?? null; // soms: { naam }
+  return null;
+}
 
-
-
-function todayLocalYYYYMMDD() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+function isToekomstig(d: string): boolean {
+  // d = "YYYY-MM-DD"
+  // Vergelijk op datum, niet op tijd.
+  const today = new Date();
+  const todayYMD = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const [y, m, day] = d.split("-").map(Number);
+  const dateYMD = new Date(y, (m ?? 1) - 1, day ?? 1);
+  return dateYMD >= todayYMD;
 }
 
 export default function ActiviteitenPage() {
-  const [items, setItems] = useState<Activiteit[]>([]);
-  const [meedoen, setMeedoen] = useState<MeedoenRow[]>([]);
-  const [myUserId, setMyUserId] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null); // activiteit_id waar knop bezig is
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const activiteitIds = useMemo(() => items.map((a) => a.id), [items]);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
 
-  const meedoenByActiviteit = useMemo(() => {
-    const map = new Map<string, MeedoenRow[]>();
-    for (const row of meedoen) {
-      const arr = map.get(row.activiteit_id) ?? [];
-      arr.push(row);
-      map.set(row.activiteit_id, arr);
-    }
-    return map;
-  }, [meedoen]);
-
-  const isIngeschreven = (activiteitId: string) => {
-    if (!myUserId) return false;
-    const rows = meedoenByActiviteit.get(activiteitId) ?? [];
-    return rows.some((r) => r.vrijwilliger_id === myUserId);
-  };
+  const [items, setItems] = useState<Activiteit[]>([]);
+  const [meedoen, setMeedoen] = useState<MeedoenRow[]>([]);
 
   const loadAll = async () => {
     setLoading(true);
     setError(null);
 
-    // 1) sessie check
+    // 0) user
     const { data: sess } = await supabase.auth.getSession();
-    const uid = sess.session?.user?.id ?? null;
-    if (!uid) {
+    const user = sess.session?.user;
+    if (!user) {
       window.location.href = "/login";
       return;
     }
-    setMyUserId(uid);
+    setMyUserId(user.id);
 
-    // 2) activiteiten ophalen
-    const today = todayLocalYYYYMMDD();
+    // 1) activiteiten
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,wanneer,doelgroep,aantal_vrijwilligers")
-      .gte("wanneer", today)
       .order("wanneer", { ascending: true });
 
     if (e1) {
@@ -82,10 +69,10 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    const activiteiten = (acts ?? []) as Activiteit[];
+    const activiteiten = ((acts ?? []) as Activiteit[]).filter((a) => isToekomstig(a.wanneer));
     setItems(activiteiten);
 
-    // 3) meedoen + naam join ophalen voor deze activiteiten
+    // 2) meedoen + naam join
     const ids = activiteiten.map((a) => a.id);
     if (ids.length === 0) {
       setMeedoen([]);
@@ -93,8 +80,6 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    // Let op: deze join-syntax is afhankelijk van je FK.
-    // Als dit faalt, zie de "Als join niet werkt" tip onderaan.
     const { data: md, error: e2 } = await supabase
       .from("meedoen")
       .select("activiteit_id,vrijwilliger_id,vrijwilligers(naam)")
@@ -146,85 +131,77 @@ export default function ActiviteitenPage() {
     setBusyId(null);
   };
 
+  const myInschrijvingSet = useMemo(() => {
+    const s = new Set<string>();
+    if (!myUserId) return s;
+    for (const r of meedoen) {
+      if (r.vrijwilliger_id === myUserId) s.add(r.activiteit_id);
+    }
+    return s;
+  }, [meedoen, myUserId]);
+
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold mb-4">Toekomstige activiteiten</h1>
+    <main className="p-8 max-w-3xl">
+      <h1 className="text-3xl font-bold mb-4">Activiteiten</h1>
+      <p className="text-gray-600 mb-6">Alleen toekomstige activiteiten worden getoond.</p>
 
-      {loading && <p>Laden...</p>}
+      {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
 
-      {error && <p className="text-red-600">Fout: {error}</p>}
-
-      {!loading && !error && items.length === 0 && (
+      {loading ? (
+        <p>Laden…</p>
+      ) : items.length === 0 ? (
         <p className="text-gray-600">Geen toekomstige activiteiten.</p>
-      )}
+      ) : (
+        <ul className="space-y-3">
+          {items.map((a) => {
+            const rows = meedoen.filter((r) => r.activiteit_id === a.id);
+            const namen = rows.map((r) => volunteerNaamFromRow(r) ?? "(naam onbekend)");
+            const namenTekst = namen.join(", ");
+            const ikDoeMee = myInschrijvingSet.has(a.id);
+            const busy = busyId === a.id;
 
-      <ul className="space-y-4">
-        {items.map((a) => {
-          const rows = meedoenByActiviteit.get(a.id) ?? [];
-          const ingeschreven = rows.length;
-          const nogNodig = Math.max(0, a.aantal_vrijwilligers - ingeschreven);
-          const mijnStatus = isIngeschreven(a.id);
+            return (
+              <li key={a.id} className="border rounded-xl p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="font-medium">{a.titel}</div>
+                    <div className="text-sm text-gray-600">
+                      {a.wanneer}
+                      {a.doelgroep ? ` • ${a.doelgroep}` : ""}
+                      {a.aantal_vrijwilligers != null ? ` • nodig: ${a.aantal_vrijwilligers}` : ""}
+                    </div>
 
-          const namen = rows
-          .map((r) => r.vrijwilligers?.[0]?.naam ?? "(naam onbekend)")
-
-            .filter(Boolean);
-
-          return (
-            <li key={a.id} className="border rounded-xl p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="font-semibold text-lg">{a.titel}</div>
-                  <div className="text-sm text-gray-600">
-                    {a.wanneer}
-                    {a.doelgroep ? ` • ${a.doelgroep}` : ""} •{" "}
-                    {ingeschreven}/{a.aantal_vrijwilligers} ingeschreven
-                    {nogNodig > 0 ? ` • nog ${nogNodig} nodig` : " • volzet/ok"}
+                    <div className="text-sm text-gray-600 mt-2">
+                      Ingeschreven: {rows.length}
+                      {rows.length > 0 ? ` • ${namenTekst}` : ""}
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  {!mijnStatus ? (
-                    <button
-                      className="border rounded-xl px-4 py-2 font-medium"
-                      onClick={() => inschrijven(a.id)}
-                      disabled={busyId === a.id}
-                    >
-                      {busyId === a.id ? "Bezig..." : "Ik doe mee"}
-                    </button>
-                  ) : (
-                    <button
-                      className="border rounded-xl px-4 py-2 font-medium"
-                      onClick={() => uitschrijven(a.id)}
-                      disabled={busyId === a.id}
-                    >
-                      {busyId === a.id ? "Bezig..." : "Uitschrijven"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-3 text-sm">
-                <div className="text-gray-600 mb-1">Ingeschreven:</div>
-                {namen.length === 0 ? (
-                  <div className="text-gray-500">Nog niemand.</div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {namen.map((n, idx) => (
-                      <span
-                        key={`${a.id}-${idx}`}
-                        className="border rounded-full px-3 py-1"
+                  <div className="flex gap-2">
+                    {!ikDoeMee ? (
+                      <button
+                        className="border rounded-xl px-3 py-1 text-sm"
+                        onClick={() => inschrijven(a.id)}
+                        disabled={busy}
                       >
-                        {n}
-                      </span>
-                    ))}
+                        {busy ? "Bezig…" : "Inschrijven"}
+                      </button>
+                    ) : (
+                      <button
+                        className="border rounded-xl px-3 py-1 text-sm"
+                        onClick={() => uitschrijven(a.id)}
+                        disabled={busy}
+                      >
+                        {busy ? "Bezig…" : "Uitschrijven"}
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </main>
   );
 }
