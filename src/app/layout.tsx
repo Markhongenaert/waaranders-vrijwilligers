@@ -67,7 +67,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header className="border-b p-4 flex justify-between items-center">
           <nav className="flex gap-3 items-center">
             <a href="/activiteiten" className="font-semibold">
-              Activiteiten
+              Waaranders
             </a>
 
             {isAdmin && (
@@ -79,7 +79,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   Beheren
                 </a>
                 <a href="/admin/rollen" className="font-semibold">
-                  Autorisatie/rollen
+                  Rollen
                 </a>
               </>
             )}
