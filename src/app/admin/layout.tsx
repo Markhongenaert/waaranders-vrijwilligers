@@ -6,10 +6,10 @@ import { isAdminUser } from "@/lib/auth";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
-  const [ok, setOk] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const run = async () => {
+    const checkAdmin = async () => {
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user;
 
@@ -19,16 +19,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       }
 
       const admin = await isAdminUser(user.id);
-      setOk(admin);
+      setIsAdmin(admin);
       setLoading(false);
     };
 
-    run();
+    checkAdmin();
   }, []);
 
-  if (loading) return <main className="p-8">Laden…</main>;
+  if (loading) {
+    return <main className="p-8">Laden…</main>;
+  }
 
-  if (!ok) {
+  if (!isAdmin) {
     return (
       <main className="p-8 max-w-2xl">
         <h1 className="text-2xl font-bold mb-2">Beheer</h1>
