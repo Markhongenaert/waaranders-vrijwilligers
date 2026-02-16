@@ -14,8 +14,9 @@ type Activiteit = {
 type MeedoenRow = {
   activiteit_id: string;
   vrijwilliger_id: string;
-  vrijwilligers: { naam: string | null }[]; // <-- array
+  vrijwilligers: { naam: string | null }[]; // <-- array!
 };
+
 
 
 
@@ -105,7 +106,7 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    setMeedoen((md ?? []) as MeedoenRow[]);
+    setMeedoen((md ?? []) as unknown as MeedoenRow[]);
     setLoading(false);
   };
 
