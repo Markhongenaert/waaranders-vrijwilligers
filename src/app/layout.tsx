@@ -57,6 +57,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="nl">
+      <head>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#E9F1E6" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+</head>
+
       <body>
         <header className="border-b p-4 flex justify-between items-center">
           <nav className="flex gap-3 items-center">
