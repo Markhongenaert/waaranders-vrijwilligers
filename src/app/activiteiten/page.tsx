@@ -14,8 +14,10 @@ type Activiteit = {
 type MeedoenRow = {
   activiteit_id: string;
   vrijwilliger_id: string;
-  vrijwilligers?: { naam: string | null } | null; // join
+  vrijwilligers: { naam: string | null }[]; // <-- array
 };
+
+
 
 function todayLocalYYYYMMDD() {
   const d = new Date();
@@ -163,7 +165,8 @@ export default function ActiviteitenPage() {
           const mijnStatus = isIngeschreven(a.id);
 
           const namen = rows
-            .map((r) => r.vrijwilligers?.naam ?? "(naam onbekend)")
+          .map((r) => r.vrijwilligers?.[0]?.naam ?? "(naam onbekend)")
+
             .filter(Boolean);
 
           return (
