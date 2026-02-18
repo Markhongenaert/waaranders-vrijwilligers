@@ -3,12 +3,14 @@
 import "./globals.css";
 import { ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { isAdminUser } from "@/lib/auth";
+import { isDoenkerOrAdmin, isAdmin } from "@/lib/auth";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userNaam, setUserNaam] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+
+  const [canBeheer, setCanBeheer] = useState(false); // doenker of admin
+  const [isAdminFlag, setIsAdminFlag] = useState(false); // alleen admin
 
   useEffect(() => {
     const init = async () => {
@@ -18,7 +20,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       if (!user) {
         setUserEmail(null);
         setUserNaam(null);
-        setIsAdmin(false);
+        setCanBeheer(false);
+        setIsAdminFlag(false);
         return;
       }
 
@@ -38,8 +41,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         setUserNaam(prof?.naam ?? null);
       }
 
-      const admin = await isAdminUser(user.id);
-      setIsAdmin(admin);
+      // Rollen via nieuw rollenmodel
+      const beheer = await isDoenkerOrAdmin();
+      setCanBeheer(beheer);
+
+      const admin = await isAdmin();
+      setIsAdminFlag(admin);
     };
 
     init();
@@ -57,20 +64,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="nl">
-      <head>
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#E9F1E6" />
-  <link rel="apple-touch-icon" href="/icon-192.png" />
-</head>
-
       <body>
         <header className="border-b p-4 flex justify-between items-center">
           <nav className="flex gap-3 items-center">
             <a href="/activiteiten" className="font-semibold">
-              Waaranders
+              Activiteiten
             </a>
 
-            {isAdmin && (
+            <a href="/profiel" className="font-semibold">
+              Profiel
+            </a>
+
+            {canBeheer && (
               <>
                 <a href="/admin/toevoegen" className="font-semibold">
                   Toevoegen
@@ -78,10 +83,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <a href="/admin/activiteiten" className="font-semibold">
                   Beheren
                 </a>
-                <a href="/admin/rollen" className="font-semibold">
-                  Rollen
+                <a href="/todos" className="font-semibold">
+                  TODO
                 </a>
               </>
+            )}
+
+            {isAdminFlag && (
+              <a href="/admin/rollen" className="font-semibold">
+                Autorisatie/rollen
+              </a>
             )}
           </nav>
 

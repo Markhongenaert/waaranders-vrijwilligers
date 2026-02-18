@@ -1,17 +1,41 @@
 import { supabase } from "@/lib/supabaseClient";
 
-export async function getSessionUser() {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.user ?? null;
+export type RoleCode = "vrijwilliger" | "doenker" | "admin";
+
+export async function getMyRoleCodes(): Promise<RoleCode[]> {
+  const { data: sess } = await supabase.auth.getSession();
+  const user = sess.session?.user;
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("vrijwilliger_roles")
+    .select("roles(code)")
+    .eq("vrijwilliger_id", user.id);
+
+  if (error) {
+    console.error("getMyRoleCodes error:", error.message);
+    return [];
+  }
+
+  // data looks like: [{ roles: { code: "admin" } }, ...]  OR roles may be array-ish depending on FK
+  const codes = (data ?? [])
+    .map((r: any) => r.roles?.code)
+    .filter(Boolean);
+
+  return Array.from(new Set(codes)) as RoleCode[];
 }
 
-export async function isAdminUser(userId: string) {
-  const { data, error } = await supabase
-    .from("admins")
-    .select("user_id")
-    .eq("user_id", userId)
-    .maybeSingle();
+export async function hasRole(role: RoleCode): Promise<boolean> {
+  const roles = await getMyRoleCodes();
+  return roles.includes(role);
+}
 
-  if (error) return false;
-  return !!data;
+export async function isDoenkerOrAdmin(): Promise<boolean> {
+  const roles = await getMyRoleCodes();
+  return roles.includes("admin") || roles.includes("doenker");
+}
+
+export async function isAdmin(): Promise<boolean> {
+  const roles = await getMyRoleCodes();
+  return roles.includes("admin");
 }
