@@ -60,21 +60,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             )}
           </nav>
 
-          <div className="flex gap-4 items-center">
-            {userNaam && (
-              <>
-                <span className="text-sm text-gray-700 font-medium">
-                  {userNaam}
-                </span>
-                <button
-                  onClick={logout}
-                  className="border rounded-xl px-3 py-1 text-sm"
-                >
-                  Uitloggen
-                </button>
-              </>
-            )}
-          </div>
+<div className="flex gap-4 items-center">
+  <button
+    onClick={logout}
+    className="border rounded-xl px-3 py-1 text-sm"
+  >
+    Uitloggen
+  </button>
+</div>
+
         </header>
 
         <main>{children}</main>

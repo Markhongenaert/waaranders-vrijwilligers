@@ -19,6 +19,20 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function formatDatumNL(dateStr: string) {
+  const d = new Date(dateStr);
+  const weekday = d.toLocaleDateString("nl-BE", { weekday: "long" });
+  const dayMonth = d.toLocaleDateString("nl-BE", {
+    day: "numeric",
+    month: "short",
+  });
+
+  return (
+    weekday.charAt(0).toUpperCase() + weekday.slice(1) + " " + dayMonth
+  );
+}
+
+
 export default function AdminActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
@@ -214,7 +228,7 @@ export default function AdminActiviteitenPage() {
                       )}
 
                       <div className="text-sm text-gray-600 mt-2">
-                        {a.wanneer}
+                        {formatDatumNL(a.wanneer)}
                         {a.aantal_vrijwilligers != null ? ` • nodig: ${a.aantal_vrijwilligers}` : ""}
                         {a.doelgroep ? ` • doelgroep: ${a.doelgroep}` : ""}
                       </div>

@@ -4,7 +4,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
-const DOELGROEPEN = ["DG1", "DG2", "DG3", "DG4", "DG5", "DG6", "DG7", "DG8"] as const;
+const DOELGROEPEN = [
+  { code: "DG1", label: "DG1 – (naam later)" },
+  { code: "DG2", label: "DG2 – (naam later)" },
+  { code: "DG3", label: "DG3 – (naam later)" },
+  { code: "DG4", label: "DG4 – (naam later)" },
+  { code: "DG5", label: "DG5 – (naam later)" },
+  { code: "DG6", label: "DG6 – (naam later)" },
+  { code: "DG7", label: "DG7 – (naam later)" },
+  { code: "DG8", label: "DG8 – (naam later)" },
+] as const;
 
 export default function ToevoegenActiviteitPage() {
   const [loading, setLoading] = useState(true);
@@ -154,11 +163,7 @@ export default function ToevoegenActiviteitPage() {
             value={doelgroep}
             onChange={(e) => setDoelgroep(e.target.value)}
           >
-            {DOELGROEPEN.map((dg) => (
-              <option key={dg} value={dg}>
-                {dg}
-              </option>
-            ))}
+          {DOELGROEPEN.map((dg) => (<option key={dg.code} value={dg.code}> {dg.label} </option>))}
           </select>
         </div>
 

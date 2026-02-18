@@ -4,55 +4,66 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
-type Vrijwilliger = { id: string; naam: string | null };
-
 type Todo = {
   id: string;
   wat: string;
   wie_vrijwilliger_id: string;
-  streefdatum: string | null; // YYYY-MM-DD
-  status: "gepland" | "bezig" | "gedaan";
+  streefdatum: string | null;
   prioriteit: "laag" | "normaal" | "hoog";
+  status: "gepland" | "bezig" | "gedaan";
 };
 
-type BinnenDagSort = "prioriteit" | "persoon";
+type Vrijwilliger = {
+  id: string;
+  naam: string | null;
+};
 
-function prioRank(p: Todo["prioriteit"]) {
-  if (p === "hoog") return 0;
-  if (p === "normaal") return 1;
-  return 2;
+function formatTodoDatum(dateStr: string | null) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
 }
+function prioBadge(p: Todo["prioriteit"]) {
+  if (p === "hoog") return "bg-red-600 text-white";
+  if (p === "normaal") return "bg-amber-500 text-white";
+  return "bg-gray-200 text-gray-800";
+}
+
+function statusBadge(s: Todo["status"]) {
+  if (s === "gedaan") return "bg-green-600 text-white";
+  if (s === "bezig") return "bg-blue-600 text-white";
+  return "bg-gray-100 text-gray-800";
+}
+
+function isOverdue(dateStr: string | null, status: Todo["status"]) {
+  if (!dateStr) return false;
+  if (status === "gedaan") return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return dateStr < today; // date strings YYYY-MM-DD vergelijken werkt
+}
+
 
 export default function AdminTodosPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
-  const [todos, setTodos] = useState<Todo[]>([]);
+  const [items, setItems] = useState<Todo[]>([]);
   const [vrijwilligers, setVrijwilligers] = useState<Vrijwilliger[]>([]);
 
-  const [filterUser, setFilterUser] = useState<string>("ALL");
   const [showDone, setShowDone] = useState(false);
+  const [binnenDagSort, setBinnenDagSort] =
+    useState<"prioriteit" | "persoon">("prioriteit");
 
-  // ✅ secundaire sort binnen streefdatum
-  const [binnenDagSort, setBinnenDagSort] = useState<BinnenDagSort>("prioriteit");
-
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  const naamById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const v of vrijwilligers) m.set(v.id, v.naam ?? "(naam ontbreekt)");
-    return m;
-  }, [vrijwilligers]);
 
   const load = async () => {
     setLoading(true);
     setError(null);
-    setMsg(null);
 
-    const { data: sess } = await supabase.auth.getSession();
-    const user = sess.session?.user;
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user ?? null;
     if (!user) {
       window.location.href = "/login";
       return;
@@ -65,10 +76,9 @@ export default function AdminTodosPage() {
       return;
     }
 
-    const { data: v, error: e1 } = await supabase
-      .from("vrijwilligers")
-      .select("id,naam")
-      .order("naam", { ascending: true });
+    const { data: t, error: e1 } = await supabase
+      .from("todos")
+      .select("id,wat,wie_vrijwilliger_id,streefdatum,prioriteit,status");
 
     if (e1) {
       setError(e1.message);
@@ -76,232 +86,163 @@ export default function AdminTodosPage() {
       return;
     }
 
-    let q = supabase
-      .from("todos")
-      .select("id,wat,wie_vrijwilliger_id,streefdatum,status,prioriteit");
+    const { data: v } = await supabase
+      .from("vrijwilligers")
+      .select("id,naam");
 
-    if (!showDone) q = q.neq("status", "gedaan");
-    if (filterUser !== "ALL") q = q.eq("wie_vrijwilliger_id", filterUser);
-
-    // DB order: streefdatum eerst (primair)
-    q = q.order("streefdatum", { ascending: true, nullsFirst: false });
-
-    const { data: t, error: e2 } = await q;
-
-    if (e2) {
-      setError(e2.message);
-      setLoading(false);
-      return;
-    }
-
+    setItems((t ?? []) as Todo[]);
     setVrijwilligers((v ?? []) as Vrijwilliger[]);
-    setTodos((t ?? []) as Todo[]);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterUser, showDone]);
+  }, []);
 
-  // ✅ primair altijd streefdatum, binnen dag keuze
-  const sortedTodos = useMemo(() => {
-    const arr = [...todos];
+  const naamById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of vrijwilligers) {
+      map.set(v.id, v.naam ?? "");
+    }
+    return map;
+  }, [vrijwilligers]);
+
+  const sorted = useMemo(() => {
+    let arr = [...items];
+
+    if (!showDone) {
+      arr = arr.filter((t) => t.status !== "gedaan");
+    }
 
     arr.sort((a, b) => {
-  // 1) altijd streefdatum primair (null onderaan)
-  const ad = a.streefdatum ?? "9999-12-31";
-  const bd = b.streefdatum ?? "9999-12-31";
-  if (ad < bd) return -1;
-  if (ad > bd) return 1;
+      const ad = a.streefdatum ?? "9999-12-31";
+      const bd = b.streefdatum ?? "9999-12-31";
 
-  // 2) binnen dezelfde streefdatum: keuze
-  if (binnenDagSort === "prioriteit") {
-    // hoog -> normaal -> laag
-    const rank = (p: Todo["prioriteit"]) => (p === "hoog" ? 0 : p === "normaal" ? 1 : 2);
-    const pr = rank(a.prioriteit) - rank(b.prioriteit);
-    if (pr !== 0) return pr;
-  } else {
-    // persoon A->Z
-    const an = (naamById.get(a.wie_vrijwilliger_id) ?? "").toLowerCase();
-    const bn = (naamById.get(b.wie_vrijwilliger_id) ?? "").toLowerCase();
-    if (an < bn) return -1;
-    if (an > bn) return 1;
-  }
+      if (ad < bd) return -1;
+      if (ad > bd) return 1;
 
-  // 3) tie-breakers (stabiel)
-  const sr = (s: Todo["status"]) => (s === "gepland" ? 0 : s === "bezig" ? 1 : 2);
-  const sdiff = sr(a.status) - sr(b.status);
-  if (sdiff !== 0) return sdiff;
-
-  return a.wat.localeCompare(b.wat);
-});
-
+      if (binnenDagSort === "prioriteit") {
+        const rank = (p: Todo["prioriteit"]) =>
+          p === "hoog" ? 0 : p === "normaal" ? 1 : 2;
+        return rank(a.prioriteit) - rank(b.prioriteit);
+      } else {
+        const an = (naamById.get(a.wie_vrijwilliger_id) ?? "").toLowerCase();
+        const bn = (naamById.get(b.wie_vrijwilliger_id) ?? "").toLowerCase();
+        return an.localeCompare(bn);
+      }
+    });
 
     return arr;
-  }, [todos, binnenDagSort, naamById]);
+  }, [items, showDone, binnenDagSort, naamById]);
 
   const setStatus = async (id: string, status: Todo["status"]) => {
-    setBusyId(id);
-    setError(null);
-    setMsg(null);
-
-    const { error } = await supabase.from("todos").update({ status }).eq("id", id);
-
-    if (error) setError(error.message);
-    else setMsg("Status aangepast.");
-
-    await load();
-    setBusyId(null);
+    await supabase.from("todos").update({ status }).eq("id", id);
+    load();
   };
 
-  if (loading) return <main className="mx-auto max-w-3xl p-6 md:p-10">Laden…</main>;
+  if (loading)
+    return <main className="mx-auto max-w-3xl p-6 md:p-10">Laden…</main>;
 
-  if (!allowed) {
+  if (!allowed)
     return (
       <main className="mx-auto max-w-3xl p-6 md:p-10">
-        <h1 className="text-3xl font-semibold tracking-tight mb-2">TODO’s</h1>
-        <p>Je hebt geen rechten om deze pagina te bekijken.</p>
+        Geen toegang.
       </main>
     );
-  }
-
-  const countOpen = todos.filter((t) => t.status !== "gedaan").length;
-  const countDone = todos.filter((t) => t.status === "gedaan").length;
 
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">TODO’s</h1>
-          <p className="text-gray-600">
-            {showDone ? (
-              <>
-                Totaal: {todos.length} (open: {countOpen}, gedaan: {countDone})
-              </>
-            ) : (
-              <>Open taken: {todos.length}</>
-            )}
-          </p>
-        </div>
+      <h1 className="text-2xl bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-4">
+        TODO’s
+      </h1>
 
-        <div className="flex gap-2">
-          <button className="border rounded-xl px-3 py-2 text-sm" onClick={load}>
-            Refresh
-          </button>
-          <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/todos/toevoegen">
-            + Toevoegen
-          </a>
-        </div>
+      <div className="flex gap-4 flex-wrap mb-4">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showDone}
+            onChange={(e) => setShowDone(e.target.checked)}
+          />
+          Toon ook gedaan
+        </label>
+
+        <select
+          className="border rounded-xl px-3 py-1 text-sm"
+          value={binnenDagSort}
+          onChange={(e) =>
+            setBinnenDagSort(e.target.value as "prioriteit" | "persoon")
+          }
+        >
+          <option value="prioriteit">Binnen dag: prioriteit</option>
+          <option value="persoon">Binnen dag: persoon</option>
+        </select>
+
+        <a
+          href="/admin/todos/toevoegen"
+          className="border rounded-xl px-3 py-1 text-sm"
+        >
+          + Toevoegen
+        </a>
       </div>
 
-      {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
-      {msg && <p className="text-green-700 mb-4">{msg}</p>}
+      {error && <p className="text-red-600 mb-4">{error}</p>}
 
-      <div className="border rounded-2xl p-4 bg-white/80 shadow-sm mb-4 space-y-3">
-        <div>
-          <label className="text-sm font-medium block mb-1">Filter op persoon</label>
-          <select
-            className="border rounded-xl px-3 py-2 text-sm w-full"
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-          >
-            <option value="ALL">Iedereen</option>
-            {vrijwilligers.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.naam ?? "(naam ontbreekt)"}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={showDone}
-              onChange={(e) => setShowDone(e.target.checked)}
-            />
-            Toon ook “gedaan”
-          </label>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Binnen streefdatum:</span>
-            <select
-              className="border rounded-xl px-3 py-2 text-sm"
-              value={binnenDagSort}
-              onChange={(e) => setBinnenDagSort(e.target.value as BinnenDagSort)}
-            >
-              <option value="prioriteit">Prioriteit</option>
-              <option value="persoon">Persoon</option>
-            </select>
-          </div>
-        </div>
-
-        <p className="text-xs text-gray-500">
-          Sortering is altijd: <strong>streefdatum</strong> (vroegste bovenaan), daarna jouw keuze.
-        </p>
-      </div>
-
-      {sortedTodos.length === 0 ? (
-        <p className="text-gray-600">Geen TODO’s (volgens huidige filter).</p>
+      {sorted.length === 0 ? (
+        <p className="text-gray-600">Geen TODO’s.</p>
       ) : (
         <ul className="space-y-3">
-          {sortedTodos.map((t) => {
-            const busy = busyId === t.id;
-            const naam = naamById.get(t.wie_vrijwilliger_id) ?? "(onbekend)";
-            return (
-              <li key={t.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="font-medium">{t.wat}</div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Voor: {naam}
-                      {" • "}
-                      {t.streefdatum ? `Streefdatum: ${t.streefdatum}` : "Geen streefdatum"}
-                      {" • "}
-                      Prioriteit: {t.prioriteit}
-                      {" • "}
-                      Status: {t.status}
-                    </div>
-                  </div>
+          {sorted.map((t) => (
+            <li
+              key={t.id}
+              className="border rounded-2xl p-4 bg-white/80 shadow-sm"
+            >
+              <div className="flex justify-between gap-4">
+                <div>
+                  <div className="font-medium">{t.wat}</div>
+<div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2 items-center">
+  {t.streefdatum && (
+    <span className="px-2 py-0.5 rounded-full border text-xs">
+      {formatTodoDatum(t.streefdatum)}
+    </span>
+  )}
 
+  <span className="px-2 py-0.5 rounded-full border text-xs">
+    {naamById.get(t.wie_vrijwilliger_id) || "(onbekend)"}
+  </span>
+
+  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(t.prioriteit)}`}>
+    {t.prioriteit}
+  </span>
+
+  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(t.status)}`}>
+    {t.status}
+  </span>
+
+  {isOverdue(t.streefdatum, t.status) && (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+      verlopen
+    </span>
+  )}
+</div>
+
+
+                <div className="flex gap-2">
                   <a
-                    className="border rounded-xl px-3 py-2 text-sm whitespace-nowrap"
                     href={`/admin/todos/${t.id}`}
+                    className="border rounded-xl px-3 py-1 text-sm"
                   >
                     Bewerken
                   </a>
-                </div>
-
-                <div className="flex gap-2 mt-3 flex-wrap">
                   <button
-                    className="border rounded-xl px-3 py-2 text-sm"
-                    onClick={() => setStatus(t.id, "gepland")}
-                    disabled={busy || t.status === "gepland"}
-                  >
-                    Gepland
-                  </button>
-                  <button
-                    className="border rounded-xl px-3 py-2 text-sm"
-                    onClick={() => setStatus(t.id, "bezig")}
-                    disabled={busy || t.status === "bezig"}
-                  >
-                    Bezig
-                  </button>
-                  <button
-                    className="border rounded-xl px-3 py-2 text-sm"
                     onClick={() => setStatus(t.id, "gedaan")}
-                    disabled={busy}
+                    className="border rounded-xl px-3 py-1 text-sm"
                   >
-                    Gedaan
+                    ✔
                   </button>
-
-                  {busy && <span className="text-sm text-gray-500 self-center">Bezig…</span>}
                 </div>
-              </li>
-            );
-          })}
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </main>

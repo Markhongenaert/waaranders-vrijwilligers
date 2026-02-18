@@ -99,7 +99,7 @@ export default function TodosPage() {
       ) : (
         <ul className="space-y-3">
           {items.map((t) => (
-            <li key={t.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
+            <li key={t.id} className={`border rounded-2xl p-4 bg-white/80 shadow-sm ${isOverdue(t.streefdatum, t.status) ? "border-red-500" : "" }`}>
               <div className="font-medium">{t.wat}</div>
 
               <div className="text-sm text-gray-600 mt-1">
