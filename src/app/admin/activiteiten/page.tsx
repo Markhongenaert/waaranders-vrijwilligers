@@ -191,7 +191,6 @@ export default function AdminActiviteitenPage() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteiten beheren</h1>
-          <p className="text-gray-600">Wijzigen of verwijderen van toekomstige activiteiten.</p>
         </div>
 
         <div className="flex gap-2">

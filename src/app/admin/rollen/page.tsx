@@ -225,9 +225,6 @@ export default function RollenPage() {
   return (
     <main className="p-8 max-w-3xl">
       <h2 className="text-2xl font-bold mb-2">Autorisatie / rollen</h2>
-      <p className="text-gray-600 mb-6">
-        Kies per persoon één rol. (Later kunnen we multi-rollen toelaten als we dat nodig vinden.)
-      </p>
 
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}

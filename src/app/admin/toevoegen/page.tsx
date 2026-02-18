@@ -103,7 +103,6 @@ export default function ToevoegenActiviteitPage() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteit toevoegen</h1>
-          <p className="text-gray-600">Nieuwe activiteit aanmaken.</p>
         </div>
 
         <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/activiteiten">
