@@ -1,17 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
 type Todo = {
   id: string;
   wat: string;
-  streefdatum: string | null; // date
+  streefdatum: string | null; // date (YYYY-MM-DD)
   status: "gepland" | "bezig" | "gedaan";
   prioriteit: "laag" | "normaal" | "hoog";
   thema_id: string | null;
 };
+
+function formatTodoDatum(dateStr: string | null) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
+}
+
+function prioBadge(p: Todo["prioriteit"]) {
+  if (p === "hoog") return "bg-red-600 text-white";
+  if (p === "normaal") return "bg-amber-500 text-white";
+  return "bg-gray-200 text-gray-800";
+}
+
+function statusBadge(s: Todo["status"]) {
+  if (s === "gedaan") return "bg-green-600 text-white";
+  if (s === "bezig") return "bg-blue-600 text-white";
+  return "bg-gray-100 text-gray-800";
+}
+
+function isOverdue(dateStr: string | null, status: Todo["status"]) {
+  if (!dateStr) return false;
+  if (status === "gedaan") return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return dateStr < today; // YYYY-MM-DD string compare werkt
+}
 
 export default function TodosPage() {
   const [loading, setLoading] = useState(true);
@@ -27,17 +54,15 @@ export default function TodosPage() {
     setMsg(null);
 
     const { data: sess } = await supabase.auth.getSession();
-    const user = sess.session?.user;
+    const user = sess.session?.user ?? null;
     if (!user) {
       window.location.href = "/login";
       return;
     }
 
-    // Mag deze gebruiker beheren (doenker of admin)?
     const ok = await isDoenkerOrAdmin();
     setCanBeheer(ok);
 
-    // Mijn TODO's: RLS + expliciete filter op mezelf
     const { data, error } = await supabase
       .from("todos")
       .select("id,wat,streefdatum,status,prioriteit,thema_id")
@@ -57,6 +82,7 @@ export default function TodosPage() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setStatus = async (id: string, status: Todo["status"]) => {
@@ -71,19 +97,38 @@ export default function TodosPage() {
     await load();
   };
 
+  const sorted = useMemo(() => {
+    // defensief: API geeft al sort, maar houden consistent
+    const arr = [...items];
+    arr.sort((a, b) => {
+      const ad = a.streefdatum ?? "9999-12-31";
+      const bd = b.streefdatum ?? "9999-12-31";
+      if (ad < bd) return -1;
+      if (ad > bd) return 1;
+
+      // binnen dezelfde datum: hoog -> normaal -> laag
+      const rank = (p: Todo["prioriteit"]) => (p === "hoog" ? 0 : p === "normaal" ? 1 : 2);
+      const pr = rank(a.prioriteit) - rank(b.prioriteit);
+      if (pr !== 0) return pr;
+
+      // tie-breaker: tekst
+      return a.wat.localeCompare(b.wat);
+    });
+    return arr;
+  }, [items]);
+
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <div className="flex items-start justify-between gap-4 mb-2">
+      <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Mijn TODO’s</h1>
-          <p className="text-gray-600 mt-1">Open taken (status niet “gedaan”).</p>
+          <h1 className="text-2xl bg-blue-900 text-white font-bold px-4 py-2 rounded-xl">
+            Mijn TODO’s
+          </h1>
+          <p className="text-gray-600 mt-2">Open taken (status niet “gedaan”).</p>
         </div>
 
         {canBeheer && (
-          <a
-            href="/admin/todos/toevoegen"
-            className="border rounded-xl px-3 py-2 text-sm"
-          >
+          <a href="/admin/todos/toevoegen" className="border rounded-xl px-3 py-2 text-sm">
             + Toevoegen
           </a>
         )}
@@ -94,44 +139,73 @@ export default function TodosPage() {
 
       {loading ? (
         <p>Laden…</p>
-      ) : items.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <p className="text-gray-600">Geen open TODO’s 🎉</p>
       ) : (
         <ul className="space-y-3">
-          {items.map((t) => (
-            <li key={t.id} className={`border rounded-2xl p-4 bg-white/80 shadow-sm ${isOverdue(t.streefdatum, t.status) ? "border-red-500" : "" }`}>
-              <div className="font-medium">{t.wat}</div>
+          {sorted.map((t) => {
+            const overdue = isOverdue(t.streefdatum, t.status);
 
-              <div className="text-sm text-gray-600 mt-1">
-                {t.streefdatum ? `Streefdatum: ${t.streefdatum}` : "Geen streefdatum"}
-                {` • Prioriteit: ${t.prioriteit}`}
-                {` • Status: ${t.status}`}
-              </div>
+            return (
+              <li
+                key={t.id}
+                className={`border rounded-2xl p-4 bg-white/80 shadow-sm ${
+                  overdue ? "border-red-500" : ""
+                }`}
+              >
+                <div className="font-medium break-words">{t.wat}</div>
 
-              <div className="flex gap-2 mt-3">
-                <button
-                  className="border rounded-xl px-3 py-2 text-sm"
-                  onClick={() => setStatus(t.id, "gepland")}
-                  disabled={t.status === "gepland"}
-                >
-                  Gepland
-                </button>
-                <button
-                  className="border rounded-xl px-3 py-2 text-sm"
-                  onClick={() => setStatus(t.id, "bezig")}
-                  disabled={t.status === "bezig"}
-                >
-                  Bezig
-                </button>
-                <button
-                  className="border rounded-xl px-3 py-2 text-sm"
-                  onClick={() => setStatus(t.id, "gedaan")}
-                >
-                  Gedaan
-                </button>
-              </div>
-            </li>
-          ))}
+                <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2 items-center">
+                  {t.streefdatum ? (
+                    <span className="px-2 py-0.5 rounded-full border text-xs">
+                      {formatTodoDatum(t.streefdatum)}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">
+                      geen datum
+                    </span>
+                  )}
+
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(t.prioriteit)}`}>
+                    {t.prioriteit}
+                  </span>
+
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(t.status)}`}>
+                    {t.status}
+                  </span>
+
+                  {overdue && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                      verlopen
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  <button
+                    className="border rounded-xl px-3 py-2 text-sm"
+                    onClick={() => setStatus(t.id, "gepland")}
+                    disabled={t.status === "gepland"}
+                  >
+                    Gepland
+                  </button>
+                  <button
+                    className="border rounded-xl px-3 py-2 text-sm"
+                    onClick={() => setStatus(t.id, "bezig")}
+                    disabled={t.status === "bezig"}
+                  >
+                    Bezig
+                  </button>
+                  <button
+                    className="border rounded-xl px-3 py-2 text-sm"
+                    onClick={() => setStatus(t.id, "gedaan")}
+                  >
+                    Gedaan
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>
