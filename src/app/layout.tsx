@@ -6,8 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const [userNaam, setUserNaam] = useState<string | null>(null);
-  const [canBeheer, setCanBeheer] = useState(false);
+  const [isDoenkerAdmin, setIsDoenkerAdmin] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -15,22 +14,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       const user = data.session?.user ?? null;
 
       if (!user) {
-        setUserNaam(null);
-        setCanBeheer(false);
+        setIsDoenkerAdmin(false);
         return;
       }
 
-      // 🔹 naam ophalen uit vrijwilligers
-      const { data: v } = await supabase
-        .from("vrijwilligers")
-        .select("naam")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      setUserNaam(v?.naam ?? null);
-
       const ok = await isDoenkerOrAdmin();
-      setCanBeheer(ok);
+      setIsDoenkerAdmin(ok);
     };
 
     init();
@@ -44,42 +33,39 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="nl">
       <body>
-        <header className="border-b p-4 flex justify-between items-center">
-<nav className="flex gap-2 items-center">
-  <a
-    href="/activiteiten"
-    className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
-  >
-    Activiteiten
-  </a>
+        <header className="border-b p-4 flex justify-between items-center bg-white">
+          <nav className="flex gap-2 items-center">
 
-  <a
-    href="/profiel"
-    className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
-  >
-    Profiel
-  </a>
+            <a
+              href="/activiteiten"
+              className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+            >
+              Activiteiten
+            </a>
 
-  {isDoenkerOrAdminUser && (
-    <a
-      href="/doenkers"
-      className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
-    >
-      Doenkers
-    </a>
-  )}
-</nav>
+            <a
+              href="/profiel"
+              className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+            >
+              Profiel
+            </a>
 
+            {isDoenkerAdmin && (
+              <a
+                href="/doenkers"
+                className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+              >
+                Doenkers
+              </a>
+            )}
+          </nav>
 
-<div className="flex gap-4 items-center">
-  <button
-    onClick={logout}
-    className="border rounded-xl px-3 py-1 text-sm"
-  >
-    Uitloggen
-  </button>
-</div>
-
+          <button
+            onClick={logout}
+            className="border rounded-xl px-3 py-1 text-sm"
+          >
+            Uitloggen
+          </button>
         </header>
 
         <main>{children}</main>
