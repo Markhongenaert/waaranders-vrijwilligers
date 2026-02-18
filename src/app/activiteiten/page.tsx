@@ -6,10 +6,10 @@ import { supabase } from "@/lib/supabaseClient";
 type Activiteit = {
   id: string;
   titel: string;
-  wanneer: string; // date (YYYY-MM-DD)
+  wanneer: string; // YYYY-MM-DD
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
-  doelgroep: string | null; // blijft bestaan maar tonen we hier niet
+  doelgroep: string | null; // bestaat in tabel, maar tonen we hier niet
 };
 
 type MeedoenRow = {
@@ -57,10 +57,9 @@ export default function ActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Activiteit[]>([]);
   const [meedoen, setMeedoen] = useState<MeedoenRow[]>([]);
-
   const [myUserId, setMyUserId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const meedoenByAct = useMemo(() => {
@@ -88,10 +87,7 @@ export default function ActiviteitenPage() {
   };
 
   const grouped = useMemo(() => {
-    // items zijn al asc door query, maar defensief
-    const sorted = [...items].sort((a, b) =>
-      a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0
-    );
+    const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
 
     const groups: { key: string; title: string; items: Activiteit[] }[] = [];
     const idx = new Map<string, number>();
@@ -126,7 +122,7 @@ export default function ActiviteitenPage() {
 
     const vanaf = todayISODate();
 
-    // ✅ OPLOPEND: eerst komende activiteiten bovenaan
+    // Oplopend: eerstvolgende activiteiten bovenaan
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,wanneer,aantal_vrijwilligers,toelichting,doelgroep")
@@ -212,7 +208,7 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* ✅ lichtblauwe sticky maandtussentitel */}
+              {/* Lichtblauwe sticky maandtussentitel */}
               <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10">
                 {g.title}
               </h2>
@@ -232,15 +228,13 @@ export default function ActiviteitenPage() {
                   return (
                     <li
                       key={a.id}
-                      className={`border rounded-2xl p-4 bg-white/80 shadow-sm ${
-                        isIn ? "border-green-500" : ""
+                      className={`rounded-2xl p-4 shadow-sm ${
+                        isIn ? "border-2 border-green-600 bg-green-50" : "border bg-white/80"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                          <div className="font-medium whitespace-pre-line break-words">
-                            {a.titel}
-                          </div>
+                          <div className="font-medium whitespace-pre-line break-words">{a.titel}</div>
 
                           {a.toelichting && (
                             <div className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
@@ -248,12 +242,23 @@ export default function ActiviteitenPage() {
                             </div>
                           )}
 
-                          <div className="text-sm text-gray-600 mt-2">
-                            {formatDatumKaart(a.wanneer)}
-                            {a.aantal_vrijwilligers != null
-                              ? ` • nodig: ${a.aantal_vrijwilligers}`
-                              : ""}
-                            {` • ingeschreven: ${count}`}
+                          {/* Datum links, badge rechts */}
+                          <div className="text-sm text-gray-600 mt-2 flex items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span>{formatDatumKaart(a.wanneer)}</span>
+
+                              {a.aantal_vrijwilligers != null && (
+                                <span>• nodig: {a.aantal_vrijwilligers}</span>
+                              )}
+
+                              <span>• ingeschreven: {count}</span>
+                            </div>
+
+                            {isIn && (
+                              <span className="font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full text-xs border border-green-300 whitespace-nowrap">
+                                Jij doet mee
+                              </span>
+                            )}
                           </div>
 
                           <div className="text-sm text-gray-700 mt-2">
