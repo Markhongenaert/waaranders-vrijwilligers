@@ -74,8 +74,9 @@ export default function TodoToevoegenPage() {
       return;
     }
 
-    const { data: sess } = await supabase.auth.getSession();
-    const me = sess.data?.session?.user?.id ?? null;
+    const { data } = await supabase.auth.getSession();
+    const me = data.session?.user?.id ?? null;
+
 
     const payload: any = {
       wat: wat.trim(),
