@@ -75,19 +75,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               Profiel
             </a>
 
-            {canBeheer && (
-              <>
-                <a href="/admin/toevoegen" className="font-semibold">
-                  Toevoegen
-                </a>
-                <a href="/admin/activiteiten" className="font-semibold">
-                  Beheren
-                </a>
-                <a href="/todos" className="font-semibold">
-                  TODO
-                </a>
-              </>
-            )}
+          {canBeheer && (
+  <>
+           <a href="/admin/toevoegen" className="font-semibold">Toevoegen</a>
+           <a href="/admin/activiteiten" className="font-semibold">Beheren</a>
+            <a href="/admin/todos" className="font-semibold">TODO</a>
+  </>
+          )}
+
 
             {isAdminFlag && (
               <a href="/admin/rollen" className="font-semibold">
