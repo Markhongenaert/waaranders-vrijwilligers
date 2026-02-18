@@ -131,8 +131,12 @@ export default function TodoEditPage() {
 
     const { error } = await supabase.from("todos").update(payload).eq("id", todo.id);
 
-    if (error) setError(error.message);
-    else setMsg("Opgeslagen.");
+if (error) {
+     setError(error.message);
+    } else {
+     window.location.href = "/admin/todos";
+     return;
+    }
 
     setBusy(false);
   };
@@ -149,10 +153,13 @@ export default function TodoEditPage() {
     const { error } = await supabase.from("todos").delete().eq("id", todo.id);
 
     if (error) {
-      setError(error.message);
-      setBusy(false);
-      return;
+     setError(error.message);
+    } else {
+     // meteen terug naar overzicht
+     window.location.href = "/admin/todos";
+     return;
     }
+
 
     window.location.href = "/admin/todos";
   };
