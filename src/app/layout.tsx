@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userNaam, setUserNaam] = useState<string | null>(null);
   const [canBeheer, setCanBeheer] = useState(false);
 
   useEffect(() => {
@@ -15,12 +15,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       const user = data.session?.user ?? null;
 
       if (!user) {
-        setUserEmail(null);
+        setUserNaam(null);
         setCanBeheer(false);
         return;
       }
 
-      setUserEmail(user.email ?? null);
+      // 🔹 naam ophalen uit vrijwilligers
+      const { data: v } = await supabase
+        .from("vrijwilligers")
+        .select("naam")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setUserNaam(v?.naam ?? null);
 
       const ok = await isDoenkerOrAdmin();
       setCanBeheer(ok);
@@ -54,10 +61,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex gap-4 items-center">
-            {userEmail && (
+            {userNaam && (
               <>
-                <span className="text-sm text-gray-600">{userEmail}</span>
-                <button onClick={logout} className="border rounded-xl px-3 py-1 text-sm">
+                <span className="text-sm text-gray-700 font-medium">
+                  {userNaam}
+                </span>
+                <button
+                  onClick={logout}
+                  className="border rounded-xl px-3 py-1 text-sm"
+                >
                   Uitloggen
                 </button>
               </>
