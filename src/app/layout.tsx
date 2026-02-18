@@ -45,20 +45,31 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="nl">
       <body>
         <header className="border-b p-4 flex justify-between items-center">
-          <nav className="flex gap-3 items-center">
-            <a href="/activiteiten" className="font-semibold">
-              Activiteiten
-            </a>
-            <a href="/profiel" className="font-semibold">
-              Profiel
-            </a>
+<nav className="flex gap-2 items-center">
+  <a
+    href="/activiteiten"
+    className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+  >
+    Activiteiten
+  </a>
 
-            {canBeheer && (
-              <a href="/doenkers" className="font-semibold">
-                Doenkers
-              </a>
-            )}
-          </nav>
+  <a
+    href="/profiel"
+    className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+  >
+    Profiel
+  </a>
+
+  {isDoenkerOrAdminUser && (
+    <a
+      href="/doenkers"
+      className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+    >
+      Doenkers
+    </a>
+  )}
+</nav>
+
 
 <div className="flex gap-4 items-center">
   <button

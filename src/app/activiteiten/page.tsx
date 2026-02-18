@@ -204,10 +204,6 @@ export default function ActiviteitenPage() {
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
       <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl bg-blue-900 text-white font-bold px-4 py-2 rounded-xl">Activiteiten</h1>
-          <p className="text-gray-600">Geplande activiteiten vanaf vandaag.</p>
-        </div>
 
         <button className="border rounded-xl px-3 py-2 text-sm" onClick={loadAll} disabled={loading}>
           Refresh
@@ -224,10 +220,7 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-             <h2 className="text-lg bg-blue-900 text-white font-bold mb-3 sticky top-0 z-10 px-3 py-2 -mx-2">  {g.title}
-              </h2>
-
-
+            <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10"> {g.title}</h2>
               <ul className="space-y-3">
                 {g.items.map((a) => {
                   const busy = busyId === a.id;
