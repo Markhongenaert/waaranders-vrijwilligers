@@ -9,13 +9,12 @@ type Activiteit = {
   wanneer: string; // date (YYYY-MM-DD)
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
-  doelgroep: string | null; // blijft in tabel, maar tonen we hier niet
+  doelgroep: string | null; // blijft bestaan maar tonen we hier niet
 };
 
 type MeedoenRow = {
   activiteit_id: string;
   vrijwilliger_id: string;
-  // Supabase kan dit als object of als array teruggeven, afhankelijk van relatie/join
   vrijwilligers: { naam: string | null } | { naam: string | null }[] | null;
 };
 
@@ -29,21 +28,19 @@ function capitalize(s: string) {
 }
 
 function formatDatumKaart(dateStr: string) {
-  // dateStr = "YYYY-MM-DD"
   const d = new Date(dateStr);
   const wd = capitalize(WEEKDAY_FMT.format(d));
   const dm = DAY_MONTH_FMT.format(d);
-  return `${wd} ${dm}`; // bv. "Maandag 1 jan"
+  return `${wd} ${dm}`;
 }
 
 function formatMaandTussentitel(dateStr: string) {
   const d = new Date(dateStr);
-  return capitalize(MONTH_HEADER_FMT.format(d)); // bv. "Februari 2026"
+  return capitalize(MONTH_HEADER_FMT.format(d));
 }
 
 function monthKey(dateStr: string) {
-  // YYYY-MM
-  return dateStr.slice(0, 7);
+  return dateStr.slice(0, 7); // YYYY-MM
 }
 
 function todayISODate() {
@@ -84,9 +81,17 @@ export default function ActiviteitenPage() {
     return map;
   }, [meedoen]);
 
+  const ingeschreven = (activiteitId: string) => {
+    if (!myUserId) return false;
+    const entry = meedoenByAct.get(activiteitId);
+    return entry ? entry.userIds.has(myUserId) : false;
+  };
+
   const grouped = useMemo(() => {
-    // items zijn al gesorteerd desc door de query, maar we sorteren nog eens defensief
-    const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? 1 : a.wanneer > b.wanneer ? -1 : 0));
+    // items zijn al asc door query, maar defensief
+    const sorted = [...items].sort((a, b) =>
+      a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0
+    );
 
     const groups: { key: string; title: string; items: Activiteit[] }[] = [];
     const idx = new Map<string, number>();
@@ -121,12 +126,12 @@ export default function ActiviteitenPage() {
 
     const vanaf = todayISODate();
 
-    // ✅ sorteren: recentste eerst (descending)
+    // ✅ OPLOPEND: eerst komende activiteiten bovenaan
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,wanneer,aantal_vrijwilligers,toelichting,doelgroep")
       .gte("wanneer", vanaf)
-      .order("wanneer", { ascending: false });
+      .order("wanneer", { ascending: true });
 
     if (e1) {
       setError(e1.message);
@@ -164,12 +169,6 @@ export default function ActiviteitenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const ingeschreven = (activiteitId: string) => {
-    if (!myUserId) return false;
-    const entry = meedoenByAct.get(activiteitId);
-    return entry ? entry.userIds.has(myUserId) : false;
-  };
-
   const inschrijven = async (activiteitId: string) => {
     if (!myUserId) return;
     setBusyId(activiteitId);
@@ -203,13 +202,6 @@ export default function ActiviteitenPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <div className="flex items-start justify-between gap-4 mb-4">
-
-        <button className="border rounded-xl px-3 py-2 text-sm" onClick={loadAll} disabled={loading}>
-          Refresh
-        </button>
-      </div>
-
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
 
       {loading ? (
@@ -220,8 +212,12 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-            <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10"> {g.title}</h2>
-              <ul className="space-y-3">
+              {/* ✅ lichtblauwe sticky maandtussentitel */}
+              <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10">
+                {g.title}
+              </h2>
+
+              <ul className="space-y-3 mt-3">
                 {g.items.map((a) => {
                   const busy = busyId === a.id;
                   const entry = meedoenByAct.get(a.id);
@@ -234,10 +230,17 @@ export default function ActiviteitenPage() {
                   const isIn = ingeschreven(a.id);
 
                   return (
-                    <li key={a.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
+                    <li
+                      key={a.id}
+                      className={`border rounded-2xl p-4 bg-white/80 shadow-sm ${
+                        isIn ? "border-green-500" : ""
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                          <div className="font-medium whitespace-pre-line break-words">{a.titel}</div>
+                          <div className="font-medium whitespace-pre-line break-words">
+                            {a.titel}
+                          </div>
 
                           {a.toelichting && (
                             <div className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
@@ -247,7 +250,9 @@ export default function ActiviteitenPage() {
 
                           <div className="text-sm text-gray-600 mt-2">
                             {formatDatumKaart(a.wanneer)}
-                            {a.aantal_vrijwilligers != null ? ` • nodig: ${a.aantal_vrijwilligers}` : ""}
+                            {a.aantal_vrijwilligers != null
+                              ? ` • nodig: ${a.aantal_vrijwilligers}`
+                              : ""}
                             {` • ingeschreven: ${count}`}
                           </div>
 
