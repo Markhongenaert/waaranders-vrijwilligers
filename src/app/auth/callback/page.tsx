@@ -1,60 +1,107 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-async function goNext(userId: string) {
-  // Kijk of er al een profiel bestaat met een naam
-  const { data: prof, error } = await supabase
-    .from("vrijwilligers")
-    .select("naam")
-    .eq("id", userId)
-    .maybeSingle();
+function getQueryParam(name: string) {
+  const url = new URL(window.location.href);
+  return url.searchParams.get(name);
+}
 
-  // Als RLS of iets anders blokkeert, toon activiteiten (en we debuggen daarna)
-  if (error) {
-    console.error("Profiel-check fout:", error.message);
-    window.location.href = "/activiteiten";
-    return;
-  }
+function parseHashParams() {
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
 
-  const hasName = !!prof?.naam && prof.naam.trim().length > 0;
-  window.location.href = hasName ? "/activiteiten" : "/profiel";
+  const params = new URLSearchParams(hash);
+  return {
+    access_token: params.get("access_token"),
+    refresh_token: params.get("refresh_token"),
+    error: params.get("error"),
+    error_description: params.get("error_description"),
+  };
 }
 
 export default function AuthCallbackPage() {
+  const [msg, setMsg] = useState("Even geduld… We ronden je login af.");
+  const [detail, setDetail] = useState<string | null>(null);
+
   useEffect(() => {
-    let unsub: (() => void) | null = null;
-
     const run = async () => {
-      // 1) Als sessie al bestaat (bv. refresh), meteen doorsturen
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user?.id) {
-        await goNext(data.session.user.id);
-        return;
-      }
+      try {
+        // 1) PKCE: ?code=...
+        const code = getQueryParam("code");
 
-      // 2) Wacht op auth state change na klikken op magic link
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session?.user?.id) {
-          goNext(session.user.id);
+        if (code) {
+          setDetail("PKCE login gedetecteerd (code).");
+
+          const { data, error } = await supabase.auth.exchangeCodeForSession(
+            window.location.href
+          );
+
+          if (error) {
+            setMsg("Login mislukt.");
+            setDetail(error.message);
+            return;
+          }
+
+          if (!data.session) {
+            setMsg("Login gelukt, maar geen sessie gevonden.");
+            setDetail("Geen session object teruggekregen.");
+            return;
+          }
+
+          window.location.href = "/activiteiten";
+          return;
         }
-      });
 
-      unsub = () => sub.subscription.unsubscribe();
+        // 2) Implicit: #access_token=...
+        const hp = parseHashParams();
+
+        if (hp.error) {
+          setMsg("Login mislukt.");
+          setDetail(`${hp.error}: ${hp.error_description ?? ""}`.trim());
+          return;
+        }
+
+        if (hp.access_token && hp.refresh_token) {
+          setDetail("Implicit login gedetecteerd (access_token).");
+
+          const { error } = await supabase.auth.setSession({
+            access_token: hp.access_token,
+            refresh_token: hp.refresh_token,
+          });
+
+          if (error) {
+            setMsg("Login mislukt.");
+            setDetail(error.message);
+            return;
+          }
+
+          window.location.href = "/activiteiten";
+          return;
+        }
+
+        // 3) Niets gevonden → toon diagnose
+        setMsg("Login-link is niet compleet of ongeldig.");
+        setDetail(
+          "Geen ?code=... en geen #access_token=... gevonden. Controleer Supabase Redirect URLs."
+        );
+      } catch (e: any) {
+        setMsg("Onverwachte fout tijdens login.");
+        setDetail(e?.message ?? String(e));
+      }
     };
 
     run();
-
-    return () => {
-      if (unsub) unsub();
-    };
   }, []);
 
   return (
-    <main className="p-8">
-      <h1 className="text-xl font-bold">Even geduld…</h1>
-      <p>We ronden je login af.</p>
+    <main className="mx-auto max-w-xl p-6 md:p-10">
+      <div className="border rounded-2xl p-4 bg-white/80 shadow-sm">
+        <div className="font-semibold">{msg}</div>
+        {detail && <div className="text-sm text-gray-600 mt-2">{detail}</div>}
+      </div>
     </main>
   );
 }
