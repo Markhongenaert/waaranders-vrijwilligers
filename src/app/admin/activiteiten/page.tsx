@@ -1,5 +1,4 @@
 // src/app/admin/activiteiten/page.tsx
-
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -13,7 +12,7 @@ type ActiviteitRow = {
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
   klant_id: string | null;
-  klanten: KlantMini[]; // 👈 array
+  klanten: KlantMini[];
 };
 
 async function deleteActiviteit(formData: FormData) {
@@ -21,17 +20,21 @@ async function deleteActiviteit(formData: FormData) {
 
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-  const supabase = supabaseServer();
-  await supabase.from("activiteiten").delete().eq("id", id);
 
-  // Force refresh van deze pagina
+  const supabase = supabaseServer();
+  const { error } = await supabase.from("activiteiten").delete().eq("id", id);
+
+  // Optioneel: je kan error loggen, maar build hoeft niet te falen
+  if (error) {
+    console.error("Delete activiteit error:", error.message);
+  }
+
   revalidatePath("/admin/activiteiten");
 }
 
 export default async function AdminActiviteitenPage() {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = supabaseServer();
 
-  // (optioneel) check of user ingelogd is
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -41,7 +44,7 @@ export default async function AdminActiviteitenPage() {
       <main style={{ padding: 24 }}>
         <h1>Beheer – Activiteiten</h1>
         <p>Je moet ingelogd zijn om dit te zien.</p>
-        <Link href="/activiteiten">Terug</Link>
+        <Link href="/activiteiten">Terug naar activiteiten</Link>
       </main>
     );
   }
@@ -57,9 +60,7 @@ export default async function AdminActiviteitenPage() {
     return (
       <main style={{ padding: 24 }}>
         <h1>Beheer – Activiteiten</h1>
-        <p style={{ color: "crimson" }}>
-          Fout bij laden: {error.message}
-        </p>
+        <p style={{ color: "crimson" }}>Fout bij laden: {error.message}</p>
         <Link href="/activiteiten">Terug</Link>
       </main>
     );
@@ -69,18 +70,17 @@ export default async function AdminActiviteitenPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 16,
+        }}
+      >
         <h1 style={{ margin: 0 }}>Beheer – Activiteiten</h1>
         <Link href="/activiteiten">Publieke lijst</Link>
       </header>
-
-      <div style={{ height: 16 }} />
-
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <Link href="/admin">Admin home</Link>
-        {/* Als je een create-pagina hebt: */}
-        {/* <Link href="/admin/activiteiten/nieuw">+ Nieuwe activiteit</Link> */}
-      </div>
 
       <div style={{ height: 16 }} />
 
@@ -119,29 +119,20 @@ export default async function AdminActiviteitenPage() {
                     {a.aantal_vrijwilligers ?? "—"}
                   </td>
                   <td style={td}>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      {/* Als je een edit-pagina hebt: */}
-                      {/* <Link href={`/admin/activiteiten/${a.id}`}>Bewerk</Link> */}
-
-                      <form action={deleteActiviteit}>
-                        <input type="hidden" name="id" value={a.id} />
-                        <button
-                          type="submit"
-                          style={{
-                            border: "1px solid #ddd",
-                            borderRadius: 8,
-                            padding: "6px 10px",
-                            cursor: "pointer",
-                          }}
-                          onClick={(e) => {
-                            // client-side confirm werkt niet in server component;
-                            // laat dit hier staan voor het geval je later ‘use client’ maakt.
-                          }}
-                        >
-                          Verwijder
-                        </button>
-                      </form>
-                    </div>
+                    <form action={deleteActiviteit}>
+                      <input type="hidden" name="id" value={a.id} />
+                      <button
+                        type="submit"
+                        style={{
+                          border: "1px solid #ddd",
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Verwijder
+                      </button>
+                    </form>
                   </td>
                 </tr>
               );

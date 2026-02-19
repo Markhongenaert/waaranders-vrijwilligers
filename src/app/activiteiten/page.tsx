@@ -1,17 +1,17 @@
 // src/app/activiteiten/page.tsx
-import { supabaseServer } from "@/lib/supabase/server";
 import Link from "next/link";
+import { supabaseServer } from "@/lib/supabase/server";
 
 type KlantMini = { naam: string };
 
 type ActiviteitRow = {
   id: string;
   titel: string;
-  wanneer: string; // ISO string in DB (timestamp/date)
+  wanneer: string; // ISO string
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
   klant_id: string | null;
-  klanten: KlantMini[]; // 👈 Supabase geeft dit typisch als array terug
+  klanten: KlantMini[]; // Supabase join komt vaak als array
 };
 
 export default async function ActiviteitenPage() {
@@ -28,9 +28,7 @@ export default async function ActiviteitenPage() {
     return (
       <main style={{ padding: 24 }}>
         <h1>Activiteiten</h1>
-        <p style={{ color: "crimson" }}>
-          Fout bij laden: {error.message}
-        </p>
+        <p style={{ color: "crimson" }}>Fout bij laden: {error.message}</p>
       </main>
     );
   }
@@ -39,9 +37,16 @@ export default async function ActiviteitenPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 16,
+        }}
+      >
         <h1 style={{ margin: 0 }}>Activiteiten</h1>
-        <Link href="/admin/activiteiten">Naar beheer</Link>
+        <Link href="/admin/activiteiten">Beheer</Link>
       </header>
 
       <div style={{ height: 16 }} />
@@ -49,7 +54,15 @@ export default async function ActiviteitenPage() {
       {activiteiten.length === 0 ? (
         <p>Geen activiteiten gevonden.</p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
+        <ul
+          style={{
+            listStyle: "none",
+            padding: 0,
+            margin: 0,
+            display: "grid",
+            gap: 12,
+          }}
+        >
           {activiteiten.map((a) => {
             const klantNaam = a.klanten?.[0]?.naam ?? "—";
             const wanneer = a.wanneer ? new Date(a.wanneer) : null;
@@ -63,11 +76,15 @@ export default async function ActiviteitenPage() {
                   padding: 14,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
                   <strong>{a.titel}</strong>
-                  <span>
-                    {wanneer ? wanneer.toLocaleString("nl-BE") : "—"}
-                  </span>
+                  <span>{wanneer ? wanneer.toLocaleString("nl-BE") : "—"}</span>
                 </div>
 
                 <div style={{ height: 8 }} />
