@@ -11,7 +11,7 @@ type Activiteit = {
   toelichting: string | null;
 
   klant_id: string | null;
-  klanten?: { naam: string | null } | null;
+    klanten?: { naam: string | null } | { naam: string | null }[] | null;
 };
 
 type MeedoenRow = {
@@ -27,6 +27,12 @@ const MONTH_HEADER_FMT = new Intl.DateTimeFormat("nl-BE", { month: "long", year:
 function capitalize(s: string) {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function klantNaam(k: Activiteit["klanten"]): string | null {
+  if (!k) return null;
+  if (Array.isArray(k)) return k[0]?.naam ?? null;
+  return k.naam ?? null;
 }
 
 function formatDatumKaart(dateStr: string) {
@@ -137,7 +143,7 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    const activiteiten = (acts ?? []) as Activiteit[];
+    const activiteiten = (acts ?? []) as unknown as Activiteit[];
     setItems(activiteiten);
 
     const ids = activiteiten.map((a) => a.id);
@@ -247,7 +253,7 @@ export default function ActiviteitenPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <span>{formatDatumKaart(a.wanneer)}</span>
 
-                              {a.klanten?.naam ? <span>• {a.klanten.naam}</span> : null}
+                              {klantNaam(a.klanten) ? <span>• {klantNaam(a.klanten)}</span> : null}
 
                               {a.aantal_vrijwilligers != null ? (
                                 <span>• nodig: {a.aantal_vrijwilligers}</span>
