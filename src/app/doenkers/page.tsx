@@ -11,9 +11,6 @@ export default function DoenkersHome() {
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
       <div className="flex items-center justify-between mb-5">
-        <div className="text-sm text-gray-600">
-          Doenkers – beheer
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

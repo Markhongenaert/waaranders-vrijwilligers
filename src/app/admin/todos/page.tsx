@@ -8,7 +8,7 @@ type Todo = {
   id: string;
   wat: string;
   wie_vrijwilliger_id: string;
-  streefdatum: string | null;
+  streefdatum: string | null; // YYYY-MM-DD
   prioriteit: "laag" | "normaal" | "hoog";
   status: "gepland" | "bezig" | "gedaan";
 };
@@ -53,9 +53,6 @@ export default function AdminTodosPage() {
   const [vrijwilligers, setVrijwilligers] = useState<Vrijwilliger[]>([]);
 
   const [showDone, setShowDone] = useState(false);
-  const [binnenDagSort, setBinnenDagSort] =
-    useState<"prioriteit" | "persoon">("prioriteit");
-
   const [selectedUserId, setSelectedUserId] = useState<string>("alle");
 
   const [error, setError] = useState<string | null>(null);
@@ -115,42 +112,54 @@ export default function AdminTodosPage() {
     return map;
   }, [vrijwilligers]);
 
-  const sorted = useMemo(() => {
+  const filtered = useMemo(() => {
     let arr = [...items];
-
     if (!showDone) arr = arr.filter((t) => t.status !== "gedaan");
-
     if (selectedUserId !== "alle") {
       arr = arr.filter((t) => t.wie_vrijwilliger_id === selectedUserId);
     }
-
-    const prioRank = (p: Todo["prioriteit"]) =>
-      p === "hoog" ? 0 : p === "normaal" ? 1 : 2;
-
-    arr.sort((a, b) => {
-      // 1) streefdatum oplopend (null onderaan)
-      const ad = a.streefdatum ?? "9999-12-31";
-      const bd = b.streefdatum ?? "9999-12-31";
-      if (ad < bd) return -1;
-      if (ad > bd) return 1;
-
-      // 2) binnen dezelfde datum: prioriteit of persoon
-      if (binnenDagSort === "prioriteit") {
-        const pr = prioRank(a.prioriteit) - prioRank(b.prioriteit);
-        if (pr !== 0) return pr;
-      } else {
-        const an = (naamById.get(a.wie_vrijwilliger_id) ?? "").toLowerCase();
-        const bn = (naamById.get(b.wie_vrijwilliger_id) ?? "").toLowerCase();
-        const cmp = an.localeCompare(bn);
-        if (cmp !== 0) return cmp;
-      }
-
-      // 3) tie-breaker
-      return a.wat.localeCompare(b.wat);
-    });
-
     return arr;
-  }, [items, showDone, selectedUserId, binnenDagSort, naamById]);
+  }, [items, showDone, selectedUserId]);
+
+  // Helpers voor sort: datum dichtsbij eerst, null onderaan
+  const sortByDateAsc = (a: Todo, b: Todo) => {
+    const ad = a.streefdatum ?? "9999-12-31";
+    const bd = b.streefdatum ?? "9999-12-31";
+    if (ad < bd) return -1;
+    if (ad > bd) return 1;
+    return a.wat.localeCompare(b.wat);
+  };
+
+  // Group view wanneer "alle"
+  const groupedByPerson = useMemo(() => {
+    if (selectedUserId !== "alle") return [];
+
+    // per persoon id groeperen
+    const map = new Map<string, Todo[]>();
+    for (const t of filtered) {
+      const uid = t.wie_vrijwilliger_id;
+      if (!map.has(uid)) map.set(uid, []);
+      map.get(uid)!.push(t);
+    }
+
+    // sorteer per persoon op naam
+    const groups = Array.from(map.entries()).map(([uid, todos]) => ({
+      uid,
+      naam: naamById.get(uid) || "(onbekend)",
+      todos: todos.sort(sortByDateAsc),
+    }));
+
+    groups.sort((a, b) => a.naam.localeCompare(b.naam));
+    return groups;
+  }, [filtered, selectedUserId, naamById]);
+
+  const flatSorted = useMemo(() => {
+    // wanneer 1 persoon gekozen is
+    if (selectedUserId === "alle") return [];
+    const arr = [...filtered];
+    arr.sort(sortByDateAsc);
+    return arr;
+  }, [filtered, selectedUserId]);
 
   const setStatus = async (id: string, status: Todo["status"]) => {
     setError(null);
@@ -171,7 +180,6 @@ export default function AdminTodosPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      {/* (Geen extra paginatitel nodig als je dat ook hier wil weglaten — zeg het en ik haal dit weg) */}
       <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-4">
         TODO’s (beheer)
       </div>
@@ -182,23 +190,12 @@ export default function AdminTodosPage() {
           value={selectedUserId}
           onChange={(e) => setSelectedUserId(e.target.value)}
         >
-          <option value="alle">Alle personen</option>
+          <option value="alle">Iedereen</option>
           {vrijwilligers.map((v) => (
             <option key={v.id} value={v.id}>
               {v.naam ?? "(naam ontbreekt)"}
             </option>
           ))}
-        </select>
-
-        <select
-          className="border rounded-xl px-3 py-2 text-sm"
-          value={binnenDagSort}
-          onChange={(e) =>
-            setBinnenDagSort(e.target.value as "prioriteit" | "persoon")
-          }
-        >
-          <option value="prioriteit">Binnen dag: prioriteit</option>
-          <option value="persoon">Binnen dag: persoon</option>
         </select>
 
         <label className="flex items-center gap-2 text-sm">
@@ -221,28 +218,116 @@ export default function AdminTodosPage() {
 
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
 
-      {sorted.length === 0 ? (
+      {/* Weergave */}
+      {selectedUserId === "alle" ? (
+        groupedByPerson.length === 0 ? (
+          <p className="text-gray-600">Geen TODO’s.</p>
+        ) : (
+          <div className="space-y-8">
+            {groupedByPerson.map((g) => (
+              <section key={g.uid}>
+                <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10">
+                  {g.naam}
+                </h2>
+
+                <ul className="space-y-3 mt-3">
+                  {g.todos.map((t) => {
+                    const overdue = isOverdue(t.streefdatum, t.status);
+
+                    return (
+                      <li key={t.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
+                        <div className="flex justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="font-medium break-words">{t.wat}</div>
+
+                            <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2 items-center">
+                              {t.streefdatum ? (
+                                <span
+                                  className={`px-2 py-0.5 rounded-full border text-xs ${
+                                    overdue ? "text-red-700 font-bold" : ""
+                                  }`}
+                                >
+                                  {formatTodoDatum(t.streefdatum)}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">
+                                  geen datum
+                                </span>
+                              )}
+
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(
+                                  t.prioriteit
+                                )}`}
+                              >
+                                {t.prioriteit}
+                              </span>
+
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(
+                                  t.status
+                                )}`}
+                              >
+                                {t.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 shrink-0 items-start">
+                            <a
+                              href={`/admin/todos/${t.id}`}
+                              className="border rounded-xl px-3 py-2 text-sm"
+                            >
+                              Bewerken
+                            </a>
+
+                            {t.status !== "gedaan" ? (
+                              <button
+                                onClick={() => setStatus(t.id, "gedaan")}
+                                className="border rounded-xl px-3 py-2 text-sm"
+                                title="Markeer als gedaan"
+                              >
+                                ✔
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setStatus(t.id, "gepland")}
+                                className="border rounded-xl px-3 py-2 text-sm"
+                                title="Terug naar gepland"
+                              >
+                                ↩
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )
+      ) : flatSorted.length === 0 ? (
         <p className="text-gray-600">Geen TODO’s.</p>
       ) : (
         <ul className="space-y-3">
-          {sorted.map((t) => {
+          {flatSorted.map((t) => {
             const overdue = isOverdue(t.streefdatum, t.status);
-            const naam = naamById.get(t.wie_vrijwilliger_id) || "(onbekend)";
 
             return (
-              <li
-                key={t.id}
-                className={`border rounded-2xl p-4 bg-white/80 shadow-sm ${
-                  overdue ? "border-red-500" : ""
-                }`}
-              >
+              <li key={t.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
                 <div className="flex justify-between gap-4">
                   <div className="min-w-0">
                     <div className="font-medium break-words">{t.wat}</div>
 
                     <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2 items-center">
                       {t.streefdatum ? (
-                        <span className="px-2 py-0.5 rounded-full border text-xs">
+                        <span
+                          className={`px-2 py-0.5 rounded-full border text-xs ${
+                            overdue ? "text-red-700 font-bold" : ""
+                          }`}
+                        >
                           {formatTodoDatum(t.streefdatum)}
                         </span>
                       ) : (
@@ -251,23 +336,21 @@ export default function AdminTodosPage() {
                         </span>
                       )}
 
-                      <span className="px-2 py-0.5 rounded-full border text-xs">
-                        {naam}
-                      </span>
-
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(t.prioriteit)}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(
+                          t.prioriteit
+                        )}`}
+                      >
                         {t.prioriteit}
                       </span>
 
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(t.status)}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(
+                          t.status
+                        )}`}
+                      >
                         {t.status}
                       </span>
-
-                      {overdue && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
-                          verlopen
-                        </span>
-                      )}
                     </div>
                   </div>
 
