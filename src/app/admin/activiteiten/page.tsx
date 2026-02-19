@@ -1,374 +1,169 @@
-"use client";
+// src/app/admin/activiteiten/page.tsx
+import { cookies } from "next/headers";
+import Link from "next/link";
+import { revalidatePath } from "next/cache";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { isDoenkerOrAdmin } from "@/lib/auth";
+type KlantMini = { naam: string };
 
-type Activiteit = {
+type ActiviteitRow = {
   id: string;
   titel: string;
-  wanneer: string; // YYYY-MM-DD
+  wanneer: string;
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
-  doelgroep: string | null;
-
   klant_id: string | null;
-  klanten?: { naam: string | null } | null; // join in beheer
+  klanten: KlantMini[]; // 👈 array
 };
 
-type Klant = {
-  id: string;
-  naam: string;
-};
+async function deleteActiviteit(formData: FormData) {
+  "use server";
 
-const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
-const DAY_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });
-function capitalize(s: string) {
-  if (!s) return s;
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-function formatDatumKaart(dateStr: string) {
-  const d = new Date(dateStr);
-  return `${capitalize(WEEKDAY_FMT.format(d))} ${DAY_MONTH_FMT.format(d)}`;
-}
-function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = createServerComponentClient({ cookies });
+
+  await supabase.from("activiteiten").delete().eq("id", id);
+
+  // Force refresh van deze pagina
+  revalidatePath("/admin/activiteiten");
 }
 
-const DG_OPTIONS = ["DG1", "DG2", "DG3", "DG4", "DG5", "DG6", "DG7", "DG8"] as const;
+export default async function AdminActiviteitenPage() {
+  const supabase = createServerComponentClient({ cookies });
 
-export default function AdminActiviteitenPage() {
-  const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+  // (optioneel) check of user ingelogd is
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const [items, setItems] = useState<Activiteit[]>([]);
-  const [klanten, setKlanten] = useState<Klant[]>([]);
-
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  const [editing, setEditing] = useState<Activiteit | null>(null);
-
-  // edit fields
-  const [titel, setTitel] = useState("");
-  const [toelichting, setToelichting] = useState("");
-  const [wanneer, setWanneer] = useState("");
-  const [aantalVrijwilligers, setAantalVrijwilligers] = useState<number>(1);
-  const [doelgroep, setDoelgroep] = useState<string>("");
-  const [klantId, setKlantId] = useState<string>("");
-
-  const klantById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const k of klanten) m.set(k.id, k.naam);
-    return m;
-  }, [klanten]);
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    setMsg(null);
-
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user ?? null;
-
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    const ok = await isDoenkerOrAdmin();
-    setAllowed(ok);
-    if (!ok) {
-      setLoading(false);
-      return;
-    }
-
-    // klanten voor dropdown
-    const { data: k, error: eK } = await supabase
-      .from("klanten")
-      .select("id,naam")
-      .order("naam", { ascending: true });
-
-    if (eK) {
-      setError(eK.message);
-      setLoading(false);
-      return;
-    }
-
-    // activiteiten vanaf vandaag (zoals beheer)
-    const vanaf = todayISODate();
-    const { data: a, error: eA } = await supabase
-      .from("activiteiten")
-      .select("id,titel,wanneer,aantal_vrijwilligers,toelichting,doelgroep,klant_id,klanten(naam)")
-      .gte("wanneer", vanaf)
-      .order("wanneer", { ascending: true });
-
-    if (eA) {
-      setError(eA.message);
-      setLoading(false);
-      return;
-    }
-
-    setKlanten((k ?? []) as Klant[]);
-    setItems((a ?? []) as Activiteit[]);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const startEdit = (a: Activiteit) => {
-    setEditing(a);
-    setTitel(a.titel ?? "");
-    setToelichting(a.toelichting ?? "");
-    setWanneer(a.wanneer ?? "");
-    setAantalVrijwilligers(a.aantal_vrijwilligers ?? 1);
-    setDoelgroep(a.doelgroep ?? "");
-    setKlantId(a.klant_id ?? "");
-    setMsg(null);
-    setError(null);
-  };
-
-  const cancelEdit = () => {
-    setEditing(null);
-  };
-
-  const saveEdit = async () => {
-    if (!editing) return;
-
-    setBusy(true);
-    setError(null);
-    setMsg(null);
-
-    if (!titel.trim()) {
-      setError("Titel is verplicht.");
-      setBusy(false);
-      return;
-    }
-    if (!wanneer) {
-      setError("Kies een datum.");
-      setBusy(false);
-      return;
-    }
-
-    const payload: any = {
-      titel: titel.trim(),
-      toelichting: toelichting.trim() ? toelichting.trim() : null,
-      wanneer,
-      aantal_vrijwilligers: Number.isFinite(aantalVrijwilligers) ? aantalVrijwilligers : null,
-      doelgroep: doelgroep || null,
-      klant_id: klantId || null,
-    };
-
-    const { error } = await supabase.from("activiteiten").update(payload).eq("id", editing.id);
-
-    setBusy(false);
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    setMsg(
-      `Activiteit aangepast${
-        payload.klant_id ? ` (klant: ${klantById.get(payload.klant_id) ?? "?"})` : ""
-      }.`
-    );
-    setEditing(null);
-    await load();
-  };
-
-  const deleteActiviteit = async (id: string) => {
-    if (!confirm("Deze activiteit verwijderen?")) return;
-
-    setBusy(true);
-    setError(null);
-    setMsg(null);
-
-    const { error } = await supabase.from("activiteiten").delete().eq("id", id);
-
-    setBusy(false);
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    setMsg("Activiteit verwijderd.");
-    await load();
-  };
-
-  if (loading) return <main className="mx-auto max-w-3xl p-6 md:p-10">Laden…</main>;
-
-  if (!allowed) {
+  if (!user) {
     return (
-      <main className="mx-auto max-w-3xl p-6 md:p-10">
-        <p>Je hebt geen toegang.</p>
+      <main style={{ padding: 24 }}>
+        <h1>Beheer – Activiteiten</h1>
+        <p>Je moet ingelogd zijn om dit te zien.</p>
+        <Link href="/activiteiten">Terug</Link>
       </main>
     );
   }
 
+  const { data, error } = await supabase
+    .from("activiteiten")
+    .select(
+      "id, titel, wanneer, aantal_vrijwilligers, toelichting, klant_id, klanten(naam)"
+    )
+    .order("wanneer", { ascending: true });
+
+  if (error) {
+    return (
+      <main style={{ padding: 24 }}>
+        <h1>Beheer – Activiteiten</h1>
+        <p style={{ color: "crimson" }}>
+          Fout bij laden: {error.message}
+        </p>
+        <Link href="/activiteiten">Terug</Link>
+      </main>
+    );
+  }
+
+  const activiteiten: ActiviteitRow[] = (data ?? []) as ActiviteitRow[];
+
   return (
-    <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-6">
-        Activiteiten beheren
+    <main style={{ padding: 24 }}>
+      <header style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+        <h1 style={{ margin: 0 }}>Beheer – Activiteiten</h1>
+        <Link href="/activiteiten">Publieke lijst</Link>
+      </header>
+
+      <div style={{ height: 16 }} />
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <Link href="/admin">Admin home</Link>
+        {/* Als je een create-pagina hebt: */}
+        {/* <Link href="/admin/activiteiten/nieuw">+ Nieuwe activiteit</Link> */}
       </div>
 
-      {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
-      {msg && <p className="text-green-700 mb-4">{msg}</p>}
+      <div style={{ height: 16 }} />
 
-      {editing && (
-        <div className="border rounded-2xl p-4 bg-white/80 shadow-sm mb-6">
-          <div className="font-semibold mb-4">Bewerken</div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block font-medium mb-2">Titel</label>
-              <input
-                className="w-full border rounded-xl p-3"
-                value={titel}
-                onChange={(e) => setTitel(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium mb-2">Toelichting</label>
-              <textarea
-                className="w-full border rounded-xl p-3 min-h-[110px]"
-                value={toelichting}
-                onChange={(e) => setToelichting(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block font-medium mb-2">Klant</label>
-              <select
-                className="w-full border rounded-xl p-3"
-                value={klantId}
-                onChange={(e) => setKlantId(e.target.value)}
-              >
-                <option value="">(geen klant)</option>
-                {klanten.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.naam}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block font-medium mb-2">Datum</label>
-                <input
-                  className="w-full border rounded-xl p-3"
-                  type="date"
-                  value={wanneer}
-                  onChange={(e) => setWanneer(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium mb-2">Nodig # vrijwilligers</label>
-                <input
-                  className="w-full border rounded-xl p-3"
-                  type="number"
-                  min={0}
-                  value={aantalVrijwilligers}
-                  onChange={(e) => setAantalVrijwilligers(parseInt(e.target.value || "0", 10))}
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium mb-2">Doelgroep</label>
-                <select
-                  className="w-full border rounded-xl p-3"
-                  value={doelgroep}
-                  onChange={(e) => setDoelgroep(e.target.value)}
-                >
-                  <option value="">(geen)</option>
-                  {DG_OPTIONS.map((dg) => (
-                    <option key={dg} value={dg}>
-                      {dg}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                className="border rounded-xl px-4 py-2 text-sm"
-                onClick={saveEdit}
-                disabled={busy}
-              >
-                {busy ? "Bezig…" : "Opslaan"}
-              </button>
-              <button
-                className="border rounded-xl px-4 py-2 text-sm"
-                onClick={cancelEdit}
-                disabled={busy}
-              >
-                Annuleren
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {items.length === 0 ? (
-        <p className="text-gray-600">Nog geen toekomstige activiteiten.</p>
+      {activiteiten.length === 0 ? (
+        <p>Geen activiteiten gevonden.</p>
       ) : (
-        <ul className="space-y-3">
-          {items.map((a) => (
-            <li key={a.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="font-medium break-words">{a.titel}</div>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            border: "1px solid #ddd",
+          }}
+        >
+          <thead>
+            <tr>
+              <th style={th}>Wanneer</th>
+              <th style={th}>Titel</th>
+              <th style={th}>Klant</th>
+              <th style={th}>Vrijw.</th>
+              <th style={th}>Acties</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activiteiten.map((a) => {
+              const klantNaam = a.klanten?.[0]?.naam ?? "—";
+              const wanneer = a.wanneer ? new Date(a.wanneer) : null;
 
-                  {a.toelichting && (
-                    <div className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
-                      {a.toelichting}
+              return (
+                <tr key={a.id}>
+                  <td style={td}>
+                    {wanneer ? wanneer.toLocaleString("nl-BE") : "—"}
+                  </td>
+                  <td style={td}>{a.titel}</td>
+                  <td style={td}>{klantNaam}</td>
+                  <td style={td} align="center">
+                    {a.aantal_vrijwilligers ?? "—"}
+                  </td>
+                  <td style={td}>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      {/* Als je een edit-pagina hebt: */}
+                      {/* <Link href={`/admin/activiteiten/${a.id}`}>Bewerk</Link> */}
+
+                      <form action={deleteActiviteit}>
+                        <input type="hidden" name="id" value={a.id} />
+                        <button
+                          type="submit"
+                          style={{
+                            border: "1px solid #ddd",
+                            borderRadius: 8,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                          onClick={(e) => {
+                            // client-side confirm werkt niet in server component;
+                            // laat dit hier staan voor het geval je later ‘use client’ maakt.
+                          }}
+                        >
+                          Verwijder
+                        </button>
+                      </form>
                     </div>
-                  )}
-
-                  <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2">
-                    <span>{formatDatumKaart(a.wanneer)}</span>
-
-                    {a.klanten?.naam ? <span>• {a.klanten.naam}</span> : null}
-
-                    {a.aantal_vrijwilligers != null ? (
-                      <span>• nodig: {a.aantal_vrijwilligers}</span>
-                    ) : null}
-
-                    {a.doelgroep ? <span>• {a.doelgroep}</span> : null}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    className="border rounded-xl px-3 py-2 text-sm"
-                    onClick={() => startEdit(a)}
-                    disabled={busy}
-                  >
-                    Bewerken
-                  </button>
-                  <button
-                    className="border rounded-xl px-3 py-2 text-sm"
-                    onClick={() => deleteActiviteit(a.id)}
-                    disabled={busy}
-                  >
-                    Verwijderen
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </main>
   );
 }
 
+const th: React.CSSProperties = {
+  textAlign: "left",
+  padding: "10px 12px",
+  borderBottom: "1px solid #ddd",
+  background: "#fafafa",
+};
+
+const td: React.CSSProperties = {
+  padding: "10px 12px",
+  borderBottom: "1px solid #eee",
+  verticalAlign: "top",
+};

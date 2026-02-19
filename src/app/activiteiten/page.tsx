@@ -1,316 +1,99 @@
-"use client";
+// src/app/activiteiten/page.tsx
+import { cookies } from "next/headers";
+import Link from "next/link";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+type KlantMini = { naam: string };
 
-type Activiteit = {
+type ActiviteitRow = {
   id: string;
   titel: string;
-  wanneer: string; // YYYY-MM-DD
+  wanneer: string; // ISO string in DB (timestamp/date)
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
-
   klant_id: string | null;
-    klanten?: { naam: string | null } | { naam: string | null }[] | null;
+  klanten: KlantMini[]; // 👈 Supabase geeft dit typisch als array terug
 };
 
-type MeedoenRow = {
-  activiteit_id: string;
-  vrijwilliger_id: string;
-  vrijwilligers: { naam: string | null } | { naam: string | null }[] | null;
-};
+export default async function ActiviteitenPage() {
+  const supabase = createServerComponentClient({ cookies });
 
-const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
-const DAY_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });
-const MONTH_HEADER_FMT = new Intl.DateTimeFormat("nl-BE", { month: "long", year: "numeric" });
+  const { data, error } = await supabase
+    .from("activiteiten")
+    .select(
+      "id, titel, wanneer, aantal_vrijwilligers, toelichting, klant_id, klanten(naam)"
+    )
+    .order("wanneer", { ascending: true });
 
-function capitalize(s: string) {
-  if (!s) return s;
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
+  if (error) {
+    return (
+      <main style={{ padding: 24 }}>
+        <h1>Activiteiten</h1>
+        <p style={{ color: "crimson" }}>
+          Fout bij laden: {error.message}
+        </p>
+      </main>
+    );
+  }
 
-function klantNaam(k: Activiteit["klanten"]): string | null {
-  if (!k) return null;
-  if (Array.isArray(k)) return k[0]?.naam ?? null;
-  return k.naam ?? null;
-}
-
-function formatDatumKaart(dateStr: string) {
-  const d = new Date(dateStr);
-  const wd = capitalize(WEEKDAY_FMT.format(d));
-  const dm = DAY_MONTH_FMT.format(d);
-  return `${wd} ${dm}`;
-}
-
-function formatMaandTussentitel(dateStr: string) {
-  const d = new Date(dateStr);
-  return capitalize(MONTH_HEADER_FMT.format(d));
-}
-
-function monthKey(dateStr: string) {
-  return dateStr.slice(0, 7); // YYYY-MM
-}
-
-function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function extractNaam(v: MeedoenRow["vrijwilligers"]): string | null {
-  if (!v) return null;
-  if (Array.isArray(v)) return v[0]?.naam ?? null;
-  return v.naam ?? null;
-}
-
-export default function ActiviteitenPage() {
-  const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState<Activiteit[]>([]);
-  const [meedoen, setMeedoen] = useState<MeedoenRow[]>([]);
-  const [myUserId, setMyUserId] = useState<string | null>(null);
-
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const meedoenByAct = useMemo(() => {
-    const map = new Map<string, { userIds: Set<string>; namen: string[] }>();
-
-    for (const r of meedoen) {
-      const actId = r.activiteit_id;
-      if (!map.has(actId)) map.set(actId, { userIds: new Set(), namen: [] });
-
-      const entry = map.get(actId)!;
-      entry.userIds.add(r.vrijwilliger_id);
-
-      const naam = extractNaam(r.vrijwilligers);
-      if (naam) entry.namen.push(naam);
-    }
-
-    for (const v of map.values()) v.namen.sort((a, b) => a.localeCompare(b));
-    return map;
-  }, [meedoen]);
-
-  const ingeschreven = (activiteitId: string) => {
-    if (!myUserId) return false;
-    const entry = meedoenByAct.get(activiteitId);
-    return entry ? entry.userIds.has(myUserId) : false;
-  };
-
-  const grouped = useMemo(() => {
-    const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
-
-    const groups: { key: string; title: string; items: Activiteit[] }[] = [];
-    const idx = new Map<string, number>();
-
-    for (const a of sorted) {
-      const key = monthKey(a.wanneer);
-      const pos = idx.get(key);
-      if (pos === undefined) {
-        idx.set(key, groups.length);
-        groups.push({ key, title: formatMaandTussentitel(a.wanneer), items: [a] });
-      } else {
-        groups[pos].items.push(a);
-      }
-    }
-
-    return groups;
-  }, [items]);
-
-  const loadAll = async () => {
-    setLoading(true);
-    setError(null);
-
-    const { data: sess } = await supabase.auth.getSession();
-    const user = sess.session?.user ?? null;
-
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setMyUserId(user.id);
-
-    const vanaf = todayISODate();
-
-    // activiteiten ophalen + klantnaam join (via FK activiteiten.klant_id -> klanten.id)
-    const { data: acts, error: e1 } = await supabase
-      .from("activiteiten")
-      .select("id,titel,wanneer,aantal_vrijwilligers,toelichting,klant_id,klanten(naam)")
-      .gte("wanneer", vanaf)
-      .order("wanneer", { ascending: true });
-
-    if (e1) {
-      setError(e1.message);
-      setLoading(false);
-      return;
-    }
-
-    const activiteiten = (acts ?? []) as unknown as Activiteit[];
-    setItems(activiteiten);
-
-    const ids = activiteiten.map((a) => a.id);
-    if (ids.length === 0) {
-      setMeedoen([]);
-      setLoading(false);
-      return;
-    }
-
-    const { data: md, error: e2 } = await supabase
-      .from("meedoen")
-      .select("activiteit_id,vrijwilliger_id,vrijwilligers(naam)")
-      .in("activiteit_id", ids);
-
-    if (e2) {
-      setError(e2.message);
-      setLoading(false);
-      return;
-    }
-
-    setMeedoen((md ?? []) as unknown as MeedoenRow[]);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const inschrijven = async (activiteitId: string) => {
-    if (!myUserId) return;
-    setBusyId(activiteitId);
-    setError(null);
-
-    const { error } = await supabase.from("meedoen").insert({
-      activiteit_id: activiteitId,
-      vrijwilliger_id: myUserId,
-    });
-
-    if (error) setError(error.message);
-    await loadAll();
-    setBusyId(null);
-  };
-
-  const uitschrijven = async (activiteitId: string) => {
-    if (!myUserId) return;
-    setBusyId(activiteitId);
-    setError(null);
-
-    const { error } = await supabase
-      .from("meedoen")
-      .delete()
-      .eq("activiteit_id", activiteitId)
-      .eq("vrijwilliger_id", myUserId);
-
-    if (error) setError(error.message);
-    await loadAll();
-    setBusyId(null);
-  };
+  const activiteiten: ActiviteitRow[] = (data ?? []) as ActiviteitRow[];
 
   return (
-    <main className="mx-auto max-w-3xl p-6 md:p-10">
-      {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
+    <main style={{ padding: 24 }}>
+      <header style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+        <h1 style={{ margin: 0 }}>Activiteiten</h1>
+        <Link href="/admin/activiteiten">Naar beheer</Link>
+      </header>
 
-      {loading ? (
-        <p>Laden…</p>
-      ) : items.length === 0 ? (
-        <p className="text-gray-600">Geen toekomstige activiteiten.</p>
+      <div style={{ height: 16 }} />
+
+      {activiteiten.length === 0 ? (
+        <p>Geen activiteiten gevonden.</p>
       ) : (
-        <div className="space-y-8">
-          {grouped.map((g) => (
-            <section key={g.key}>
-              <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10">
-                {g.title}
-              </h2>
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 12 }}>
+          {activiteiten.map((a) => {
+            const klantNaam = a.klanten?.[0]?.naam ?? "—";
+            const wanneer = a.wanneer ? new Date(a.wanneer) : null;
 
-              <ul className="space-y-3 mt-3">
-                {g.items.map((a) => {
-                  const busy = busyId === a.id;
-                  const entry = meedoenByAct.get(a.id);
-                  const namen = entry?.namen ?? [];
-                  const count = namen.length;
+            return (
+              <li
+                key={a.id}
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: 10,
+                  padding: 14,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <strong>{a.titel}</strong>
+                  <span>
+                    {wanneer ? wanneer.toLocaleString("nl-BE") : "—"}
+                  </span>
+                </div>
 
-                  const preview = namen.slice(0, 3);
-                  const rest = Math.max(0, count - preview.length);
+                <div style={{ height: 8 }} />
 
-                  const isIn = ingeschreven(a.id);
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  <span>
+                    <strong>Klant:</strong> {klantNaam}
+                  </span>
+                  <span>
+                    <strong>Vrijwilligers nodig:</strong>{" "}
+                    {a.aantal_vrijwilligers ?? "—"}
+                  </span>
+                </div>
 
-                  return (
-                    <li
-                      key={a.id}
-                      className={`rounded-2xl p-4 shadow-sm ${
-                        isIn ? "border-2 border-green-600 bg-green-50" : "border bg-white/80"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="font-medium whitespace-pre-line break-words">{a.titel}</div>
-
-                          {a.toelichting && (
-                            <div className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
-                              {a.toelichting}
-                            </div>
-                          )}
-
-                          <div className="text-sm text-gray-600 mt-2 flex items-center justify-between gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span>{formatDatumKaart(a.wanneer)}</span>
-
-                              {klantNaam(a.klanten) ? <span>• {klantNaam(a.klanten)}</span> : null}
-
-                              {a.aantal_vrijwilligers != null ? (
-                                <span>• nodig: {a.aantal_vrijwilligers}</span>
-                              ) : null}
-
-                              <span>• ingeschreven: {count}</span>
-                            </div>
-
-                            {isIn && (
-                              <span className="font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full text-xs border border-green-300 whitespace-nowrap">
-                                Jij doet mee
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="text-sm text-gray-700 mt-2">
-                            <span className="text-gray-600">Meedoen:</span>{" "}
-                            {count === 0 ? (
-                              <span className="text-gray-500">nog niemand</span>
-                            ) : (
-                              <>
-                                {preview.join(", ")}
-                                {rest > 0 ? ` (+${rest} meer)` : ""}
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 shrink-0">
-                          {!isIn ? (
-                            <button
-                              className="border rounded-xl px-3 py-2 text-sm"
-                              onClick={() => inschrijven(a.id)}
-                              disabled={busy}
-                            >
-                              {busy ? "Bezig…" : "Inschrijven"}
-                            </button>
-                          ) : (
-                            <button
-                              className="border rounded-xl px-3 py-2 text-sm"
-                              onClick={() => uitschrijven(a.id)}
-                              disabled={busy}
-                            >
-                              {busy ? "Bezig…" : "Uitschrijven"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
+                {a.toelichting ? (
+                  <>
+                    <div style={{ height: 8 }} />
+                    <div style={{ opacity: 0.9 }}>{a.toelichting}</div>
+                  </>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </main>
   );
 }
-
