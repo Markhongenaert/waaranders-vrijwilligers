@@ -1,55 +1,68 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
 type Activiteit = {
   id: string;
   titel: string;
-  toelichting: string | null;
-  wanneer: string; // date
+  wanneer: string; // YYYY-MM-DD
   aantal_vrijwilligers: number | null;
+  toelichting: string | null;
   doelgroep: string | null;
+
+  klant_id: string | null;
+  klanten?: { naam: string | null } | null; // join in beheer
 };
 
-const DOELGROEPEN = ["DG1", "DG2", "DG3", "DG4", "DG5", "DG6", "DG7", "DG8"] as const;
+type Klant = {
+  id: string;
+  naam: string;
+};
 
+const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
+const DAY_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });
+function capitalize(s: string) {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function formatDatumKaart(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${capitalize(WEEKDAY_FMT.format(d))} ${DAY_MONTH_FMT.format(d)}`;
+}
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function formatDatumNL(dateStr: string) {
-  const d = new Date(dateStr);
-  const weekday = d.toLocaleDateString("nl-BE", { weekday: "long" });
-  const dayMonth = d.toLocaleDateString("nl-BE", {
-    day: "numeric",
-    month: "short",
-  });
-
-  return (
-    weekday.charAt(0).toUpperCase() + weekday.slice(1) + " " + dayMonth
-  );
-}
-
+const DG_OPTIONS = ["DG1", "DG2", "DG3", "DG4", "DG5", "DG6", "DG7", "DG8"] as const;
 
 export default function AdminActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
   const [items, setItems] = useState<Activiteit[]>([]);
+  const [klanten, setKlanten] = useState<Klant[]>([]);
+
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<Activiteit | null>(null);
 
-  // edit
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitel, setEditTitel] = useState("");
-  const [editToelichting, setEditToelichting] = useState("");
-  const [editWanneer, setEditWanneer] = useState("");
-  const [editAantal, setEditAantal] = useState<number>(1);
-  const [editDoelgroep, setEditDoelgroep] = useState<string>("DG1");
+  // edit fields
+  const [titel, setTitel] = useState("");
+  const [toelichting, setToelichting] = useState("");
+  const [wanneer, setWanneer] = useState("");
+  const [aantalVrijwilligers, setAantalVrijwilligers] = useState<number>(1);
+  const [doelgroep, setDoelgroep] = useState<string>("");
+  const [klantId, setKlantId] = useState<string>("");
+
+  const klantById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const k of klanten) m.set(k.id, k.naam);
+    return m;
+  }, [klanten]);
 
   const load = async () => {
     setLoading(true);
@@ -58,6 +71,7 @@ export default function AdminActiviteitenPage() {
 
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user ?? null;
+
     if (!user) {
       window.location.href = "/login";
       return;
@@ -70,21 +84,34 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
-    const vanaf = todayISODate();
+    // klanten voor dropdown
+    const { data: k, error: eK } = await supabase
+      .from("klanten")
+      .select("id,naam")
+      .order("naam", { ascending: true });
 
-    const { data: acts, error: e1 } = await supabase
-      .from("activiteiten")
-      .select("id,titel,toelichting,wanneer,aantal_vrijwilligers,doelgroep")
-      .gte("wanneer", vanaf)
-      .order("wanneer", { ascending: true });
-
-    if (e1) {
-      setError(e1.message);
+    if (eK) {
+      setError(eK.message);
       setLoading(false);
       return;
     }
 
-    setItems((acts ?? []) as Activiteit[]);
+    // activiteiten vanaf vandaag (zoals beheer)
+    const vanaf = todayISODate();
+    const { data: a, error: eA } = await supabase
+      .from("activiteiten")
+      .select("id,titel,wanneer,aantal_vrijwilligers,toelichting,doelgroep,klant_id,klanten(naam)")
+      .gte("wanneer", vanaf)
+      .order("wanneer", { ascending: true });
+
+    if (eA) {
+      setError(eA.message);
+      setLoading(false);
+      return;
+    }
+
+    setKlanten((k ?? []) as Klant[]);
+    setItems((a ?? []) as Activiteit[]);
     setLoading(false);
   };
 
@@ -94,69 +121,68 @@ export default function AdminActiviteitenPage() {
   }, []);
 
   const startEdit = (a: Activiteit) => {
+    setEditing(a);
+    setTitel(a.titel ?? "");
+    setToelichting(a.toelichting ?? "");
+    setWanneer(a.wanneer ?? "");
+    setAantalVrijwilligers(a.aantal_vrijwilligers ?? 1);
+    setDoelgroep(a.doelgroep ?? "");
+    setKlantId(a.klant_id ?? "");
     setMsg(null);
     setError(null);
-
-    setEditingId(a.id);
-    setEditTitel(a.titel ?? "");
-    setEditToelichting(a.toelichting ?? "");
-    setEditWanneer(a.wanneer ?? "");
-    setEditAantal(a.aantal_vrijwilligers ?? 1);
-    setEditDoelgroep(a.doelgroep ?? "DG1");
   };
 
   const cancelEdit = () => {
-    setEditingId(null);
-    setEditTitel("");
-    setEditToelichting("");
-    setEditWanneer("");
-    setEditAantal(1);
-    setEditDoelgroep("DG1");
+    setEditing(null);
   };
 
   const saveEdit = async () => {
-    if (!editingId) return;
+    if (!editing) return;
 
     setBusy(true);
     setError(null);
     setMsg(null);
 
-    if (!editTitel.trim()) {
+    if (!titel.trim()) {
       setError("Titel is verplicht.");
       setBusy(false);
       return;
     }
-    if (!editWanneer) {
-      setError("Datum (wanneer) is verplicht.");
+    if (!wanneer) {
+      setError("Kies een datum.");
       setBusy(false);
       return;
     }
 
     const payload: any = {
-      titel: editTitel.trim(),
-      toelichting: editToelichting ? editToelichting : null,
-      wanneer: editWanneer,
-      aantal_vrijwilligers: Number.isFinite(editAantal) ? editAantal : null,
-      doelgroep: editDoelgroep || null,
+      titel: titel.trim(),
+      toelichting: toelichting.trim() ? toelichting.trim() : null,
+      wanneer,
+      aantal_vrijwilligers: Number.isFinite(aantalVrijwilligers) ? aantalVrijwilligers : null,
+      doelgroep: doelgroep || null,
+      klant_id: klantId || null,
     };
 
-    const { error } = await supabase.from("activiteiten").update(payload).eq("id", editingId);
+    const { error } = await supabase.from("activiteiten").update(payload).eq("id", editing.id);
+
+    setBusy(false);
 
     if (error) {
       setError(error.message);
-      setBusy(false);
       return;
     }
 
-    setMsg("Activiteit bijgewerkt.");
-    cancelEdit();
+    setMsg(
+      `Activiteit aangepast${
+        payload.klant_id ? ` (klant: ${klantById.get(payload.klant_id) ?? "?"})` : ""
+      }.`
+    );
+    setEditing(null);
     await load();
-    setBusy(false);
   };
 
   const deleteActiviteit = async (id: string) => {
-    const ok = window.confirm("Activiteit verwijderen? Dit kan niet ongedaan gemaakt worden.");
-    if (!ok) return;
+    if (!confirm("Deze activiteit verwijderen?")) return;
 
     setBusy(true);
     setError(null);
@@ -164,15 +190,15 @@ export default function AdminActiviteitenPage() {
 
     const { error } = await supabase.from("activiteiten").delete().eq("id", id);
 
+    setBusy(false);
+
     if (error) {
       setError(error.message);
-      setBusy(false);
       return;
     }
 
     setMsg("Activiteit verwijderd.");
     await load();
-    setBusy(false);
   };
 
   if (loading) return <main className="mx-auto max-w-3xl p-6 md:p-10">Laden…</main>;
@@ -180,148 +206,169 @@ export default function AdminActiviteitenPage() {
   if (!allowed) {
     return (
       <main className="mx-auto max-w-3xl p-6 md:p-10">
-        <h1 className="text-3xl font-semibold tracking-tight mb-2">Activiteiten beheren</h1>
-        <p>Je hebt geen rechten om deze pagina te bekijken.</p>
+        <p>Je hebt geen toegang.</p>
       </main>
     );
   }
 
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteiten beheren</h1>
-        </div>
-
-        <div className="flex gap-2">
-          <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/toevoegen">
-            + Toevoegen
-          </a>
-          <button className="border rounded-xl px-3 py-2 text-sm" onClick={load} disabled={busy}>
-            Refresh
-          </button>
-        </div>
+      <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-6">
+        Activiteiten beheren
       </div>
 
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}
 
+      {editing && (
+        <div className="border rounded-2xl p-4 bg-white/80 shadow-sm mb-6">
+          <div className="font-semibold mb-4">Bewerken</div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block font-medium mb-2">Titel</label>
+              <input
+                className="w-full border rounded-xl p-3"
+                value={titel}
+                onChange={(e) => setTitel(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium mb-2">Toelichting</label>
+              <textarea
+                className="w-full border rounded-xl p-3 min-h-[110px]"
+                value={toelichting}
+                onChange={(e) => setToelichting(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium mb-2">Klant</label>
+              <select
+                className="w-full border rounded-xl p-3"
+                value={klantId}
+                onChange={(e) => setKlantId(e.target.value)}
+              >
+                <option value="">(geen klant)</option>
+                {klanten.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.naam}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-medium mb-2">Datum</label>
+                <input
+                  className="w-full border rounded-xl p-3"
+                  type="date"
+                  value={wanneer}
+                  onChange={(e) => setWanneer(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-2">Nodig # vrijwilligers</label>
+                <input
+                  className="w-full border rounded-xl p-3"
+                  type="number"
+                  min={0}
+                  value={aantalVrijwilligers}
+                  onChange={(e) => setAantalVrijwilligers(parseInt(e.target.value || "0", 10))}
+                />
+              </div>
+
+              <div>
+                <label className="block font-medium mb-2">Doelgroep</label>
+                <select
+                  className="w-full border rounded-xl p-3"
+                  value={doelgroep}
+                  onChange={(e) => setDoelgroep(e.target.value)}
+                >
+                  <option value="">(geen)</option>
+                  {DG_OPTIONS.map((dg) => (
+                    <option key={dg} value={dg}>
+                      {dg}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                className="border rounded-xl px-4 py-2 text-sm"
+                onClick={saveEdit}
+                disabled={busy}
+              >
+                {busy ? "Bezig…" : "Opslaan"}
+              </button>
+              <button
+                className="border rounded-xl px-4 py-2 text-sm"
+                onClick={cancelEdit}
+                disabled={busy}
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {items.length === 0 ? (
-        <p className="text-gray-600">Geen toekomstige activiteiten.</p>
+        <p className="text-gray-600">Nog geen toekomstige activiteiten.</p>
       ) : (
         <ul className="space-y-3">
-          {items.map((a) => {
-            const isEditing = editingId === a.id;
+          {items.map((a) => (
+            <li key={a.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium break-words">{a.titel}</div>
 
-            return (
-              <li key={a.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
-                {!isEditing ? (
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="font-medium whitespace-pre-line break-words">{a.titel}</div>
-
-                      {a.toelichting && (
-                        <div className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
-                          {a.toelichting}
-                        </div>
-                      )}
-
-                      <div className="text-sm text-gray-600 mt-2">
-                        {formatDatumNL(a.wanneer)}
-                        {a.aantal_vrijwilligers != null ? ` • nodig: ${a.aantal_vrijwilligers}` : ""}
-                        {a.doelgroep ? ` • doelgroep: ${a.doelgroep}` : ""}
-                      </div>
+                  {a.toelichting && (
+                    <div className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
+                      {a.toelichting}
                     </div>
+                  )}
 
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        className="border rounded-xl px-3 py-2 text-sm"
-                        onClick={() => startEdit(a)}
-                        disabled={busy}
-                      >
-                        Bewerken
-                      </button>
-                      <button
-                        className="border rounded-xl px-3 py-2 text-sm"
-                        onClick={() => deleteActiviteit(a.id)}
-                        disabled={busy}
-                      >
-                        Verwijderen
-                      </button>
-                    </div>
+                  <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2">
+                    <span>{formatDatumKaart(a.wanneer)}</span>
+
+                    {a.klanten?.naam ? <span>• {a.klanten.naam}</span> : null}
+
+                    {a.aantal_vrijwilligers != null ? (
+                      <span>• nodig: {a.aantal_vrijwilligers}</span>
+                    ) : null}
+
+                    {a.doelgroep ? <span>• {a.doelgroep}</span> : null}
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium block mb-1">Titel</label>
-                      <input
-                        className="w-full border rounded-xl p-3"
-                        value={editTitel}
-                        onChange={(e) => setEditTitel(e.target.value)}
-                      />
-                    </div>
+                </div>
 
-                    <div>
-                      <label className="text-sm font-medium block mb-1">Toelichting</label>
-                      <textarea
-                        className="w-full border rounded-xl p-3"
-                        rows={4}
-                        value={editToelichting}
-                        onChange={(e) => setEditToelichting(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium block mb-1">Datum</label>
-                      <input
-                        type="date"
-                        className="w-full border rounded-xl p-3"
-                        value={editWanneer}
-                        onChange={(e) => setEditWanneer(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium block mb-1">Aantal vrijwilligers (nodig)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        className="w-full border rounded-xl p-3"
-                        value={editAantal}
-                        onChange={(e) => setEditAantal(Number(e.target.value))}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium block mb-1">Doelgroep</label>
-                      <select
-                        className="w-full border rounded-xl p-3"
-                        value={editDoelgroep}
-                        onChange={(e) => setEditDoelgroep(e.target.value)}
-                      >
-                        {DOELGROEPEN.map((dg) => (
-                          <option key={dg} value={dg}>
-                            {dg}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex gap-2 flex-wrap">
-                      <button className="border rounded-xl px-4 py-2" onClick={saveEdit} disabled={busy}>
-                        {busy ? "Bezig…" : "Opslaan"}
-                      </button>
-                      <button className="border rounded-xl px-4 py-2" onClick={cancelEdit} disabled={busy}>
-                        Annuleren
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            );
-          })}
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    className="border rounded-xl px-3 py-2 text-sm"
+                    onClick={() => startEdit(a)}
+                    disabled={busy}
+                  >
+                    Bewerken
+                  </button>
+                  <button
+                    className="border rounded-xl px-3 py-2 text-sm"
+                    onClick={() => deleteActiviteit(a.id)}
+                    disabled={busy}
+                  >
+                    Verwijderen
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </main>
   );
 }
+
