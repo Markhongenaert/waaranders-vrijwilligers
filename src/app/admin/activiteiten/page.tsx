@@ -1,8 +1,8 @@
 // src/app/admin/activiteiten/page.tsx
-import { cookies } from "next/headers";
+
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseServer } from "@/lib/supabase/server";
 
 type KlantMini = { naam: string };
 
@@ -21,9 +21,7 @@ async function deleteActiviteit(formData: FormData) {
 
   const id = String(formData.get("id") ?? "");
   if (!id) return;
-
-  const supabase = createServerComponentClient({ cookies });
-
+  const supabase = supabaseServer();
   await supabase.from("activiteiten").delete().eq("id", id);
 
   // Force refresh van deze pagina

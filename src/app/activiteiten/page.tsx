@@ -1,7 +1,6 @@
 // src/app/activiteiten/page.tsx
-import { cookies } from "next/headers";
+import { supabaseServer } from "@/lib/supabase/server";
 import Link from "next/link";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
 type KlantMini = { naam: string };
 
@@ -16,7 +15,7 @@ type ActiviteitRow = {
 };
 
 export default async function ActiviteitenPage() {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = supabaseServer();
 
   const { data, error } = await supabase
     .from("activiteiten")
