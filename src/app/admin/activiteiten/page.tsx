@@ -11,7 +11,6 @@ type ActiviteitRow = {
   wanneer: string;
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
-  klant_id: string | null;
   klanten: KlantMini[];
 };
 
@@ -23,11 +22,7 @@ async function deleteActiviteit(formData: FormData) {
 
   const supabase = await supabaseServer();
   const { error } = await supabase.from("activiteiten").delete().eq("id", id);
-
-  // Optioneel: je kan error loggen, maar build hoeft niet te falen
-  if (error) {
-    console.error("Delete activiteit error:", error.message);
-  }
+  if (error) console.error("Delete activiteit error:", error.message);
 
   revalidatePath("/admin/activiteiten");
 }
@@ -44,16 +39,14 @@ export default async function AdminActiviteitenPage() {
       <main style={{ padding: 24 }}>
         <h1>Beheer – Activiteiten</h1>
         <p>Je moet ingelogd zijn om dit te zien.</p>
-        <Link href="/activiteiten">Terug naar activiteiten</Link>
+        <Link href="/activiteiten">Terug</Link>
       </main>
     );
   }
 
   const { data, error } = await supabase
     .from("activiteiten")
-    .select(
-      "id, titel, wanneer, aantal_vrijwilligers, toelichting, klant_id, klanten(naam)"
-    )
+    .select("id, titel, wanneer, aantal_vrijwilligers, toelichting, klanten(naam)")
     .order("wanneer", { ascending: true });
 
   if (error) {
@@ -61,25 +54,20 @@ export default async function AdminActiviteitenPage() {
       <main style={{ padding: 24 }}>
         <h1>Beheer – Activiteiten</h1>
         <p style={{ color: "crimson" }}>Fout bij laden: {error.message}</p>
-        <Link href="/activiteiten">Terug</Link>
       </main>
     );
   }
 
-  const activiteiten: ActiviteitRow[] = (data ?? []) as ActiviteitRow[];
+  const activiteiten = (data ?? []) as ActiviteitRow[];
 
   return (
-    <main style={{ padding: 24 }}>
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: 16,
-        }}
-      >
+    <main style={{ padding: 24, maxWidth: 980, margin: "0 auto" }}>
+      <header style={styles.header}>
         <h1 style={{ margin: 0 }}>Beheer – Activiteiten</h1>
-        <Link href="/activiteiten">Publieke lijst</Link>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Link href="/admin/klanten">Klanten</Link>
+          <Link href="/activiteiten">Publiek</Link>
+        </div>
       </header>
 
       <div style={{ height: 16 }} />
@@ -87,72 +75,101 @@ export default async function AdminActiviteitenPage() {
       {activiteiten.length === 0 ? (
         <p>Geen activiteiten gevonden.</p>
       ) : (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            border: "1px solid #ddd",
-          }}
-        >
-          <thead>
-            <tr>
-              <th style={th}>Wanneer</th>
-              <th style={th}>Titel</th>
-              <th style={th}>Klant</th>
-              <th style={th}>Vrijw.</th>
-              <th style={th}>Acties</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activiteiten.map((a) => {
-              const klantNaam = a.klanten?.[0]?.naam ?? "—";
-              const wanneer = a.wanneer ? new Date(a.wanneer) : null;
+        <ul style={styles.list}>
+          {activiteiten.map((a) => {
+            const klantNaam = a.klanten?.[0]?.naam ?? null;
+            const wanneer = a.wanneer ? new Date(a.wanneer) : null;
 
-              return (
-                <tr key={a.id}>
-                  <td style={td}>
+            return (
+              <li key={a.id} style={styles.card}>
+                <div style={styles.rowTop}>
+                  <div style={styles.title}>{a.titel}</div>
+                  <div style={styles.date}>
                     {wanneer ? wanneer.toLocaleString("nl-BE") : "—"}
-                  </td>
-                  <td style={td}>{a.titel}</td>
-                  <td style={td}>{klantNaam}</td>
-                  <td style={td} align="center">
-                    {a.aantal_vrijwilligers ?? "—"}
-                  </td>
-                  <td style={td}>
-                    <form action={deleteActiviteit}>
-                      <input type="hidden" name="id" value={a.id} />
-                      <button
-                        type="submit"
-                        style={{
-                          border: "1px solid #ddd",
-                          borderRadius: 8,
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Verwijder
-                      </button>
-                    </form>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+
+                <div style={styles.meta}>
+                  <span>
+                    <strong>Vrijwilligers:</strong> {a.aantal_vrijwilligers ?? "—"}
+                  </span>
+                  {klantNaam ? (
+                    <span>
+                      <strong>Klant:</strong> {klantNaam}
+                    </span>
+                  ) : null}
+                </div>
+
+                {a.toelichting ? <div style={styles.note}>{a.toelichting}</div> : null}
+
+                <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+                  {/* Als je later edit toevoegt: <Link href={`/admin/activiteiten/${a.id}`}>Bewerk</Link> */}
+                  <form action={deleteActiviteit}>
+                    <input type="hidden" name="id" value={a.id} />
+                    <button type="submit" style={styles.btn}>
+                      Verwijder
+                    </button>
+                  </form>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </main>
   );
 }
 
-const th: React.CSSProperties = {
-  textAlign: "left",
-  padding: "10px 12px",
-  borderBottom: "1px solid #ddd",
-  background: "#fafafa",
-};
-
-const td: React.CSSProperties = {
-  padding: "10px 12px",
-  borderBottom: "1px solid #eee",
-  verticalAlign: "top",
+const styles: Record<string, React.CSSProperties> = {
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    gap: 16,
+  },
+  list: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "grid",
+    gap: 12,
+  },
+  card: {
+    border: "1px solid #e5e5e5",
+    borderRadius: 12,
+    padding: 14,
+    background: "white",
+  },
+  rowTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    alignItems: "baseline",
+  },
+  title: {
+    fontWeight: 700,
+    fontSize: 16,
+    lineHeight: 1.2,
+  },
+  date: {
+    opacity: 0.85,
+    whiteSpace: "nowrap",
+  },
+  meta: {
+    display: "flex",
+    gap: 16,
+    flexWrap: "wrap",
+    marginTop: 8,
+    opacity: 0.9,
+  },
+  note: {
+    marginTop: 10,
+    opacity: 0.92,
+  },
+  btn: {
+    border: "1px solid #ddd",
+    borderRadius: 10,
+    padding: "6px 10px",
+    cursor: "pointer",
+  },
 };
