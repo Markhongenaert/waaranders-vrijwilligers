@@ -40,6 +40,7 @@ function DevPasswordLogin() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="test.vrijwilliger@waaranders.local"
+        autoComplete="email"
       />
 
       <label className="block font-medium mb-2">Wachtwoord</label>
@@ -49,6 +50,7 @@ function DevPasswordLogin() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="••••••••"
+        autoComplete="current-password"
       />
 
       <button
@@ -82,13 +84,14 @@ export default function LoginPage() {
 
     setBusy(true);
 
-const redirectTo = `${window.location.origin}/auth/callback`;
+    const redirectTo = `${window.location.origin}/auth/callback`;
 
-await supabase.auth.signInWithOtp({
-  email,
-  options: { emailRedirectTo: redirectTo },
-});
-
+    const { error } = await supabase.auth.signInWithOtp({
+      email: e,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
+    });
 
     setBusy(false);
 
@@ -101,8 +104,10 @@ await supabase.auth.signInWithOtp({
   };
 
   return (
-    <main className="p-8 max-w-md">
-      <h1 className="text-3xl font-bold mb-4">Inloggen</h1>
+    <main className="mx-auto max-w-md p-6 md:p-10">
+      <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-6">
+        Inloggen
+      </div>
 
       <label className="block font-medium mb-2">Email</label>
       <input
@@ -110,10 +115,12 @@ await supabase.auth.signInWithOtp({
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="naam@voorbeeld.be"
+        autoComplete="email"
+        inputMode="email"
       />
 
       <button
-        className="border rounded-xl px-5 py-3 font-medium"
+        className="border rounded-xl px-5 py-3 font-medium w-full"
         onClick={sendMagicLink}
         disabled={busy}
       >
@@ -124,11 +131,17 @@ await supabase.auth.signInWithOtp({
       {err && <p className="mt-4 text-red-600">Fout: {err}</p>}
 
       {isDevPasswordEnabled() && (
-        <div className="mt-10 border rounded-xl p-4">
-          <h2 className="text-xl font-bold mb-2">Dev login (password)</h2>
+        <div className="mt-10 border rounded-2xl p-4 bg-white/80 shadow-sm">
+          <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-4">
+            Dev login (password)
+          </div>
+
           <p className="text-sm text-gray-600 mb-4">
-            Alleen voor lokaal testen. Zet NEXT_PUBLIC_ENABLE_DEV_PASSWORD_LOGIN niet in productie.
+            Alleen voor lokaal testen. Zet{" "}
+            <span className="font-mono">NEXT_PUBLIC_ENABLE_DEV_PASSWORD_LOGIN</span>{" "}
+            uit in productie.
           </p>
+
           <DevPasswordLogin />
         </div>
       )}
