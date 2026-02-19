@@ -15,7 +15,7 @@ type ActiviteitRow = {
 };
 
 export default async function ActiviteitenPage() {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const { data, error } = await supabase
     .from("activiteiten")

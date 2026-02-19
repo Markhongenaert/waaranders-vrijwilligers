@@ -21,7 +21,7 @@ async function deleteActiviteit(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
 
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { error } = await supabase.from("activiteiten").delete().eq("id", id);
 
   // Optioneel: je kan error loggen, maar build hoeft niet te falen
@@ -33,7 +33,7 @@ async function deleteActiviteit(formData: FormData) {
 }
 
 export default async function AdminActiviteitenPage() {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const {
     data: { user },
