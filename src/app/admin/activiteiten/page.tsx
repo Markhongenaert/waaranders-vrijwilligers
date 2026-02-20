@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
+type KlantMini = {
+  id: string;
+  naam: string;
+};
+
 type Activiteit = {
   id: string;
   titel: string;
@@ -11,6 +16,9 @@ type Activiteit = {
   wanneer: string; // YYYY-MM-DD
   aantal_vrijwilligers: number | null;
   doelgroep: string | null;
+
+  klant_id: string | null;
+  klanten: { naam: string } | { naam: string }[] | null;
 };
 
 const DOELGROEPEN = ["DG1", "DG2", "DG3", "DG4", "DG5", "DG6", "DG7", "DG8"] as const;
@@ -52,11 +60,20 @@ function todayISODate() {
   return `${y}-${m}-${day}`;
 }
 
+function klantNaamOfNull(k: Activiteit["klanten"]): string | null {
+  if (!k) return null;
+  if (Array.isArray(k)) return k[0]?.naam ?? null;
+  return k.naam ?? null;
+}
+
 export default function AdminActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
   const [items, setItems] = useState<Activiteit[]>([]);
+  const [klanten, setKlanten] = useState<KlantMini[]>([]);
+  const [klantenLoaded, setKlantenLoaded] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -69,6 +86,7 @@ export default function AdminActiviteitenPage() {
   const [editWanneer, setEditWanneer] = useState("");
   const [editAantal, setEditAantal] = useState<number>(1);
   const [editDoelgroep, setEditDoelgroep] = useState<string>("DG1");
+  const [editKlantId, setEditKlantId] = useState<string>("");
 
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
@@ -90,6 +108,27 @@ export default function AdminActiviteitenPage() {
     return groups;
   }, [items]);
 
+  const loadKlanten = async () => {
+    // Alleen actieve + niet-gearchiveerde klanten tonen in dropdown
+    const { data, error: e } = await supabase
+      .from("klanten")
+      .select("id,naam")
+      .eq("actief", true)
+      .is("gearchiveerd_op", null)
+      .order("naam", { ascending: true });
+
+    if (e) {
+      // Niet hard-failen: beheerpagina mag nog laden
+      setError(e.message);
+      setKlanten([]);
+      setKlantenLoaded(true);
+      return;
+    }
+
+    setKlanten((data ?? []) as KlantMini[]);
+    setKlantenLoaded(true);
+  };
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -109,11 +148,14 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
+    // Eerst klanten ophalen (nodig voor edit-dropdown)
+    await loadKlanten();
+
     const vanaf = todayISODate();
 
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
-      .select("id,titel,toelichting,wanneer,aantal_vrijwilligers,doelgroep")
+      .select("id,titel,toelichting,wanneer,aantal_vrijwilligers,doelgroep,klant_id,klanten(naam)")
       .gte("wanneer", vanaf)
       .order("wanneer", { ascending: true });
 
@@ -123,7 +165,7 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
-    setItems((acts ?? []) as Activiteit[]);
+    setItems((acts ?? []) as unknown as Activiteit[]);
     setLoading(false);
   };
 
@@ -142,6 +184,10 @@ export default function AdminActiviteitenPage() {
     setEditWanneer(a.wanneer ?? "");
     setEditAantal(a.aantal_vrijwilligers ?? 1);
     setEditDoelgroep(a.doelgroep ?? "DG1");
+
+    // klant: als activiteit nog geen klant heeft, kies de eerste beschikbare (als die bestaat)
+    const fallback = klanten[0]?.id ?? "";
+    setEditKlantId(a.klant_id ?? fallback);
   };
 
   const cancelEdit = () => {
@@ -151,6 +197,7 @@ export default function AdminActiviteitenPage() {
     setEditWanneer("");
     setEditAantal(1);
     setEditDoelgroep("DG1");
+    setEditKlantId("");
   };
 
   const saveEdit = async () => {
@@ -171,12 +218,19 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
+    if (!editKlantId) {
+      setError("Klant is verplicht. Maak eerst een klant aan of selecteer er één.");
+      setBusy(false);
+      return;
+    }
+
     const payload: any = {
       titel: editTitel.trim(),
       toelichting: editToelichting ? editToelichting : null,
       wanneer: editWanneer,
       aantal_vrijwilligers: Number.isFinite(editAantal) ? editAantal : null,
       doelgroep: editDoelgroep || null,
+      klant_id: editKlantId,
     };
 
     const { error } = await supabase.from("activiteiten").update(payload).eq("id", editingId);
@@ -245,6 +299,24 @@ export default function AdminActiviteitenPage() {
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}
 
+      {/* Als er nog geen klanten zijn: duidelijke blokkade/CTA */}
+      {klantenLoaded && klanten.length === 0 && (
+        <div className="mb-6 border rounded-2xl p-4 bg-white/80 shadow-sm">
+          <div className="font-medium">Er zijn nog geen klanten</div>
+          <p className="text-sm text-gray-700 mt-1">
+            Voor activiteiten willen we dat “Klant” verplicht is. Maak eerst minstens één klant aan.
+          </p>
+          <div className="mt-3 flex gap-2 flex-wrap">
+            <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/klanten/nieuw">
+              + Nieuwe klant
+            </a>
+            <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/klanten">
+              Klanten beheren
+            </a>
+          </div>
+        </div>
+      )}
+
       {items.length === 0 ? (
         <p className="text-gray-600">Geen toekomstige activiteiten.</p>
       ) : (
@@ -261,6 +333,7 @@ export default function AdminActiviteitenPage() {
               <ul className="space-y-3 mt-3">
                 {g.items.map((a) => {
                   const isEditing = editingId === a.id;
+                  const kNaam = klantNaamOfNull(a.klanten);
 
                   return (
                     <li key={a.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
@@ -279,6 +352,7 @@ export default function AdminActiviteitenPage() {
                               {formatDatumNL(a.wanneer)}
                               {a.aantal_vrijwilligers != null ? ` • nodig: ${a.aantal_vrijwilligers}` : ""}
                               {a.doelgroep ? ` • doelgroep: ${a.doelgroep}` : ""}
+                              {kNaam ? ` • klant: ${kNaam}` : " • klant: (nog niet ingesteld)"}
                             </div>
                           </div>
 
@@ -328,6 +402,38 @@ export default function AdminActiviteitenPage() {
                               value={editWanneer}
                               onChange={(e) => setEditWanneer(e.target.value)}
                             />
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium block mb-1">Klant (verplicht)</label>
+
+                            {klanten.length === 0 ? (
+                              <div className="border rounded-xl p-3 bg-white/80">
+                                <p className="text-sm text-gray-700">
+                                  Er zijn nog geen klanten. Maak eerst een klant aan.
+                                </p>
+                                <div className="mt-2 flex gap-2 flex-wrap">
+                                  <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/klanten/nieuw">
+                                    + Nieuwe klant
+                                  </a>
+                                  <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/klanten">
+                                    Klanten beheren
+                                  </a>
+                                </div>
+                              </div>
+                            ) : (
+                              <select
+                                className="w-full border rounded-xl p-3"
+                                value={editKlantId}
+                                onChange={(e) => setEditKlantId(e.target.value)}
+                              >
+                                {klanten.map((k) => (
+                                  <option key={k.id} value={k.id}>
+                                    {k.naam}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                           </div>
 
                           <div>
