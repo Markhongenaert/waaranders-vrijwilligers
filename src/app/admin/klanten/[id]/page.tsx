@@ -45,6 +45,7 @@ export default function KlantDetailPage() {
 
   const sp = useSearchParams();
   const returnTo = safeReturnTo(sp.get("returnTo"));
+  const backHref = returnTo || "/admin/klanten";
 
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
@@ -65,11 +66,10 @@ export default function KlantDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const backHref = returnTo || "/admin/klanten";
-
   const load = async () => {
     setLoading(true);
     setError(null);
+    setMsg(null);
 
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user ?? null;
@@ -86,11 +86,7 @@ export default function KlantDetailPage() {
     }
 
     // Klant laden
-    const { data: row, error: e } = await supabase
-      .from("klanten")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const { data: row, error: e } = await supabase.from("klanten").select("*").eq("id", id).single();
 
     if (e) {
       setError(e.message);
@@ -109,19 +105,29 @@ export default function KlantDetailPage() {
     setAanspreekpuntId(k.aanspreekpunt_vrijwilliger_id ?? "");
 
     // Doelgroepen laden
-    const { data: dg } = await supabase
+    const { data: dg, error: eDg } = await supabase
       .from("doelgroepen")
       .select("id,titel")
       .order("titel", { ascending: true });
 
+    if (eDg) {
+      setError(eDg.message);
+      setLoading(false);
+      return;
+    }
     setDoelgroepen((dg ?? []) as Doelgroep[]);
 
     // Vrijwilligers laden
-    const { data: vw } = await supabase
+    const { data: vw, error: eVw } = await supabase
       .from("vrijwilligers")
       .select("id,naam")
       .order("naam", { ascending: true });
 
+    if (eVw) {
+      setError(eVw.message);
+      setLoading(false);
+      return;
+    }
     setVrijwilligers((vw ?? []) as Vrijwilliger[]);
 
     setLoading(false);
@@ -132,14 +138,17 @@ export default function KlantDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Best-effort client check (echte garantie: unique in Supabase)
   const checkUniqNaam = async (naamNorm: string): Promise<boolean> => {
-    const { data } = await supabase.from("klanten").select("id,naam");
+    const target = naamNorm.toLowerCase();
+
+    const { data, error } = await supabase.from("klanten").select("id,naam");
+    if (error) return true; // niet blokkeren als check faalt
+
     const rows = (data ?? []) as { id: string; naam: string }[];
 
     const hit = rows.find(
-      (r) =>
-        r.id !== id &&
-        normalizeNaam(r.naam).toLowerCase() === naamNorm.toLowerCase()
+      (r) => r.id !== id && normalizeNaam(r.naam).toLowerCase() === target
     );
 
     return !hit;
@@ -173,10 +182,7 @@ export default function KlantDetailPage() {
       aanspreekpunt_vrijwilliger_id: aanspreekpuntId || null,
     };
 
-    const { error } = await supabase
-      .from("klanten")
-      .update(payload)
-      .eq("id", id);
+    const { error } = await supabase.from("klanten").update(payload).eq("id", id);
 
     if (error) {
       setError(error.message);
@@ -189,111 +195,103 @@ export default function KlantDetailPage() {
     setBusy(false);
   };
 
-  const archive = async () => {
-    const ok = window.confirm(
-      "Klant archiveren? Hij blijft gekoppeld aan bestaande activiteiten."
-    );
-    if (!ok) return;
-
-    setBusy(true);
-
-    const { error } = await supabase
-      .from("klanten")
-      .update({
-        actief: false,
-        gearchiveerd_op: new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    if (error) {
-      setError(error.message);
-      setBusy(false);
-      return;
-    }
-
-    setMsg("Klant gearchiveerd.");
-    await load();
-    setBusy(false);
-  };
-
   if (loading) return <main className="p-10">Laden…</main>;
   if (!allowed) return <main className="p-10">Geen rechten.</main>;
   if (!orig) return <main className="p-10">Klant niet gevonden.</main>;
 
-  const archived = !orig.actief || !!orig.gearchiveerd_op;
-
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <h1 className="text-3xl font-semibold mb-4">Klant bewerken</h1>
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h1 className="text-3xl font-semibold mb-1">Klant bewerken</h1>
+          <p className="text-sm text-gray-600">
+            Archiveren zit bewust niet in deze pagina (te riskant als “dagelijkse knop”).
+          </p>
+        </div>
+
+        <Link className="border rounded-xl px-3 py-2 text-sm" href={backHref}>
+          Terug
+        </Link>
+      </div>
 
       {error && <p className="text-red-600 mb-4">{error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}
 
       <div className="space-y-4 border rounded-2xl p-4 bg-white/80 shadow-sm">
+        <div>
+          <label className="text-sm font-medium block mb-1">Naam</label>
+          <input className="w-full border rounded-xl p-3" value={naam} onChange={(e) => setNaam(e.target.value)} disabled={busy} />
+        </div>
 
-        <input className="w-full border rounded-xl p-3"
-          value={naam}
-          onChange={(e) => setNaam(e.target.value)}
-          disabled={busy} />
+        <div>
+          <label className="text-sm font-medium block mb-1">Contactpersoon naam</label>
+          <input
+            className="w-full border rounded-xl p-3"
+            value={contactpersoonNaam}
+            onChange={(e) => setContactpersoonNaam(e.target.value)}
+            disabled={busy}
+          />
+        </div>
 
-        <input className="w-full border rounded-xl p-3"
-          placeholder="Contactpersoon naam"
-          value={contactpersoonNaam}
-          onChange={(e) => setContactpersoonNaam(e.target.value)}
-          disabled={busy} />
+        <div>
+          <label className="text-sm font-medium block mb-1">Contactpersoon telefoon</label>
+          <input
+            className="w-full border rounded-xl p-3"
+            value={contactpersoonTelefoon}
+            onChange={(e) => setContactpersoonTelefoon(e.target.value)}
+            disabled={busy}
+          />
+        </div>
 
-        <input className="w-full border rounded-xl p-3"
-          placeholder="Contactpersoon telefoon"
-          value={contactpersoonTelefoon}
-          onChange={(e) => setContactpersoonTelefoon(e.target.value)}
-          disabled={busy} />
-
-        <textarea className="w-full border rounded-xl p-3"
-          placeholder="Adres"
-          value={adres}
-          onChange={(e) => setAdres(e.target.value)}
-          disabled={busy} />
+        <div>
+          <label className="text-sm font-medium block mb-1">Adres</label>
+          <textarea
+            className="w-full border rounded-xl p-3"
+            rows={3}
+            value={adres}
+            onChange={(e) => setAdres(e.target.value)}
+            disabled={busy}
+          />
+        </div>
 
         <div>
           <label className="text-sm font-medium block mb-1">Doelgroep</label>
-          <select className="w-full border rounded-xl p-3"
+          <select
+            className="w-full border rounded-xl p-3"
             value={doelgroepId}
             onChange={(e) => setDoelgroepId(e.target.value)}
-            disabled={busy}>
+            disabled={busy}
+          >
             <option value="">— Geen —</option>
-            {doelgroepen.map(dg => (
-              <option key={dg.id} value={dg.id}>{dg.titel}</option>
+            {doelgroepen.map((dg) => (
+              <option key={dg.id} value={dg.id}>
+                {dg.titel}
+              </option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="text-sm font-medium block mb-1">Aanspreekpunt</label>
-          <select className="w-full border rounded-xl p-3"
+          <select
+            className="w-full border rounded-xl p-3"
             value={aanspreekpuntId}
             onChange={(e) => setAanspreekpuntId(e.target.value)}
-            disabled={busy}>
+            disabled={busy}
+          >
             <option value="">— Geen —</option>
-            {vrijwilligers.map(v => (
-              <option key={v.id} value={v.id}>{v.naam ?? "(zonder naam)"}</option>
+            {vrijwilligers.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.naam ?? "(zonder naam)"}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex gap-2">
-          <button className="border rounded-xl px-4 py-2"
-            onClick={save}
-            disabled={busy || archived}>
+          <button className="border rounded-xl px-4 py-2" onClick={save} disabled={busy}>
             {busy ? "Bezig…" : "Opslaan"}
           </button>
-
-          {!archived && (
-            <button className="border rounded-xl px-4 py-2"
-              onClick={archive}
-              disabled={busy}>
-              Archiveren
-            </button>
-          )}
 
           <Link className="border rounded-xl px-4 py-2" href={backHref}>
             Terug

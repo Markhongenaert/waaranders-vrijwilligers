@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="nl">
-      <body>
+      <body className="min-h-screen bg-green-50">
         <header className="border-b p-4 flex justify-between items-center bg-white">
           <nav className="flex gap-2 items-center">
 
