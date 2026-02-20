@@ -21,7 +21,6 @@ type KlantMini = {
 };
 
 function buildReturnTo() {
-  // Werkt lokaal + in productie zonder gedoe
   // /admin/klanten/nieuw?returnTo=/admin/toevoegen
   return encodeURIComponent("/admin/toevoegen");
 }
@@ -46,13 +45,14 @@ export default function ToevoegenActiviteitPage() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const loadKlanten = async () => {
+    setError(null);
     setKlantenLoaded(false);
 
     const { data, error: e } = await supabase
       .from("klanten")
       .select("id,naam")
       .eq("actief", true)
-      .is("toelichting_op", null)
+      .is("gearchiveerd_op", null) // ✅ FIX: was toelichting_op
       .order("naam", { ascending: true });
 
     if (e) {
@@ -67,8 +67,10 @@ export default function ToevoegenActiviteitPage() {
     setKlantenLoaded(true);
 
     // als er klanten zijn en er is nog niets gekozen → kies de eerste
-    if (list.length > 0 && !klantId) {
-      setKlantId(list[0].id);
+    if (list.length > 0) {
+      setKlantId((prev) => prev || list[0].id);
+    } else {
+      setKlantId("");
     }
   };
 
@@ -223,7 +225,6 @@ export default function ToevoegenActiviteitPage() {
               + Nieuwe klant
             </a>
           </div>
-
         </div>
 
         <div>
@@ -265,11 +266,7 @@ export default function ToevoegenActiviteitPage() {
 
         <div>
           <label className="text-sm font-medium block mb-1">Doelgroep</label>
-          <select
-            className="w-full border rounded-xl p-3"
-            value={doelgroep}
-            onChange={(e) => setDoelgroep(e.target.value)}
-          >
+          <select className="w-full border rounded-xl p-3" value={doelgroep} onChange={(e) => setDoelgroep(e.target.value)}>
             {DOELGROEPEN.map((dg) => (
               <option key={dg.code} value={dg.code}>
                 {dg.label}
