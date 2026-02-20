@@ -1,164 +1,164 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-
-type Doelgroep = {
-  id: string;
-  titel: string;
-  omschrijving: string | null;
-};
+import { isDoenkerOrAdmin } from "@/lib/auth";
 
 type Klant = {
   id: string;
   naam: string;
-  doelgroep_id: string | null;
+  contactpersoon_naam: string | null;
+  contactpersoon_telefoon: string | null;
+  adres: string | null;
   actief: boolean;
   gearchiveerd_op: string | null;
 };
 
-export default function KlantBewerkenPage() {
-  const router = useRouter();
+function safeReturnTo(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/")) return null;
+  if (raw.startsWith("//")) return null;
+  return raw;
+}
+
+function normalizeNaam(s: string) {
+  return s.trim().replace(/\s+/g, " ");
+}
+
+export default function KlantDetailPage() {
   const params = useParams<{ id: string }>();
-  const searchParams = useSearchParams();
+  const id = params.id;
 
-  const klantId = params.id;
-
-  const returnTo = useMemo(() => {
-    const v = searchParams.get("returnTo");
-    return v && v.startsWith("/") ? v : "/admin/klanten";
-  }, [searchParams]);
+  const sp = useSearchParams();
+  const returnTo = safeReturnTo(sp.get("returnTo"));
 
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [allowed, setAllowed] = useState(false);
 
-  const [doelgroepen, setDoelgroepen] = useState<Doelgroep[]>([]);
-  const [klant, setKlant] = useState<Klant | null>(null);
+  const [orig, setOrig] = useState<Klant | null>(null);
 
   const [naam, setNaam] = useState("");
-  const [doelgroepId, setDoelgroepId] = useState<string>("");
+  const [contactpersoonNaam, setContactpersoonNaam] = useState("");
+  const [contactpersoonTelefoon, setContactpersoonTelefoon] = useState("");
+  const [adres, setAdres] = useState("");
 
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      setError(null);
-      setMsg(null);
+  const backHref = useMemo(() => {
+    if (returnTo) return returnTo;
+    return "/admin/klanten";
+  }, [returnTo]);
 
-      const { data: sess } = await supabase.auth.getSession();
-      const user = sess.session?.user ?? null;
-
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      // Klant ophalen
-      const { data: k, error: e1 } = await supabase
-        .from("klanten")
-        .select("id,naam,doelgroep_id,actief,gearchiveerd_op")
-        .eq("id", klantId)
-        .maybeSingle();
-
-      if (e1) {
-        setError(e1.message);
-        setLoading(false);
-        return;
-      }
-      if (!k) {
-        setError("Klant niet gevonden.");
-        setLoading(false);
-        return;
-      }
-
-      const klantRow = k as Klant;
-      setKlant(klantRow);
-      setNaam(klantRow.naam ?? "");
-      setDoelgroepId(klantRow.doelgroep_id ?? "");
-
-      // Doelgroepen ophalen (optioneel)
-      const { data: dgs, error: e2 } = await supabase
-        .from("doelgroepen")
-        .select("id,titel,omschrijving")
-        .order("titel", { ascending: true });
-
-      if (!e2) {
-        const list = (dgs ?? []) as Doelgroep[];
-        setDoelgroepen(list);
-
-        // als klant nog geen doelgroep heeft, zet default op 1e
-        if (!klantRow.doelgroep_id && list.length > 0) {
-          setDoelgroepId(list[0].id);
-        }
-      } else {
-        setDoelgroepen([]);
-      }
-
-      setLoading(false);
-    };
-
-    init();
-  }, [klantId, router]);
-
-  const save = async () => {
-    if (!klant) return;
-
+  const load = async () => {
+    setLoading(true);
     setError(null);
     setMsg(null);
 
-    const cleanNaam = naam.trim();
-    if (!cleanNaam) {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user ?? null;
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const ok = await isDoenkerOrAdmin();
+    setAllowed(ok);
+    if (!ok) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: row, error: e } = await supabase
+      .from("klanten")
+      .select("id,naam,contactpersoon_naam,contactpersoon_telefoon,adres,actief,gearchiveerd_op")
+      .eq("id", id)
+      .single();
+
+    if (e) {
+      setError(e.message);
+      setOrig(null);
+      setLoading(false);
+      return;
+    }
+
+    const k = row as Klant;
+    setOrig(k);
+
+    setNaam(k.naam ?? "");
+    setContactpersoonNaam(k.contactpersoon_naam ?? "");
+    setContactpersoonTelefoon(k.contactpersoon_telefoon ?? "");
+    setAdres(k.adres ?? "");
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const checkUniqNaam = async (naamNorm: string): Promise<boolean> => {
+    // case-insensitive check, maar eigen record uitsluiten
+    const { data, error } = await supabase.from("klanten").select("id,naam").limit(2000);
+    if (error) {
+      setError(error.message);
+      return false;
+    }
+
+    const rows = (data ?? []) as { id: string; naam: string }[];
+    const hit = rows.find(
+      (r) => r.id !== id && normalizeNaam(r.naam).toLowerCase() === naamNorm.toLowerCase()
+    );
+
+    return !hit;
+  };
+
+  const save = async () => {
+    setError(null);
+    setMsg(null);
+
+    const naamNorm = normalizeNaam(naam);
+    if (!naamNorm) {
       setError("Naam is verplicht.");
       return;
     }
 
     setBusy(true);
 
+    const okUniq = await checkUniqNaam(naamNorm);
+    if (!okUniq) {
+      setError("Deze klantnaam bestaat al (hoofdletters/spaties tellen niet). Kies een andere naam.");
+      setBusy(false);
+      return;
+    }
+
     const payload: any = {
-      naam: cleanNaam,
-      doelgroep_id: doelgroepId || null,
+      naam: naamNorm,
+      contactpersoon_naam: contactpersoonNaam.trim() ? contactpersoonNaam.trim() : null,
+      contactpersoon_telefoon: contactpersoonTelefoon.trim() ? contactpersoonTelefoon.trim() : null,
+      adres: adres.trim() ? adres.trim() : null,
     };
 
-    const { error } = await supabase.from("klanten").update(payload).eq("id", klant.id);
+    const { error } = await supabase.from("klanten").update(payload).eq("id", id);
 
     if (error) {
-      if (error.code === "23505") {
-        setError("Er bestaat al een klant met deze naam.");
-      } else if (error.code === "23514") {
-        setError("Controleer de klantnaam (geen lege naam, geen spaties voor/achter).");
-      } else {
-        setError(error.message);
-      }
+      setError(error.message);
       setBusy(false);
       return;
     }
 
     setMsg("Klant bijgewerkt.");
+    await load();
     setBusy(false);
-
-    // herlaad (simpel)
-    const { data: k2 } = await supabase
-      .from("klanten")
-      .select("id,naam,doelgroep_id,actief,gearchiveerd_op")
-      .eq("id", klant.id)
-      .maybeSingle();
-
-    if (k2) {
-      const klantRow = k2 as Klant;
-      setKlant(klantRow);
-      setNaam(klantRow.naam ?? "");
-      setDoelgroepId(klantRow.doelgroep_id ?? "");
-    }
   };
 
   const archive = async () => {
-    if (!klant) return;
-
     const ok = window.confirm(
-      "Klant archiveren?\n\nDe klant blijft gekoppeld aan bestaande activiteiten, maar kan niet meer gekozen worden voor nieuwe activiteiten."
+      "Klant archiveren?\n\n- De klant verdwijnt uit dropdowns bij ‘activiteit toevoegen’\n- Bestaande activiteiten blijven aan deze klant hangen"
     );
     if (!ok) return;
 
@@ -168,11 +168,8 @@ export default function KlantBewerkenPage() {
 
     const { error } = await supabase
       .from("klanten")
-      .update({
-        actief: false,
-        gearchiveerd_op: new Date().toISOString(),
-      })
-      .eq("id", klant.id);
+      .update({ actief: false, gearchiveerd_op: new Date().toISOString() })
+      .eq("id", id);
 
     if (error) {
       setError(error.message);
@@ -181,105 +178,132 @@ export default function KlantBewerkenPage() {
     }
 
     setMsg("Klant gearchiveerd.");
+    await load();
     setBusy(false);
-    router.push(returnTo);
   };
 
-  if (loading) {
-    return <main className="mx-auto max-w-xl p-6 md:p-10">Laden…</main>;
-  }
+  if (loading) return <main className="mx-auto max-w-3xl p-6 md:p-10">Laden…</main>;
 
-  if (!klant) {
+  if (!allowed) {
     return (
-      <main className="mx-auto max-w-xl p-6 md:p-10">
-        {error ? <p className="text-red-600">Fout: {error}</p> : <p>Klant niet gevonden.</p>}
-        <button className="border rounded-xl px-3 py-2 text-sm mt-4" onClick={() => router.push(returnTo)}>
-          Terug
-        </button>
+      <main className="mx-auto max-w-3xl p-6 md:p-10">
+        <h1 className="text-3xl font-semibold tracking-tight mb-2">Klant</h1>
+        <p>Je hebt geen rechten om deze pagina te bekijken.</p>
       </main>
     );
   }
 
-  const isArchived = !!klant.gearchiveerd_op || klant.actief === false;
+  if (!orig) {
+    return (
+      <main className="mx-auto max-w-3xl p-6 md:p-10">
+        <h1 className="text-3xl font-semibold tracking-tight mb-2">Klant</h1>
+        <p className="text-red-600">Klant niet gevonden.</p>
+        <Link className="border rounded-xl px-3 py-2 text-sm inline-block mt-3" href={backHref}>
+          Terug
+        </Link>
+      </main>
+    );
+  }
 
-  const selectedOmschrijving =
-    doelgroepen.find((d) => d.id === doelgroepId)?.omschrijving ?? "";
+  const archived = !orig.actief || !!orig.gearchiveerd_op;
 
   return (
-    <main className="mx-auto max-w-xl p-6 md:p-10">
-      <div className="flex items-start justify-between gap-3 mb-6">
+    <main className="mx-auto max-w-3xl p-6 md:p-10">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Klant beheren</h1>
-          {isArchived && (
-            <p className="text-sm text-gray-600 mt-1">
-              Status: <span className="font-medium">gearchiveerd</span>
-            </p>
-          )}
+          <h1 className="text-3xl font-semibold tracking-tight mb-1">Klant</h1>
+          <div className="text-sm text-gray-600">
+            ID: <span className="font-mono">{orig.id}</span>
+            {archived && (
+              <span className="ml-3 text-xs px-2 py-0.5 rounded-full border bg-gray-100 text-gray-700">
+                gearchiveerd
+              </span>
+            )}
+          </div>
         </div>
 
-        <button className="border rounded-xl px-3 py-2 text-sm" onClick={() => router.push(returnTo)} disabled={busy}>
-          Terug
-        </button>
+        <div className="flex gap-2">
+          <Link className="border rounded-xl px-3 py-2 text-sm" href={backHref}>
+            Terug
+          </Link>
+        </div>
       </div>
 
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}
 
-      <div className="space-y-4 border rounded-2xl p-4 bg-white/80 shadow-sm">
+      {archived && (
+        <div className="mb-4 border rounded-2xl p-4 bg-white/80 shadow-sm">
+          <div className="font-medium">Deze klant is gearchiveerd</div>
+          <p className="text-sm text-gray-700 mt-1">
+            Hij blijft bestaan voor oude activiteiten, maar verschijnt niet meer in de klantkeuze bij nieuwe activiteiten.
+          </p>
+        </div>
+      )}
+
+      <div className="border rounded-2xl p-4 bg-white/80 shadow-sm space-y-4">
         <div>
-          <label className="text-sm font-medium block mb-1">Naam (uniek)</label>
+          <label className="text-sm font-medium block mb-1">Naam (uniek, verplicht)</label>
           <input
             className="w-full border rounded-xl p-3"
             value={naam}
             onChange={(e) => setNaam(e.target.value)}
-            placeholder="bv. De Rode Draad"
-            autoComplete="off"
             disabled={busy}
           />
         </div>
 
-        {doelgroepen.length > 0 ? (
-          <div>
-            <label className="text-sm font-medium block mb-1">Doelgroep</label>
-            <select
-              className="w-full border rounded-xl p-3"
-              value={doelgroepId}
-              onChange={(e) => setDoelgroepId(e.target.value)}
-              disabled={busy}
-            >
-              <option value="">(geen)</option>
-              {doelgroepen.map((dg) => (
-                <option key={dg.id} value={dg.id}>
-                  {dg.titel}
-                </option>
-              ))}
-            </select>
+        <div>
+          <label className="text-sm font-medium block mb-1">Contactpersoon (naam)</label>
+          <input
+            className="w-full border rounded-xl p-3"
+            value={contactpersoonNaam}
+            onChange={(e) => setContactpersoonNaam(e.target.value)}
+            disabled={busy}
+          />
+        </div>
 
-            {selectedOmschrijving ? (
-              <p className="text-xs text-gray-600 mt-1">{selectedOmschrijving}</p>
-            ) : null}
-          </div>
-        ) : (
-          <div className="text-sm text-gray-600">
-            (Geen doelgroepen geladen. Dit is ok als je dat later toevoegt.)
-          </div>
-        )}
+        <div>
+          <label className="text-sm font-medium block mb-1">Contactpersoon (telefoon)</label>
+          <input
+            className="w-full border rounded-xl p-3"
+            value={contactpersoonTelefoon}
+            onChange={(e) => setContactpersoonTelefoon(e.target.value)}
+            disabled={busy}
+          />
+        </div>
 
-        <div className="flex gap-2 flex-wrap pt-2">
-          <button className="border rounded-xl px-4 py-2" onClick={save} disabled={busy}>
+        <div>
+          <label className="text-sm font-medium block mb-1">Adres</label>
+          <textarea
+            className="w-full border rounded-xl p-3"
+            rows={3}
+            value={adres}
+            onChange={(e) => setAdres(e.target.value)}
+            disabled={busy}
+          />
+        </div>
+
+        <div className="flex gap-2 flex-wrap">
+          <button className="border rounded-xl px-4 py-2" onClick={save} disabled={busy || archived}>
             {busy ? "Bezig…" : "Opslaan"}
           </button>
 
-          <button className="border rounded-xl px-4 py-2" onClick={() => router.push(returnTo)} disabled={busy}>
+          <Link className="border rounded-xl px-4 py-2" href={backHref}>
             Annuleren
-          </button>
+          </Link>
 
-          {!isArchived && (
+          {!archived && (
             <button className="border rounded-xl px-4 py-2" onClick={archive} disabled={busy}>
               Archiveren
             </button>
           )}
         </div>
+
+        {archived && (
+          <p className="text-xs text-gray-600">
+            (Opslaan is uitgeschakeld voor gearchiveerde klanten. Als je later “heractiveren” wil, bouwen we dat netjes in.)
+          </p>
+        )}
       </div>
     </main>
   );
