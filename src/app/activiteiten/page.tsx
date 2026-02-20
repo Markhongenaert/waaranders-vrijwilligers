@@ -27,15 +27,23 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * Tijdzone-safe: YYYY-MM-DD zonder tijd kan in sommige omgevingen als UTC geïnterpreteerd worden.
+ * Door expliciet T00:00:00 te plakken, nemen we lokale middernacht.
+ */
+function asLocalDate(dateStr: string) {
+  return new Date(`${dateStr}T00:00:00`);
+}
+
 function formatDatumKaart(dateStr: string) {
-  const d = new Date(dateStr);
+  const d = asLocalDate(dateStr);
   const wd = capitalize(WEEKDAY_FMT.format(d));
   const dm = DAY_MONTH_FMT.format(d);
   return `${wd} ${dm}`;
 }
 
 function formatMaandTussentitel(dateStr: string) {
-  const d = new Date(dateStr);
+  const d = asLocalDate(dateStr);
   return capitalize(MONTH_HEADER_FMT.format(d));
 }
 
@@ -44,7 +52,12 @@ function monthKey(dateStr: string) {
 }
 
 function todayISODate() {
-  return new Date().toISOString().slice(0, 10);
+  // vandaag in lokale tijd
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function extractNaam(v: MeedoenRow["vrijwilligers"]): string | null {
@@ -87,7 +100,9 @@ export default function ActiviteitenPage() {
   };
 
   const grouped = useMemo(() => {
-    const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
+    const sorted = [...items].sort((a, b) =>
+      a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0
+    );
 
     const groups: { key: string; title: string; items: Activiteit[] }[] = [];
     const idx = new Map<string, number>();
@@ -122,7 +137,6 @@ export default function ActiviteitenPage() {
 
     const vanaf = todayISODate();
 
-    // Oplopend: eerstvolgende activiteiten bovenaan
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,wanneer,aantal_vrijwilligers,toelichting,doelgroep")
@@ -208,10 +222,12 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* Lichtblauwe sticky maandtussentitel */}
-              <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10">
-                {g.title}
-              </h2>
+              {/* Sticky maandtussentitel (netter + rand + shadow) */}
+              <div className="sticky top-0 z-10 -mx-2 px-2 pt-2">
+                <div className="bg-blue-100 text-black font-semibold px-3 py-2 rounded-xl border border-blue-200 shadow-sm">
+                  {g.title}
+                </div>
+              </div>
 
               <ul className="space-y-3 mt-3">
                 {g.items.map((a) => {
@@ -247,11 +263,9 @@ export default function ActiviteitenPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <span>{formatDatumKaart(a.wanneer)}</span>
 
-                              {a.aantal_vrijwilligers != null && (
-                                <span>• nodig: {a.aantal_vrijwilligers}</span>
-                              )}
+                              {a.aantal_vrijwilligers != null && <span>• nodig: {a.aantal_vrijwilligers}</span>}
 
-                              <span>• ingeschreven: {count}</span>
+                              <span>• meedoen: {count}</span>
                             </div>
 
                             {isIn && (
