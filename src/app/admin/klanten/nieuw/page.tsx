@@ -176,7 +176,7 @@ export default function NieuweKlantPage() {
         </div>
 
         <div>
-          <label className="text-sm font-medium block mb-1">Aanspreekpunt (vrijwilliger)</label>
+          <label className="text-sm font-medium block mb-1">Aanspreekpunt (Doenker)</label>
           <select className="w-full border rounded-xl p-3"
             value={aanspreekpuntId}
             onChange={(e) => setAanspreekpuntId(e.target.value)}>
