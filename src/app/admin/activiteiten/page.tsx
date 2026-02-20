@@ -108,8 +108,14 @@ export default function AdminActiviteitenPage() {
     return groups;
   }, [items]);
 
-  const loadKlanten = async () => {
-    // Alleen actieve + niet-gearchiveerde klanten tonen in dropdown
+  /**
+   * Belangrijk: deze functie zet state én returnt ook de lijst.
+   * Zo kunnen we in startEdit meteen de juiste fallback bepalen,
+   * zonder te wachten op React state updates.
+   */
+  const loadKlanten = async (): Promise<KlantMini[]> => {
+    setKlantenLoaded(false);
+
     const { data, error: e } = await supabase
       .from("klanten")
       .select("id,naam")
@@ -118,15 +124,16 @@ export default function AdminActiviteitenPage() {
       .order("naam", { ascending: true });
 
     if (e) {
-      // Niet hard-failen: beheerpagina mag nog laden
       setError(e.message);
       setKlanten([]);
       setKlantenLoaded(true);
-      return;
+      return [];
     }
 
-    setKlanten((data ?? []) as KlantMini[]);
+    const list = (data ?? []) as KlantMini[];
+    setKlanten(list);
     setKlantenLoaded(true);
+    return list;
   };
 
   const load = async () => {
@@ -148,7 +155,7 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
-    // Eerst klanten ophalen (nodig voor edit-dropdown)
+    // Eerst klanten ophalen (nodig voor dropdown)
     await loadKlanten();
 
     const vanaf = todayISODate();
@@ -174,9 +181,17 @@ export default function AdminActiviteitenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startEdit = (a: Activiteit) => {
+  /**
+   * Start edit: we zorgen dat editKlantId altijd een geldige waarde krijgt.
+   * - Als activiteit een klant heeft → die.
+   * - Anders → eerste klant uit de (actuele) klantenlijst.
+   */
+  const startEdit = async (a: Activiteit) => {
     setMsg(null);
     setError(null);
+
+    // Zorg dat we zeker klanten hebben (ook als iemand super-snel klikt)
+    const list = klantenLoaded ? klanten : await loadKlanten();
 
     setEditingId(a.id);
     setEditTitel(a.titel ?? "");
@@ -185,8 +200,7 @@ export default function AdminActiviteitenPage() {
     setEditAantal(a.aantal_vrijwilligers ?? 1);
     setEditDoelgroep(a.doelgroep ?? "DG1");
 
-    // klant: als activiteit nog geen klant heeft, kies de eerste beschikbare (als die bestaat)
-    const fallback = klanten[0]?.id ?? "";
+    const fallback = list[0]?.id ?? "";
     setEditKlantId(a.klant_id ?? fallback);
   };
 
@@ -217,7 +231,6 @@ export default function AdminActiviteitenPage() {
       setBusy(false);
       return;
     }
-
     if (!editKlantId) {
       setError("Klant is verplicht. Maak eerst een klant aan of selecteer er één.");
       setBusy(false);
@@ -357,18 +370,10 @@ export default function AdminActiviteitenPage() {
                           </div>
 
                           <div className="flex gap-2 shrink-0">
-                            <button
-                              className="border rounded-xl px-3 py-2 text-sm"
-                              onClick={() => startEdit(a)}
-                              disabled={busy}
-                            >
+                            <button className="border rounded-xl px-3 py-2 text-sm" onClick={() => startEdit(a)} disabled={busy}>
                               Bewerken
                             </button>
-                            <button
-                              className="border rounded-xl px-3 py-2 text-sm"
-                              onClick={() => deleteActiviteit(a.id)}
-                              disabled={busy}
-                            >
+                            <button className="border rounded-xl px-3 py-2 text-sm" onClick={() => deleteActiviteit(a.id)} disabled={busy}>
                               Verwijderen
                             </button>
                           </div>
@@ -377,31 +382,17 @@ export default function AdminActiviteitenPage() {
                         <div className="space-y-4">
                           <div>
                             <label className="text-sm font-medium block mb-1">Titel</label>
-                            <input
-                              className="w-full border rounded-xl p-3"
-                              value={editTitel}
-                              onChange={(e) => setEditTitel(e.target.value)}
-                            />
+                            <input className="w-full border rounded-xl p-3" value={editTitel} onChange={(e) => setEditTitel(e.target.value)} />
                           </div>
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Toelichting</label>
-                            <textarea
-                              className="w-full border rounded-xl p-3"
-                              rows={4}
-                              value={editToelichting}
-                              onChange={(e) => setEditToelichting(e.target.value)}
-                            />
+                            <textarea className="w-full border rounded-xl p-3" rows={4} value={editToelichting} onChange={(e) => setEditToelichting(e.target.value)} />
                           </div>
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Datum</label>
-                            <input
-                              type="date"
-                              className="w-full border rounded-xl p-3"
-                              value={editWanneer}
-                              onChange={(e) => setEditWanneer(e.target.value)}
-                            />
+                            <input type="date" className="w-full border rounded-xl p-3" value={editWanneer} onChange={(e) => setEditWanneer(e.target.value)} />
                           </div>
 
                           <div>
@@ -409,9 +400,7 @@ export default function AdminActiviteitenPage() {
 
                             {klanten.length === 0 ? (
                               <div className="border rounded-xl p-3 bg-white/80">
-                                <p className="text-sm text-gray-700">
-                                  Er zijn nog geen klanten. Maak eerst een klant aan.
-                                </p>
+                                <p className="text-sm text-gray-700">Er zijn nog geen klanten. Maak eerst een klant aan.</p>
                                 <div className="mt-2 flex gap-2 flex-wrap">
                                   <a className="border rounded-xl px-3 py-2 text-sm" href="/admin/klanten/nieuw">
                                     + Nieuwe klant
@@ -422,11 +411,7 @@ export default function AdminActiviteitenPage() {
                                 </div>
                               </div>
                             ) : (
-                              <select
-                                className="w-full border rounded-xl p-3"
-                                value={editKlantId}
-                                onChange={(e) => setEditKlantId(e.target.value)}
-                              >
+                              <select className="w-full border rounded-xl p-3" value={editKlantId} onChange={(e) => setEditKlantId(e.target.value)}>
                                 {klanten.map((k) => (
                                   <option key={k.id} value={k.id}>
                                     {k.naam}
@@ -438,22 +423,12 @@ export default function AdminActiviteitenPage() {
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Aantal vrijwilligers (nodig)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-full border rounded-xl p-3"
-                              value={editAantal}
-                              onChange={(e) => setEditAantal(Number(e.target.value))}
-                            />
+                            <input type="number" min={0} className="w-full border rounded-xl p-3" value={editAantal} onChange={(e) => setEditAantal(Number(e.target.value))} />
                           </div>
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Doelgroep</label>
-                            <select
-                              className="w-full border rounded-xl p-3"
-                              value={editDoelgroep}
-                              onChange={(e) => setEditDoelgroep(e.target.value)}
-                            >
+                            <select className="w-full border rounded-xl p-3" value={editDoelgroep} onChange={(e) => setEditDoelgroep(e.target.value)}>
                               {DOELGROEPEN.map((dg) => (
                                 <option key={dg} value={dg}>
                                   {dg}
