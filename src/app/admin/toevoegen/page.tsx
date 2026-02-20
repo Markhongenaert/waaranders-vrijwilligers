@@ -20,7 +20,7 @@ export default function ToevoegenActiviteitPage() {
   const [allowed, setAllowed] = useState(false);
 
   const [titel, setTitel] = useState("");
-  const [toelichting, setToelichting] = useState("");
+  const [toelichting, settoelichting] = useState("");
   const [wanneer, setWanneer] = useState("");
   const [aantal, setAantal] = useState<number>(1);
   const [doelgroep, setDoelgroep] = useState<string>("DG1");
@@ -79,7 +79,7 @@ export default function ToevoegenActiviteitPage() {
 
     setMsg("Activiteit toegevoegd.");
     setTitel("");
-    setToelichting("");
+    settoelichting("");
     setWanneer("");
     setAantal(1);
     setDoelgroep("DG1");
@@ -124,12 +124,12 @@ export default function ToevoegenActiviteitPage() {
         </div>
 
         <div>
-          <label className="text-sm font-medium block mb-1">Toelichting</label>
+          <label className="text-sm font-medium block mb-1">toelichting</label>
           <textarea
             className="w-full border rounded-xl p-3"
             rows={4}
             value={toelichting}
-            onChange={(e) => setToelichting(e.target.value)}
+            onChange={(e) => settoelichting(e.target.value)}
             placeholder="Extra info voor vrijwilligers (mag meerdere regels bevatten)"
           />
         </div>

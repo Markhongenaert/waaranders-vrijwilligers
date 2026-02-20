@@ -46,7 +46,7 @@ export default function AdminActiviteitenPage() {
   // edit
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitel, setEditTitel] = useState("");
-  const [editToelichting, setEditToelichting] = useState("");
+  const [edittoelichting, setEdittoelichting] = useState("");
   const [editWanneer, setEditWanneer] = useState("");
   const [editAantal, setEditAantal] = useState<number>(1);
   const [editDoelgroep, setEditDoelgroep] = useState<string>("DG1");
@@ -99,7 +99,7 @@ export default function AdminActiviteitenPage() {
 
     setEditingId(a.id);
     setEditTitel(a.titel ?? "");
-    setEditToelichting(a.toelichting ?? "");
+    setEdittoelichting(a.toelichting ?? "");
     setEditWanneer(a.wanneer ?? "");
     setEditAantal(a.aantal_vrijwilligers ?? 1);
     setEditDoelgroep(a.doelgroep ?? "DG1");
@@ -108,7 +108,7 @@ export default function AdminActiviteitenPage() {
   const cancelEdit = () => {
     setEditingId(null);
     setEditTitel("");
-    setEditToelichting("");
+    setEdittoelichting("");
     setEditWanneer("");
     setEditAantal(1);
     setEditDoelgroep("DG1");
@@ -134,7 +134,7 @@ export default function AdminActiviteitenPage() {
 
     const payload: any = {
       titel: editTitel.trim(),
-      toelichting: editToelichting ? editToelichting : null,
+      toelichting: edittoelichting ? edittoelichting : null,
       wanneer: editWanneer,
       aantal_vrijwilligers: Number.isFinite(editAantal) ? editAantal : null,
       doelgroep: editDoelgroep || null,
@@ -262,12 +262,12 @@ export default function AdminActiviteitenPage() {
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium block mb-1">Toelichting</label>
+                      <label className="text-sm font-medium block mb-1">toelichting</label>
                       <textarea
                         className="w-full border rounded-xl p-3"
                         rows={4}
-                        value={editToelichting}
-                        onChange={(e) => setEditToelichting(e.target.value)}
+                        value={edittoelichting}
+                        onChange={(e) => setEdittoelichting(e.target.value)}
                       />
                     </div>
 
