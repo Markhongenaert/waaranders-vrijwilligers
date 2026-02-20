@@ -4,6 +4,7 @@ const items = [
   { href: "/admin/toevoegen", label: "Toevoegen", desc: "Nieuwe activiteit" },
   { href: "/admin/activiteiten", label: "Beheren", desc: "Activiteiten wijzigen" },
   { href: "/admin/todos", label: "Todo", desc: "Taken opvolgen" },
+  { href: "/admin/klanten", label: "Klanten", desc: "Klanten opvolgen" },
   { href: "/admin/rollen", label: "Admin", desc: "Rollen & toegang" },
 ];
 

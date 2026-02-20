@@ -52,7 +52,7 @@ export default function ToevoegenActiviteitPage() {
       .from("klanten")
       .select("id,naam")
       .eq("actief", true)
-      .is("gearchiveerd_op", null)
+      .is("toelichting_op", null)
       .order("naam", { ascending: true });
 
     if (e) {
@@ -224,9 +224,6 @@ export default function ToevoegenActiviteitPage() {
             </a>
           </div>
 
-          <p className="text-xs text-gray-600 mt-2">
-            Alleen actieve klanten (niet-gearchiveerd) verschijnen hier.
-          </p>
         </div>
 
         <div>
