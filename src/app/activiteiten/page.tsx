@@ -27,10 +27,7 @@ function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/**
- * Tijdzone-safe: YYYY-MM-DD zonder tijd kan in sommige omgevingen als UTC geïnterpreteerd worden.
- * Door expliciet T00:00:00 te plakken, nemen we lokale middernacht.
- */
+// Voorkomt timezone-shift (UTC -> vorige dag) bij YYYY-MM-DD
 function asLocalDate(dateStr: string) {
   return new Date(`${dateStr}T00:00:00`);
 }
@@ -51,8 +48,8 @@ function monthKey(dateStr: string) {
   return dateStr.slice(0, 7); // YYYY-MM
 }
 
+// Lokale "vandaag" (geen UTC)
 function todayISODate() {
-  // vandaag in lokale tijd
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -100,9 +97,7 @@ export default function ActiviteitenPage() {
   };
 
   const grouped = useMemo(() => {
-    const sorted = [...items].sort((a, b) =>
-      a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0
-    );
+    const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
 
     const groups: { key: string; title: string; items: Activiteit[] }[] = [];
     const idx = new Map<string, number>();
@@ -222,7 +217,7 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* Sticky maandtussentitel (netter + rand + shadow) */}
+              {/* Lichtblauwe sticky maandtussentitel */}
               <div className="sticky top-0 z-10 -mx-2 px-2 pt-2">
                 <div className="bg-blue-100 text-black font-semibold px-3 py-2 rounded-xl border border-blue-200 shadow-sm">
                   {g.title}
@@ -244,9 +239,10 @@ export default function ActiviteitenPage() {
                   return (
                     <li
                       key={a.id}
-                      className={`rounded-2xl p-4 shadow-sm ${
-                        isIn ? "border-2 border-green-600 bg-green-50" : "border bg-white/80"
-                      }`}
+                      className={[
+                        "rounded-2xl p-4 shadow-sm bg-white",
+                        isIn ? "border-4 border-green-600" : "border",
+                      ].join(" ")}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
@@ -265,12 +261,12 @@ export default function ActiviteitenPage() {
 
                               {a.aantal_vrijwilligers != null && <span>• nodig: {a.aantal_vrijwilligers}</span>}
 
-                              <span>• meedoen: {count}</span>
+                              <span>• ingeschreven: {count}</span>
                             </div>
 
                             {isIn && (
-                              <span className="font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full text-xs border border-green-300 whitespace-nowrap">
-                                Jij doet mee
+                              <span className="font-semibold text-green-800 bg-green-100 px-3 py-1 rounded-full text-sm border-2 border-green-300 whitespace-nowrap">
+                                ✔ Jij doet mee
                               </span>
                             )}
                           </div>
@@ -291,7 +287,7 @@ export default function ActiviteitenPage() {
                         <div className="flex gap-2 shrink-0">
                           {!isIn ? (
                             <button
-                              className="border rounded-xl px-3 py-2 text-sm"
+                              className="border rounded-xl px-3 py-2 text-sm bg-white"
                               onClick={() => inschrijven(a.id)}
                               disabled={busy}
                             >
@@ -299,7 +295,7 @@ export default function ActiviteitenPage() {
                             </button>
                           ) : (
                             <button
-                              className="border rounded-xl px-3 py-2 text-sm"
+                              className="border rounded-xl px-3 py-2 text-sm bg-white"
                               onClick={() => uitschrijven(a.id)}
                               disabled={busy}
                             >
