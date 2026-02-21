@@ -22,11 +22,9 @@ type Activiteit = {
   wanneer: string; // YYYY-MM-DD
   aantal_vrijwilligers: number | null;
 
-  // FK’s
   klant_id: string | null;
   doelgroep_id: string | null;
 
-  // joined (kan array of object zijn)
   klanten: { naam: string } | { naam: string }[] | null;
   doelgroepen: { titel: string } | { titel: string }[] | null;
 };
@@ -57,7 +55,7 @@ function formatMaandTussentitel(dateStr: string) {
 }
 
 function monthKey(dateStr: string) {
-  return dateStr.slice(0, 7); // YYYY-MM
+  return dateStr.slice(0, 7);
 }
 
 function todayISODate() {
@@ -97,7 +95,7 @@ export default function AdminActiviteitenPage() {
 
   const [busy, setBusy] = useState(false);
 
-  // edit
+  // edit state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitel, setEditTitel] = useState("");
   const [editToelichting, setEditToelichting] = useState("");
@@ -189,7 +187,6 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
-    // dropdown-data
     await Promise.all([loadKlanten(), loadDoelgroepen()]);
 
     const vanaf = todayISODate();
@@ -219,7 +216,6 @@ export default function AdminActiviteitenPage() {
     setMsg(null);
     setError(null);
 
-    // Zorg dat dropdown-data er zeker is
     const [kList, dgList] = await Promise.all([
       klantenLoaded ? Promise.resolve(klanten) : loadKlanten(),
       doelgroepenLoaded ? Promise.resolve(doelgroepen) : loadDoelgroepen(),
@@ -234,7 +230,7 @@ export default function AdminActiviteitenPage() {
     const klantFallback = kList[0]?.id ?? "";
     setEditKlantId(a.klant_id ?? klantFallback);
 
-    // doelgroep is optioneel (jij zei: klant maar tot 1 doelgroep; voor activiteit vermoedelijk optioneel)
+    // doelgroep optioneel
     const dgFallback = dgList[0]?.id ?? "";
     setEditDoelgroepId(a.doelgroep_id ?? dgFallback);
   };
@@ -278,7 +274,7 @@ export default function AdminActiviteitenPage() {
       wanneer: editWanneer,
       aantal_vrijwilligers: Number.isFinite(editAantal) ? editAantal : null,
       klant_id: editKlantId,
-      doelgroep_id: editDoelgroepId || null, // optioneel
+      doelgroep_id: editDoelgroepId || null,
     };
 
     const { error } = await supabase.from("activiteiten").update(payload).eq("id", editingId);
@@ -316,11 +312,11 @@ export default function AdminActiviteitenPage() {
     setBusy(false);
   };
 
-  if (loading) return <main className="mx-auto max-w-3xl p-6 md:p-10">Laden…</main>;
+  if (loading) return <main className="mx-auto max-w-3xl p-4 sm:p-6 md:p-10">Laden…</main>;
 
   if (!allowed) {
     return (
-      <main className="mx-auto max-w-3xl p-6 md:p-10">
+      <main className="mx-auto max-w-3xl p-4 sm:p-6 md:p-10">
         <h1 className="text-3xl font-semibold tracking-tight mb-2">Activiteiten beheren</h1>
         <p>Je hebt geen rechten om deze pagina te bekijken.</p>
       </main>
@@ -347,7 +343,6 @@ export default function AdminActiviteitenPage() {
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}
 
-      {/* Als er nog geen klanten zijn: duidelijke blokkade/CTA */}
       {klantenLoaded && klanten.length === 0 && (
         <div className="mb-6 border rounded-2xl p-4 bg-white shadow-sm">
           <div className="font-medium">Er zijn nog geen klanten</div>
@@ -371,7 +366,7 @@ export default function AdminActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* Sticky maandtussentitel */}
+              {/* maandtitel mag tegen de bovenrand plakken */}
               <div className="sticky top-0 z-10 -mx-2 px-2 pt-0">
                 <div className="bg-blue-100 text-black font-semibold px-3 py-2 rounded-xl border border-blue-200 shadow-sm">
                   {g.title}
@@ -387,7 +382,8 @@ export default function AdminActiviteitenPage() {
                   return (
                     <li key={a.id} className="border rounded-2xl p-4 bg-white shadow-sm">
                       {!isEditing ? (
-                        <div className="flex items-start justify-between gap-4">
+                        // ✅ zelfde “kaartlogica” als Activiteiten: info boven, knoppen onder
+                        <div className="flex flex-col gap-4">
                           <div className="min-w-0">
                             <div className="font-medium whitespace-pre-line break-words">{a.titel}</div>
 
@@ -405,7 +401,7 @@ export default function AdminActiviteitenPage() {
                             </div>
                           </div>
 
-                          <div className="flex gap-2 shrink-0">
+                          <div className="grid grid-cols-2 gap-2">
                             <button
                               className="border rounded-xl px-3 py-2 text-sm bg-white"
                               onClick={() => startEdit(a)}
@@ -515,7 +511,7 @@ export default function AdminActiviteitenPage() {
                             )}
                           </div>
 
-                          <div className="flex gap-2 flex-wrap">
+                          <div className="grid grid-cols-2 gap-2">
                             <button className="border rounded-xl px-4 py-2 bg-white" onClick={saveEdit} disabled={busy}>
                               {busy ? "Bezig…" : "Opslaan"}
                             </button>
