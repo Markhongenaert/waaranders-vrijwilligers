@@ -1,31 +1,25 @@
 "use client";
 
 import "./globals.css";
-import React, { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const [isDoenkerAdmin, setIsDoenkerAdmin] = useState(false);
-  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const init = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        const user = data.session?.user ?? null;
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user ?? null;
 
-        if (!user) {
-          setIsDoenkerAdmin(false);
-          setChecking(false);
-          return;
-        }
-
-        const ok = await isDoenkerOrAdmin();
-        setIsDoenkerAdmin(ok);
-      } finally {
-        setChecking(false);
+      if (!user) {
+        setIsDoenkerAdmin(false);
+        return;
       }
+
+      const ok = await isDoenkerOrAdmin();
+      setIsDoenkerAdmin(ok);
     };
 
     init();
@@ -37,13 +31,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <html lang="nl" className="min-h-full">
-      {/* body background kan door globals.css overschreven worden,
-          daarom zetten we de echte achtergrond op een wrapper div */}
-      <body className="min-h-full">
-        <div className="min-h-screen bg-gray-100">
-          <header className="border-b p-4 flex justify-between items-center bg-white">
-            <nav className="flex gap-2 items-center">
+    <html lang="nl">
+      <body className="min-h-screen bg-gray-100 text-gray-900">
+        {/* Header */}
+        <header className="sticky top-0 z-50 border-b bg-white/90 backdrop-blur">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+            <nav className="flex items-center gap-2 sm:gap-3">
               <a
                 href="/activiteiten"
                 className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
@@ -58,7 +51,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 Profiel
               </a>
 
-              {!checking && isDoenkerAdmin && (
+              {isDoenkerAdmin && (
                 <a
                   href="/doenkers"
                   className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
@@ -68,13 +61,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               )}
             </nav>
 
-            <button onClick={logout} className="border rounded-xl px-3 py-2 text-sm bg-white">
+            <button
+              onClick={logout}
+              className="bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm font-medium hover:bg-gray-50 transition"
+            >
               Uitloggen
             </button>
-          </header>
+          </div>
+        </header>
 
-          {/* main krijgt geen achtergrond -> groene wrapper blijft zichtbaar */}
-          <main>{children}</main>
+        {/* Page container */}
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-8">
+          {/* “Content surface” zodat het niet “zweeft” op grijs */}
+          <div className="rounded-3xl bg-white shadow-sm border border-gray-200">
+            <div className="p-4 sm:p-6">{children}</div>
+          </div>
         </div>
       </body>
     </html>
