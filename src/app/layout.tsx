@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       {/* body background kan door globals.css overschreven worden,
           daarom zetten we de echte achtergrond op een wrapper div */}
       <body className="min-h-full">
-        <div className="min-h-screen bg-emerald-50">
+        <div className="min-h-screen bg-gray-100>
           <header className="border-b p-4 flex justify-between items-center bg-white">
             <nav className="flex gap-2 items-center">
               <a
