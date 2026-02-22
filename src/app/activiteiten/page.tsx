@@ -21,6 +21,7 @@ type MeedoenRow = {
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
 const DAY_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });
 const MONTH_HEADER_FMT = new Intl.DateTimeFormat("nl-BE", { month: "long", year: "numeric" });
+const woordVrijwilliger = x === 1 ? "vrijwilliger" : "vrijwilligers";
 
 function capitalize(s: string) {
   if (!s) return s;
@@ -238,7 +239,7 @@ export default function ActiviteitenPage() {
 
                   const isIn = ingeschreven(a.id);
 
-                  // ✅ nieuwe logica: nog X vrijwilligers nodig
+                  // ✅ nieuwe logica: nog X toelichting
                   const nodig = a.aantal_vrijwilligers;
                   const x = typeof nodig === "number" ? Math.max(0, nodig - count) : null;
 
@@ -293,7 +294,7 @@ export default function ActiviteitenPage() {
                               >
                                 {x}
                               </span>{" "}
-                              vrijwilligers nodig
+                              {woordVrijwilliger} nodig
                             </span>
                           )}
                         </div>

@@ -12,7 +12,6 @@ type KlantMini = {
 type DoelgroepMini = {
   id: string;
   titel: string;
-  omschrijving: string | null;
 };
 
 type Activiteit = {
@@ -23,9 +22,9 @@ type Activiteit = {
   aantal_vrijwilligers: number | null;
 
   klant_id: string | null;
-  doelgroep_id: string | null;
-
   klanten: { naam: string } | { naam: string }[] | null;
+
+  doelgroep_id: string | null;
   doelgroepen: { titel: string } | { titel: string }[] | null;
 };
 
@@ -83,16 +82,14 @@ export default function AdminActiviteitenPage() {
   const [allowed, setAllowed] = useState(false);
 
   const [items, setItems] = useState<Activiteit[]>([]);
-
   const [klanten, setKlanten] = useState<KlantMini[]>([]);
-  const [klantenLoaded, setKlantenLoaded] = useState(false);
-
   const [doelgroepen, setDoelgroepen] = useState<DoelgroepMini[]>([]);
+
+  const [klantenLoaded, setKlantenLoaded] = useState(false);
   const [doelgroepenLoaded, setDoelgroepenLoaded] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-
   const [busy, setBusy] = useState(false);
 
   // edit state
@@ -152,7 +149,7 @@ export default function AdminActiviteitenPage() {
 
     const { data, error: e } = await supabase
       .from("doelgroepen")
-      .select("id,titel,omschrijving")
+      .select("id,titel")
       .order("titel", { ascending: true });
 
     if (e) {
@@ -193,7 +190,7 @@ export default function AdminActiviteitenPage() {
 
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
-      .select("id,titel,toelichting,wanneer,aantal_vrijwilligers,klant_id,doelgroep_id,klanten(naam),doelgroepen(titel)")
+      .select("id,titel,toelichting,wanneer,aantal_vrijwilligers,klant_id,klanten(naam),doelgroep_id,doelgroepen(titel)")
       .gte("wanneer", vanaf)
       .order("wanneer", { ascending: true });
 
@@ -216,6 +213,7 @@ export default function AdminActiviteitenPage() {
     setMsg(null);
     setError(null);
 
+    // safety: zeker dat dropdown data er is
     const [kList, dgList] = await Promise.all([
       klantenLoaded ? Promise.resolve(klanten) : loadKlanten(),
       doelgroepenLoaded ? Promise.resolve(doelgroepen) : loadDoelgroepen(),
@@ -230,7 +228,6 @@ export default function AdminActiviteitenPage() {
     const klantFallback = kList[0]?.id ?? "";
     setEditKlantId(a.klant_id ?? klantFallback);
 
-    // doelgroep optioneel
     const dgFallback = dgList[0]?.id ?? "";
     setEditDoelgroepId(a.doelgroep_id ?? dgFallback);
   };
@@ -263,7 +260,12 @@ export default function AdminActiviteitenPage() {
       return;
     }
     if (!editKlantId) {
-      setError("Klant is verplicht. Maak eerst een klant aan of selecteer er één.");
+      setError("Klant is verplicht.");
+      setBusy(false);
+      return;
+    }
+    if (!editDoelgroepId) {
+      setError("Doelgroep is verplicht.");
       setBusy(false);
       return;
     }
@@ -274,7 +276,7 @@ export default function AdminActiviteitenPage() {
       wanneer: editWanneer,
       aantal_vrijwilligers: Number.isFinite(editAantal) ? editAantal : null,
       klant_id: editKlantId,
-      doelgroep_id: editDoelgroepId || null,
+      doelgroep_id: editDoelgroepId,
     };
 
     const { error } = await supabase.from("activiteiten").update(payload).eq("id", editingId);
@@ -312,11 +314,11 @@ export default function AdminActiviteitenPage() {
     setBusy(false);
   };
 
-  if (loading) return <main className="mx-auto max-w-3xl p-4 sm:p-6 md:p-10">Laden…</main>;
+  if (loading) return <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">Laden…</main>;
 
   if (!allowed) {
     return (
-      <main className="mx-auto max-w-3xl p-4 sm:p-6 md:p-10">
+      <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
         <h1 className="text-3xl font-semibold tracking-tight mb-2">Activiteiten beheren</h1>
         <p>Je hebt geen rechten om deze pagina te bekijken.</p>
       </main>
@@ -324,7 +326,7 @@ export default function AdminActiviteitenPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-4 sm:p-6 md:p-10">
+    <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteiten beheren</h1>
@@ -340,35 +342,26 @@ export default function AdminActiviteitenPage() {
         </div>
       </div>
 
-      {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
-      {msg && <p className="text-green-700 mb-4">{msg}</p>}
-
-      {klantenLoaded && klanten.length === 0 && (
-        <div className="mb-6 border rounded-2xl p-4 bg-white shadow-sm">
-          <div className="font-medium">Er zijn nog geen klanten</div>
-          <p className="text-sm text-gray-700 mt-1">
-            Voor activiteiten willen we dat “Klant” verplicht is. Maak eerst minstens één klant aan.
-          </p>
-          <div className="mt-3 flex gap-2 flex-wrap">
-            <a className="border rounded-xl px-3 py-2 text-sm bg-white" href="/admin/klanten/nieuw">
-              + Nieuwe klant
-            </a>
-            <a className="border rounded-xl px-3 py-2 text-sm bg-white" href="/admin/klanten">
-              Klanten beheren
-            </a>
-          </div>
-        </div>
+      {error && (
+        <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
+          Fout: {error}
+        </p>
+      )}
+      {msg && (
+        <p className="text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4">
+          {msg}
+        </p>
       )}
 
       {items.length === 0 ? (
-        <p className="text-gray-600">Geen toekomstige activiteiten.</p>
+        <p className="text-gray-700">Geen toekomstige activiteiten.</p>
       ) : (
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* maandtitel mag tegen de bovenrand plakken */}
-              <div className="sticky top-0 z-10 -mx-2 px-2 pt-0">
-                <div className="bg-blue-100 text-black font-semibold px-3 py-2 rounded-xl border border-blue-200 shadow-sm">
+              {/* Plakt tegen bovenrand */}
+              <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 md:-mx-10">
+                <div className="bg-blue-100 text-black font-semibold px-4 sm:px-6 md:px-10 py-2 border-b border-blue-200">
                   {g.title}
                 </div>
               </div>
@@ -380,37 +373,37 @@ export default function AdminActiviteitenPage() {
                   const dgTitel = doelgroepTitelOfNull(a.doelgroepen);
 
                   return (
-                    <li key={a.id} className="border rounded-2xl p-4 bg-white shadow-sm">
+                    <li key={a.id} className="rounded-2xl p-4 shadow-sm bg-white border border-gray-200">
                       {!isEditing ? (
-                        // ✅ zelfde “kaartlogica” als Activiteiten: info boven, knoppen onder
-                        <div className="flex flex-col gap-4">
-                          <div className="min-w-0">
-                            <div className="font-medium whitespace-pre-line break-words">{a.titel}</div>
-
-                            {a.toelichting && (
-                              <div className="text-sm text-gray-700 mt-2 whitespace-pre-line break-words">
-                                {a.toelichting}
-                              </div>
-                            )}
-
-                            <div className="text-sm text-gray-600 mt-2">
-                              {formatDatumNL(a.wanneer)}
-                              {a.aantal_vrijwilligers != null ? ` • nodig: ${a.aantal_vrijwilligers}` : ""}
-                              {dgTitel ? ` • doelgroep: ${dgTitel}` : ""}
-                              {kNaam ? ` • klant: ${kNaam}` : " • klant: (nog niet ingesteld)"}
-                            </div>
+                        <div className="space-y-3">
+                          <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">
+                            {a.titel}
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
+                          {a.toelichting && (
+                            <div className="text-sm text-gray-700 whitespace-pre-line break-words">
+                              {a.toelichting}
+                            </div>
+                          )}
+
+                          <div className="text-sm text-gray-700 flex flex-wrap gap-x-3 gap-y-1">
+                            <span className="text-gray-600">{formatDatumNL(a.wanneer)}</span>
+                            {a.aantal_vrijwilligers != null ? <span>nodig: {a.aantal_vrijwilligers}</span> : null}
+                            <span>klant: {kNaam ?? "(niet ingesteld)"}</span>
+                            <span>doelgroep: {dgTitel ?? "(niet ingesteld)"}</span>
+                          </div>
+
+                          {/* Buttons onderaan naast elkaar */}
+                          <div className="pt-2 flex gap-2">
                             <button
-                              className="border rounded-xl px-3 py-2 text-sm bg-white"
+                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
                               onClick={() => startEdit(a)}
                               disabled={busy}
                             >
                               Bewerken
                             </button>
                             <button
-                              className="border rounded-xl px-3 py-2 text-sm bg-white"
+                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
                               onClick={() => deleteActiviteit(a.id)}
                               disabled={busy}
                             >
@@ -422,100 +415,51 @@ export default function AdminActiviteitenPage() {
                         <div className="space-y-4">
                           <div>
                             <label className="text-sm font-medium block mb-1">Titel</label>
-                            <input
-                              className="w-full border rounded-xl p-3 bg-white"
-                              value={editTitel}
-                              onChange={(e) => setEditTitel(e.target.value)}
-                            />
+                            <input className="w-full border rounded-xl p-3 bg-white" value={editTitel} onChange={(e) => setEditTitel(e.target.value)} />
                           </div>
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Toelichting</label>
-                            <textarea
-                              className="w-full border rounded-xl p-3 bg-white"
-                              rows={4}
-                              value={editToelichting}
-                              onChange={(e) => setEditToelichting(e.target.value)}
-                            />
+                            <textarea className="w-full border rounded-xl p-3 bg-white" rows={4} value={editToelichting} onChange={(e) => setEditToelichting(e.target.value)} />
                           </div>
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Datum</label>
-                            <input
-                              type="date"
-                              className="w-full border rounded-xl p-3 bg-white"
-                              value={editWanneer}
-                              onChange={(e) => setEditWanneer(e.target.value)}
-                            />
+                            <input type="date" className="w-full border rounded-xl p-3 bg-white" value={editWanneer} onChange={(e) => setEditWanneer(e.target.value)} />
                           </div>
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Klant (verplicht)</label>
-                            {klanten.length === 0 ? (
-                              <div className="border rounded-xl p-3 bg-white">
-                                <p className="text-sm text-gray-700">Er zijn nog geen klanten. Maak eerst een klant aan.</p>
-                                <div className="mt-2 flex gap-2 flex-wrap">
-                                  <a className="border rounded-xl px-3 py-2 text-sm bg-white" href="/admin/klanten/nieuw">
-                                    + Nieuwe klant
-                                  </a>
-                                  <a className="border rounded-xl px-3 py-2 text-sm bg-white" href="/admin/klanten">
-                                    Klanten beheren
-                                  </a>
-                                </div>
-                              </div>
-                            ) : (
-                              <select
-                                className="w-full border rounded-xl p-3 bg-white"
-                                value={editKlantId}
-                                onChange={(e) => setEditKlantId(e.target.value)}
-                              >
-                                {klanten.map((k) => (
-                                  <option key={k.id} value={k.id}>
-                                    {k.naam}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
+                            <select className="w-full border rounded-xl p-3 bg-white" value={editKlantId} onChange={(e) => setEditKlantId(e.target.value)}>
+                              {klanten.map((k) => (
+                                <option key={k.id} value={k.id}>
+                                  {k.naam}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium block mb-1">Doelgroep (verplicht)</label>
+                            <select className="w-full border rounded-xl p-3 bg-white" value={editDoelgroepId} onChange={(e) => setEditDoelgroepId(e.target.value)}>
+                              {doelgroepen.map((dg) => (
+                                <option key={dg.id} value={dg.id}>
+                                  {dg.titel}
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           <div>
                             <label className="text-sm font-medium block mb-1">Aantal vrijwilligers (nodig)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-full border rounded-xl p-3 bg-white"
-                              value={editAantal}
-                              onChange={(e) => setEditAantal(Number(e.target.value))}
-                            />
+                            <input type="number" min={0} className="w-full border rounded-xl p-3 bg-white" value={editAantal} onChange={(e) => setEditAantal(Number(e.target.value))} />
                           </div>
 
-                          <div>
-                            <label className="text-sm font-medium block mb-1">Doelgroep</label>
-                            {!doelgroepenLoaded || doelgroepen.length === 0 ? (
-                              <div className="border rounded-xl p-3 bg-white text-sm text-gray-700">
-                                Geen doelgroepen gevonden. Voeg doelgroepen toe in Supabase.
-                              </div>
-                            ) : (
-                              <select
-                                className="w-full border rounded-xl p-3 bg-white"
-                                value={editDoelgroepId}
-                                onChange={(e) => setEditDoelgroepId(e.target.value)}
-                              >
-                                <option value="">— Geen —</option>
-                                {doelgroepen.map((dg) => (
-                                  <option key={dg.id} value={dg.id}>
-                                    {dg.titel}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <button className="border rounded-xl px-4 py-2 bg-white" onClick={saveEdit} disabled={busy}>
+                          <div className="flex gap-2">
+                            <button className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition" onClick={saveEdit} disabled={busy}>
                               {busy ? "Bezig…" : "Opslaan"}
                             </button>
-                            <button className="border rounded-xl px-4 py-2 bg-white" onClick={cancelEdit} disabled={busy}>
+                            <button className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition" onClick={cancelEdit} disabled={busy}>
                               Annuleren
                             </button>
                           </div>
