@@ -33,35 +33,39 @@ function DevPasswordLogin() {
   };
 
   return (
-    <div>
-      <label className="block font-medium mb-2">Email</label>
-      <input
-        className="w-full border rounded-xl p-3 mb-4"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="test.vrijwilliger@waaranders.local"
-        autoComplete="email"
-      />
+    <div className="space-y-4">
+      <div>
+        <label className="block font-medium mb-1">Email</label>
+        <input
+          className="w-full border rounded-xl p-3 bg-white"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="test.vrijwilliger@waaranders.local"
+          autoComplete="email"
+        />
+      </div>
 
-      <label className="block font-medium mb-2">Wachtwoord</label>
-      <input
-        className="w-full border rounded-xl p-3 mb-4"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="••••••••"
-        autoComplete="current-password"
-      />
+      <div>
+        <label className="block font-medium mb-1">Wachtwoord</label>
+        <input
+          className="w-full border rounded-xl p-3 bg-white"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+          autoComplete="current-password"
+        />
+      </div>
 
       <button
-        className="border rounded-xl px-5 py-3 font-medium"
+        className="w-full rounded-xl px-5 py-3 font-medium bg-emerald-700 text-white hover:bg-emerald-800 transition disabled:opacity-60"
         onClick={signIn}
         disabled={busy}
       >
         {busy ? "Bezig…" : "Inloggen (dev)"}
       </button>
 
-      {err && <p className="mt-3 text-red-600">Fout: {err}</p>}
+      {err && <p className="text-red-700">Fout: {err}</p>}
     </div>
   );
 }
@@ -88,9 +92,7 @@ export default function LoginPage() {
 
     const { error } = await supabase.auth.signInWithOtp({
       email: e,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
+      options: { emailRedirectTo: redirectTo },
     });
 
     setBusy(false);
@@ -100,44 +102,61 @@ export default function LoginPage() {
       return;
     }
 
-    setMessage("Check je mailbox voor de login-link.");
+    setMessage("Gelukt. Check je mailbox — en je spamfolder als hij zich verstopt 😉");
   };
 
   return (
-    <main className="mx-auto max-w-md p-6 md:p-10">
-      <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-6">
-        Inloggen
+    <main className="mx-auto max-w-md p-4 sm:p-6 md:p-10">
+      {/* Warmere header */}
+      <div className="rounded-2xl p-5 mb-6 bg-emerald-700 text-white shadow-sm">
+        <div className="text-xl font-semibold">Welkom terug</div>
+        <div className="text-sm opacity-95 mt-1">
+          Log in om activiteiten te bekijken en je in te schrijven.
+        </div>
       </div>
 
-      <label className="block font-medium mb-2">Email</label>
-      <input
-        className="w-full border rounded-xl p-3 mb-4"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="naam@voorbeeld.be"
-        autoComplete="email"
-        inputMode="email"
-      />
+      {/* Hoofdkaart – wit */}
+      <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
+        <div>
+          <label className="block font-medium mb-1">Email</label>
+          <input
+            className="w-full border rounded-xl p-3 bg-white"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="naam@voorbeeld.be"
+            autoComplete="email"
+            inputMode="email"
+          />
+        </div>
 
-      <button
-        className="border rounded-xl px-5 py-3 font-medium w-full"
-        onClick={sendMagicLink}
-        disabled={busy}
-      >
-        {busy ? "Bezig…" : "Stuur login-link"}
-      </button>
+        <button
+          className="rounded-xl px-5 py-3 font-medium w-full bg-emerald-700 text-white hover:bg-emerald-800 transition disabled:opacity-60"
+          onClick={sendMagicLink}
+          disabled={busy}
+        >
+          {busy ? "Bezig…" : "Stuur login-link"}
+        </button>
 
-      {message && <p className="mt-4 text-green-700">{message}</p>}
-      {err && <p className="mt-4 text-red-600">Fout: {err}</p>}
+        {message && (
+          <p className="text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+            {message}
+          </p>
+        )}
+        {err && (
+          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">
+            Fout: {err}
+          </p>
+        )}
+      </div>
 
       {isDevPasswordEnabled() && (
-        <div className="mt-10 border rounded-2xl p-4 bg-white/80 shadow-sm">
-          <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-4">
-            Dev login (password)
+        <div className="mt-10 border rounded-2xl p-5 bg-white shadow-sm">
+          <div className="rounded-xl px-4 py-2 mb-4 bg-amber-100 text-amber-900 font-semibold">
+            Dev login (alleen lokaal)
           </div>
 
-          <p className="text-sm text-gray-600 mb-4">
-            Alleen voor lokaal testen. Zet{" "}
+          <p className="text-sm text-gray-700 mb-4">
+            Voor testen. Zet{" "}
             <span className="font-mono">NEXT_PUBLIC_ENABLE_DEV_PASSWORD_LOGIN</span>{" "}
             uit in productie.
           </p>
