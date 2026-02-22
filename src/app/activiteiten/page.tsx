@@ -9,7 +9,7 @@ type Activiteit = {
   wanneer: string; // YYYY-MM-DD
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
-  doelgroep: string | null; // bestaat in tabel, maar tonen we hier niet
+  doelgroep: string | null;
 };
 
 type MeedoenRow = {
@@ -21,7 +21,6 @@ type MeedoenRow = {
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
 const DAY_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });
 const MONTH_HEADER_FMT = new Intl.DateTimeFormat("nl-BE", { month: "long", year: "numeric" });
-const woordVrijwilliger = x === 1 ? "vrijwilliger" : "vrijwilligers";
 
 function capitalize(s: string) {
   if (!s) return s;
@@ -220,7 +219,7 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* Maandtitel mag tegen de bovenrand plakken */}
+              {/* maandtitel plakt tegen bovenrand */}
               <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 md:-mx-10">
                 <div className="bg-blue-100 text-black font-semibold px-4 sm:px-6 md:px-10 py-2 border-b border-blue-200">
                   {g.title}
@@ -239,24 +238,22 @@ export default function ActiviteitenPage() {
 
                   const isIn = ingeschreven(a.id);
 
-                  // ✅ nieuwe logica: nog X toelichting
-                  const nodig = a.aantal_vrijwilligers;
-                  const x = typeof nodig === "number" ? Math.max(0, nodig - count) : null;
+                  const nodig = a.aantal_vrijwilligers ?? null;
+                  const x = nodig == null ? 0 : Math.max(0, nodig - count);
+                  const woordVrijwilliger = x === 1 ? "vrijwilliger" : "vrijwilligers";
 
-                  const showNog = x != null && x > 0;
-                  const isAllNeeded = showNog && nodig != null && x === nodig; // niemand ingeschreven
-                  const isSomeNeeded = showNog && nodig != null && x < nodig; // al iemand ingeschreven
+                  const showNeed = nodig != null && x > 0;
+                  const isAllMissing = nodig != null && x === nodig;
 
                   return (
                     <li
                       key={a.id}
                       className={[
-                        "rounded-2xl p-4 shadow-sm bg-white border",
-                        isIn ? "border-2 border-green-600" : "border-gray-200",
+                        "rounded-2xl p-4 shadow-sm bg-white",
+                        isIn ? "border-2 border-emerald-600" : "border border-gray-200",
                       ].join(" ")}
                     >
                       <div className="space-y-3">
-                        {/* Titel + badge */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">
@@ -265,41 +262,33 @@ export default function ActiviteitenPage() {
                           </div>
 
                           {isIn && (
-                            <span className="font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full text-sm border border-green-200 whitespace-nowrap">
+                            <span className="font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full text-sm border border-emerald-200 whitespace-nowrap">
                               Jij doet mee
                             </span>
                           )}
                         </div>
 
-                        {/* Toelichting */}
                         {a.toelichting && (
                           <div className="text-sm text-gray-700 whitespace-pre-line break-words">
                             {a.toelichting}
                           </div>
                         )}
 
-                        {/* Datum + “nog nodig” */}
-                        <div className="text-sm text-gray-700 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <div className="text-sm text-gray-700 flex flex-wrap gap-x-3 gap-y-1">
                           <span className="text-gray-600">{formatDatumKaart(a.wanneer)}</span>
 
-                          {showNog && (
-                            <span className="text-gray-700">
-                              nog{" "}
-                              <span
-                                className={[
-                                  "font-bold",
-                                  isAllNeeded ? "text-red-700 text-base" : "",
-                                  isSomeNeeded ? "text-orange-600 text-base" : "",
-                                ].join(" ")}
-                              >
-                                {x}
-                              </span>{" "}
-                              {woordVrijwilliger} nodig
+                          {showNeed && (
+                            <span
+                              className={[
+                                "font-semibold",
+                                isAllMissing ? "text-red-700 text-base" : "text-orange-700 text-base",
+                              ].join(" ")}
+                            >
+                              nog <span className="font-extrabold">{x}</span> {woordVrijwilliger} nodig
                             </span>
                           )}
                         </div>
 
-                        {/* Meedoen lijst */}
                         <div className="text-sm text-gray-700">
                           <span className="text-gray-600">Meedoen:</span>{" "}
                           {count === 0 ? (
@@ -312,11 +301,11 @@ export default function ActiviteitenPage() {
                           )}
                         </div>
 
-                        {/* Actieknoppen onderaan naast elkaar */}
+                        {/* buttons onderaan, naast elkaar, volle breedte op gsm */}
                         <div className="pt-2 flex gap-2">
                           {!isIn ? (
                             <button
-                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition disabled:opacity-60"
+                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
                               onClick={() => inschrijven(a.id)}
                               disabled={busy}
                             >
@@ -324,21 +313,13 @@ export default function ActiviteitenPage() {
                             </button>
                           ) : (
                             <button
-                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition disabled:opacity-60"
+                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
                               onClick={() => uitschrijven(a.id)}
                               disabled={busy}
                             >
                               {busy ? "Bezig…" : "Uitschrijven"}
                             </button>
                           )}
-
-                          <button
-                            className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
-                            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                            type="button"
-                          >
-                            Naar boven
-                          </button>
                         </div>
                       </div>
                     </li>
