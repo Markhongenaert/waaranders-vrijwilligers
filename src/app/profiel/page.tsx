@@ -73,7 +73,7 @@ export default function ProfielPage() {
           naam: (user.user_metadata as any)?.full_name ?? user.email ?? null,
           telefoon: null,
           adres: null,
-         toelichting
+          toestemming_privacy: false,  
           })
           .select("id, naam, telefoon, adres")
           .single();
