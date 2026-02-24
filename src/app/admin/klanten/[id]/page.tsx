@@ -204,9 +204,6 @@ export default function KlantDetailPage() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-semibold mb-1">Klant bewerken</h1>
-          <p className="text-sm text-gray-600">
-            Archiveren zit bewust niet in deze pagina (te riskant als “dagelijkse knop”).
-          </p>
         </div>
 
         <Link className="border rounded-xl px-3 py-2 text-sm" href={backHref}>
