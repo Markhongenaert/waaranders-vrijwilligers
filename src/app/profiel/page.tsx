@@ -68,11 +68,12 @@ export default function ProfielPage() {
         const { data: created, error: cErr } = await supabase
           .from("vrijwilligers")
           .insert({
-            id: user.id,
-            naam: (user.user_metadata as any)?.full_name ?? user.email ?? null,
-            telefoon: null,
-            adres: null,
-            toestemming_privacy: false,
+          id: user.id,
+          user_id: user.id,
+          naam: (user.user_metadata as any)?.full_name ?? user.email ?? null,
+          telefoon: null,
+          adres: null,
+         toelichting
           })
           .select("id, naam, telefoon, adres")
           .single();
