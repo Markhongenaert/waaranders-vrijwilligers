@@ -4,21 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Vrijwilliger = {
-  id: string;
-  user_id: string | null;
+  id: string; // = auth user id in jullie schema
   naam: string | null;
   telefoon: string | null;
   adres: string | null;
 };
 
 type Interesse = {
-  id: string; // uuid of bigint -> behandelen als string
-  naam: string;
+  id: string;
+  titel: string;
+  omschrijving: string | null;
 };
 
 export default function ProfielPage() {
   const [loading, setLoading] = useState(true);
-
   const [vrijwilliger, setVrijwilliger] = useState<Vrijwilliger | null>(null);
 
   const [interesses, setInteresses] = useState<Interesse[]>([]);
@@ -49,11 +48,11 @@ export default function ProfielPage() {
         return;
       }
 
-      // 1) Vrijwilliger ophalen via user_id (niet via id!)
+      // 1) Vrijwilliger ophalen via id = auth uid (niet via user_id)
       const { data: vExisting, error: vErr } = await supabase
         .from("vrijwilligers")
-        .select("id, user_id, naam, telefoon, adres")
-        .eq("user_id", user.id)
+        .select("id, naam, telefoon, adres")
+        .eq("id", user.id)
         .maybeSingle();
 
       if (vErr) {
@@ -64,16 +63,18 @@ export default function ProfielPage() {
 
       let v = vExisting as Vrijwilliger | null;
 
-      // 1b) Indien nog geen rij: maak er één aan (policy: vrijwilligers_insert_own)
+      // 1b) Indien nog geen rij: maak er één aan MET id=user.id (anders FK error)
       if (!v) {
         const { data: created, error: cErr } = await supabase
           .from("vrijwilligers")
           .insert({
-            user_id: user.id,
+            id: user.id,
             naam: (user.user_metadata as any)?.full_name ?? user.email ?? null,
+            telefoon: null,
+            adres: null,
             toestemming_privacy: false,
           })
-          .select("id, user_id, naam, telefoon, adres")
+          .select("id, naam, telefoon, adres")
           .single();
 
         if (cErr) {
@@ -86,11 +87,11 @@ export default function ProfielPage() {
 
       setVrijwilliger(v);
 
-      // 2) Interesses lijst
+      // 2) Interesses lijst (kolommen: titel/omschrijving)
       const { data: ints, error: iErr } = await supabase
         .from("interesses")
-        .select("id, naam")
-        .order("naam", { ascending: true });
+        .select("id, titel, omschrijving")
+        .order("titel", { ascending: true });
 
       if (iErr) {
         setErr(iErr.message);
@@ -99,11 +100,11 @@ export default function ProfielPage() {
       }
       setInteresses((ints ?? []) as Interesse[]);
 
-      // 3) Mijn geselecteerde interesses
+      // 3) Mijn geselecteerde interesses (vrijwilliger_id = auth uid)
       const { data: mine, error: mErr } = await supabase
         .from("vrijwilliger_interesses")
         .select("interesse_id")
-        .eq("vrijwilliger_id", v.id);
+        .eq("vrijwilliger_id", user.id);
 
       if (mErr) {
         setErr(mErr.message);
@@ -112,7 +113,6 @@ export default function ProfielPage() {
       }
 
       setSelectedIds(new Set((mine ?? []).map((r: any) => String(r.interesse_id))));
-
       setLoading(false);
     };
 
@@ -145,6 +145,13 @@ export default function ProfielPage() {
 
     setBusy(true);
 
+    const { data: sessionRes } = await supabase.auth.getSession();
+    const user = sessionRes.session?.user;
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
     // A) Update profiel (naam, telefoon, adres)
     const { error: uErr } = await supabase
       .from("vrijwilligers")
@@ -153,7 +160,7 @@ export default function ProfielPage() {
         telefoon: vrijwilliger.telefoon,
         adres: vrijwilliger.adres,
       })
-      .eq("id", vrijwilliger.id);
+      .eq("id", user.id);
 
     if (uErr) {
       setErr(uErr.message);
@@ -165,7 +172,7 @@ export default function ProfielPage() {
     const { error: dErr } = await supabase
       .from("vrijwilliger_interesses")
       .delete()
-      .eq("vrijwilliger_id", vrijwilliger.id);
+      .eq("vrijwilliger_id", user.id);
 
     if (dErr) {
       setErr(dErr.message);
@@ -174,15 +181,12 @@ export default function ProfielPage() {
     }
 
     const rows = Array.from(selectedIds).map((interesse_id) => ({
-      vrijwilliger_id: vrijwilliger.id,
-      interesse_id, // werkt voor uuid; voor bigint meestal ook (Supabase cast). Zoniet: Number(interesse_id)
+      vrijwilliger_id: user.id,
+      interesse_id,
     }));
 
     if (rows.length > 0) {
-      const { error: insErr } = await supabase
-        .from("vrijwilliger_interesses")
-        .insert(rows);
-
+      const { error: insErr } = await supabase.from("vrijwilliger_interesses").insert(rows);
       if (insErr) {
         setErr(insErr.message);
         setBusy(false);
@@ -244,17 +248,23 @@ export default function ProfielPage() {
           <span className="text-sm opacity-70">{selectedCount} geselecteerd</span>
         </div>
 
-        <div className="border rounded-xl p-4 space-y-2">
+        <div className="border rounded-xl p-4 space-y-3">
           {interesses.map((i) => {
             const id = String(i.id);
             return (
-              <label key={id} className="flex items-center gap-3">
+              <label key={id} className="flex items-start gap-3">
                 <input
                   type="checkbox"
+                  className="mt-1"
                   checked={selectedIds.has(id)}
                   onChange={() => toggleInteresse(id)}
                 />
-                <span>{i.naam}</span>
+                <div>
+                  <div className="font-medium">{i.titel}</div>
+                  {i.omschrijving && (
+                    <div className="text-sm opacity-70">{i.omschrijving}</div>
+                  )}
+                </div>
               </label>
             );
           })}
