@@ -16,15 +16,7 @@ type DoelgroepMini = {
   omschrijving: string | null;
 };
 
-function safeReturnTo(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith("/")) return null;
-  if (raw.startsWith("//")) return null;
-  return raw;
-}
-
 function buildReturnTo(): string {
-  // nieuwe klant pagina krijgt een veilige returnTo
   // /admin/klanten/nieuw?returnTo=/admin/toevoegen
   return encodeURIComponent("/admin/toevoegen");
 }
@@ -49,7 +41,7 @@ export default function ToevoegenActiviteitPage() {
   const [wanneer, setWanneer] = useState("");
   const [aantal, setAantal] = useState<number>(1);
 
-  // FK's
+  // FK's (lege string = “nog niets gekozen”)
   const [klantId, setKlantId] = useState<string>("");
   const [doelgroepId, setDoelgroepId] = useState<string>("");
 
@@ -57,17 +49,23 @@ export default function ToevoegenActiviteitPage() {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  const nieuweKlantHref = useMemo(() => `/admin/klanten/nieuw?returnTo=${buildReturnTo()}`, []);
+  const nieuweKlantHref = useMemo(
+    () => `/admin/klanten/nieuw?returnTo=${buildReturnTo()}`,
+    []
+  );
   const klantenBeheerHref = "/admin/klanten";
 
-  const loadKlanten = async (): Promise<KlantMini[]> => {
+  const noKlanten = klantenLoaded && klanten.length === 0;
+  const noDoelgroepen = doelgroepenLoaded && doelgroepen.length === 0;
+
+  async function loadKlanten(): Promise<KlantMini[]> {
     setKlantenLoaded(false);
 
     const { data, error: e } = await supabase
       .from("klanten")
       .select("id,naam")
       .eq("actief", true)
-      .is("gearchiveerd_op", null) // <-- juiste kolom
+      .is("gearchiveerd_op", null)
       .order("naam", { ascending: true });
 
     if (e) {
@@ -81,9 +79,9 @@ export default function ToevoegenActiviteitPage() {
     setKlanten(list);
     setKlantenLoaded(true);
     return list;
-  };
+  }
 
-  const loadDoelgroepen = async (): Promise<DoelgroepMini[]> => {
+  async function loadDoelgroepen(): Promise<DoelgroepMini[]> {
     setDoelgroepenLoaded(false);
 
     const { data, error: e } = await supabase
@@ -102,7 +100,7 @@ export default function ToevoegenActiviteitPage() {
     setDoelgroepen(list);
     setDoelgroepenLoaded(true);
     return list;
-  };
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -123,24 +121,18 @@ export default function ToevoegenActiviteitPage() {
         return;
       }
 
-      // parallel laden
       const [kList, dgList] = await Promise.all([loadKlanten(), loadDoelgroepen()]);
 
-      // klant selecteren: URL > bestaande selectie > eerste klant
-      if (kList.length > 0) {
-        const preferred = klantIdFromUrl && kList.some((k) => k.id === klantIdFromUrl) ? klantIdFromUrl : "";
-        setKlantId(preferred || klantId || kList[0].id);
+      // Preselect klant enkel als URL klant_id geldig is
+      if (klantIdFromUrl && kList.some((k) => k.id === klantIdFromUrl)) {
+        setKlantId(klantIdFromUrl);
       } else {
-        setKlantId("");
+        setKlantId(""); // blijft leeg tot user kiest
       }
 
-      // doelgroep: behoud als mogelijk, anders eerste uit lijst, of leeg
-      if (dgList.length > 0) {
-        const keep = doelgroepId && dgList.some((d) => d.id === doelgroepId);
-        setDoelgroepId(keep ? doelgroepId : dgList[0].id);
-      } else {
-        setDoelgroepId("");
-      }
+      // Doelgroep: geen default; user moet kiezen
+      if (dgList.length > 0) setDoelgroepId("");
+      else setDoelgroepId("");
 
       setLoading(false);
     };
@@ -166,7 +158,7 @@ export default function ToevoegenActiviteitPage() {
       return;
     }
     if (!doelgroepId) {
-      setError("Doelgroep is verplicht. Voeg eerst doelgroepen toe in Supabase of kies er één.");
+      setError("Doelgroep is verplicht. Voeg eerst doelgroepen toe of kies er één.");
       return;
     }
 
@@ -174,32 +166,31 @@ export default function ToevoegenActiviteitPage() {
 
     const payload = {
       titel: titel.trim(),
-      toelichting: toelichting ? toelichting : null,
+      toelichting: toelichting?.trim() ? toelichting.trim() : null,
       wanneer, // YYYY-MM-DD
-      aantal_vrijwilligers: Number.isFinite(aantal) ? aantal : null,
+      aantal_vrijwilligers: Number.isFinite(aantal) ? Number(aantal) : 0,
       klant_id: klantId,
-      doelgroep_id: doelgroepId, // <-- FK naar doelgroepen tabel
+      doelgroep_id: doelgroepId,
+      status: "gepland",
     };
 
-    const { error } = await supabase.from("activiteiten").insert(payload);
+    const { error: e } = await supabase.from("activiteiten").insert(payload);
 
-    if (error) {
-      setError(error.message);
+    if (e) {
+      setError(e.message);
       setBusy(false);
       return;
     }
 
     setMsg("Activiteit toegevoegd.");
 
-    // reset (klant/doelgroep houden we staan)
+    // reset (klant/doelgroep houden we NIET automatisch; liever expliciet)
     setTitel("");
     setToelichting("");
     setWanneer("");
     setAantal(1);
 
     setBusy(false);
-
-    // terug naar beheer
     window.location.href = "/admin/activiteiten";
   };
 
@@ -216,15 +207,14 @@ export default function ToevoegenActiviteitPage() {
     );
   }
 
-  const noKlanten = klantenLoaded && klanten.length === 0;
-  const noDoelgroepen = doelgroepenLoaded && doelgroepen.length === 0;
-
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-6 md:p-10">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteit toevoegen</h1>
-          <p className="text-sm text-gray-600">Maak een nieuwe activiteit aan en koppel meteen klant + doelgroep.</p>
+          <p className="text-sm text-gray-600">
+            Maak een nieuwe activiteit aan en koppel meteen klant + doelgroep.
+          </p>
         </div>
 
         <a className="border bg-white rounded-xl px-3 py-2 text-sm" href="/admin/activiteiten">
@@ -238,7 +228,9 @@ export default function ToevoegenActiviteitPage() {
         </p>
       )}
       {msg && (
-        <p className="text-emerald-800 bg-white border border-emerald-100 rounded-xl p-3 mb-4">{msg}</p>
+        <p className="text-emerald-800 bg-white border border-emerald-100 rounded-xl p-3 mb-4">
+          {msg}
+        </p>
       )}
 
       {(noKlanten || noDoelgroepen) && (
@@ -264,7 +256,8 @@ export default function ToevoegenActiviteitPage() {
             <>
               <div className="font-semibold mt-4">Er zijn nog geen doelgroepen</div>
               <p className="text-sm text-gray-700 mt-1">
-                “Doelgroep” is verplicht. Voeg eerst doelgroepen toe in Supabase (tabel <span className="font-mono">doelgroepen</span>).
+                “Doelgroep” is verplicht. Voeg eerst doelgroepen toe (tabel{" "}
+                <span className="font-mono">doelgroepen</span>).
               </p>
             </>
           )}
@@ -280,17 +273,15 @@ export default function ToevoegenActiviteitPage() {
               className="w-full border rounded-xl p-3 bg-white"
               value={klantId}
               onChange={(e) => setKlantId(e.target.value)}
-              disabled={!klantenLoaded || klanten.length === 0 || busy}
+              disabled={!klantenLoaded || busy}
+              required
             >
-              {klantenLoaded && klanten.length > 0 ? (
-                klanten.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.naam}
-                  </option>
-                ))
-              ) : (
-                <option value="">(geen klanten)</option>
-              )}
+              <option value="">-- kies klant --</option>
+              {klanten.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.naam}
+                </option>
+              ))}
             </select>
 
             <a className="border bg-white rounded-xl px-3 py-2 text-sm whitespace-nowrap" href={nieuweKlantHref}>
@@ -306,18 +297,17 @@ export default function ToevoegenActiviteitPage() {
             className="w-full border rounded-xl p-3 bg-white"
             value={doelgroepId}
             onChange={(e) => setDoelgroepId(e.target.value)}
-            disabled={!doelgroepenLoaded || doelgroepen.length === 0 || busy}
+            disabled={!doelgroepenLoaded || busy || doelgroepen.length === 0}
+            required
           >
-            {doelgroepenLoaded && doelgroepen.length > 0 ? (
-              doelgroepen.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.titel}
-                </option>
-              ))
-            ) : (
-              <option value="">(geen doelgroepen)</option>
-            )}
+            <option value="">-- kies doelgroep --</option>
+            {doelgroepen.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.titel}
+              </option>
+            ))}
           </select>
+
           {doelgroepId && (
             <div className="text-xs text-gray-600 mt-1">
               {doelgroepen.find((d) => d.id === doelgroepId)?.omschrijving ?? ""}
@@ -344,7 +334,7 @@ export default function ToevoegenActiviteitPage() {
             rows={4}
             value={toelichting}
             onChange={(e) => setToelichting(e.target.value)}
-            placeholder="Extra info voor vrijwilligers (mag meerdere regels bevatten)"
+            placeholder="Extra info voor vrijwilligers"
             disabled={busy}
           />
         </div>
