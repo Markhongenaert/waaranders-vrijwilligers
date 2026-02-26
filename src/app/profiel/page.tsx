@@ -262,10 +262,10 @@ export default function ProfielPage() {
       </div>
 
       <div className="wa-card p-5 space-y-5">
-      {toelichting (
+      {err && (
         <div className="wa-alert-error">
-         <span className="font-semibold">Fout:</span> {err}
-        </div>
+          <span className="font-semibold">Fout:</span> {err}
+       </div>
       )}
 
       {msg && (
