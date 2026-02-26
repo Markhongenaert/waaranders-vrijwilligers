@@ -16,8 +16,6 @@ function buildReturnTo(): string {
 
 export default function ToevoegenActiviteitPage() {
   const sp = useSearchParams();
-
-  // na "nieuwe klant" komen we terug met ?klant_id=...
   const klantIdFromUrl = sp.get("klant_id") || sp.get("klantId") || "";
 
   const [loading, setLoading] = useState(true);
@@ -34,8 +32,6 @@ export default function ToevoegenActiviteitPage() {
   const [einduur, setEinduur] = useState(""); // "HH:MM"
 
   const [aantal, setAantal] = useState<number>(1);
-
-  // FK
   const [klantId, setKlantId] = useState<string>("");
 
   const [busy, setBusy] = useState(false);
@@ -92,7 +88,6 @@ export default function ToevoegenActiviteitPage() {
 
       const kList = await loadKlanten();
 
-      // Preselect klant enkel als URL klant_id geldig is
       if (klantIdFromUrl && kList.some((k) => k.id === klantIdFromUrl)) {
         setKlantId(klantIdFromUrl);
       } else {
@@ -112,47 +107,33 @@ export default function ToevoegenActiviteitPage() {
     setError(null);
     setMsg(null);
 
-    if (!titel.trim()) {
-      setError("Titel is verplicht.");
-      return;
-    }
-    if (!wanneer) {
-      setError("Datum (wanneer) is verplicht.");
-      return;
-    }
-    if (!klantId) {
-      setError("Klant is verplicht. Maak eerst een klant aan of selecteer er één.");
-      return;
-    }
-    if (!startuur) {
-      setError("Startuur is verplicht.");
-      return;
-    }
-    if (!einduur) {
-      setError("Einduur is verplicht.");
-      return;
-    }
-
-    // simpele check: einduur moet na startuur liggen (zelfde dag)
-    if (einduur <= startuur) {
-      setError("Einduur moet later zijn dan startuur.");
-      return;
-    }
+    const t = titel.trim();
+    if (!t) return setError("Titel is verplicht.");
+    if (!wanneer) return setError("Datum (wanneer) is verplicht.");
+    if (!klantId) return setError("Klant is verplicht. Maak eerst een klant aan of selecteer er één.");
+    if (!startuur) return setError("Startuur is verplicht.");
+    if (!einduur) return setError("Einduur is verplicht.");
+    if (einduur <= startuur) return setError("Einduur moet later zijn dan startuur.");
 
     setBusy(true);
 
     const payload = {
-      titel: titel.trim(),
+      titel: t,
       toelichting: toelichting?.trim() ? toelichting.trim() : null,
-      wanneer, // YYYY-MM-DD
-      startuur, // "HH:MM"
-      einduur,  // "HH:MM"
+      wanneer,
+      startuur,
+      einduur,
       aantal_vrijwilligers: Number.isFinite(aantal) ? Number(aantal) : 0,
       klant_id: klantId,
       status: "gepland",
     };
 
-    const { error: e } = await supabase.from("activiteiten").insert(payload);
+    // 👇 expliciete select, zodat er nooit impliciet een oude embedded-relatie wordt opgehaald
+    const { data, error: e } = await supabase
+      .from("activiteiten")
+      .insert(payload)
+      .select("id")
+      .single();
 
     if (e) {
       setError(e.message);
@@ -160,9 +141,8 @@ export default function ToevoegenActiviteitPage() {
       return;
     }
 
-    setMsg("Activiteit toegevoegd.");
+    setMsg(`Activiteit toegevoegd (id: ${data?.id}).`);
 
-    // reset (klant laten staan is handig)
     setTitel("");
     setToelichting("");
     setWanneer("");
@@ -229,7 +209,6 @@ export default function ToevoegenActiviteitPage() {
       )}
 
       <div className="border rounded-2xl p-4 bg-white shadow-sm space-y-4">
-        {/* KLANT */}
         <div>
           <label className="text-sm font-medium block mb-1">Klant (verplicht)</label>
           <div className="flex gap-2">
@@ -254,7 +233,6 @@ export default function ToevoegenActiviteitPage() {
           </div>
         </div>
 
-        {/* TITEL */}
         <div>
           <label className="text-sm font-medium block mb-1">Titel</label>
           <input
@@ -265,7 +243,6 @@ export default function ToevoegenActiviteitPage() {
           />
         </div>
 
-        {/* TOELICHTING */}
         <div>
           <label className="text-sm font-medium block mb-1">Toelichting</label>
           <textarea
@@ -278,7 +255,6 @@ export default function ToevoegenActiviteitPage() {
           />
         </div>
 
-        {/* DATUM */}
         <div>
           <label className="text-sm font-medium block mb-1">Datum</label>
           <input
@@ -290,7 +266,6 @@ export default function ToevoegenActiviteitPage() {
           />
         </div>
 
-        {/* START/EIND */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium block mb-1">Startuur</label>
@@ -315,7 +290,6 @@ export default function ToevoegenActiviteitPage() {
           </div>
         </div>
 
-        {/* AANTAL */}
         <div>
           <label className="text-sm font-medium block mb-1">Aantal vrijwilligers (nodig)</label>
           <input
