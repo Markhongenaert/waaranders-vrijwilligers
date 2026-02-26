@@ -13,10 +13,10 @@ type Activiteit = {
   toelichting: string | null;
 };
 
-type MeedoenRow = {
+type MeedoenMetNaamRow = {
   activiteit_id: string;
-  vrijwilliger_id: string;
-  vrijwilligers: { naam: string | null } | { naam: string | null }[] | null;
+  vrijwilliger_id: string; // dit is public.vrijwilligers.id (niet auth.uid)
+  naam: string | null;     // roepnaam uit vrijwilligers_public
 };
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
@@ -56,15 +56,8 @@ function todayISODate() {
   return `${y}-${m}-${day}`;
 }
 
-function extractNaam(v: MeedoenRow["vrijwilligers"]): string | null {
-  if (!v) return null;
-  if (Array.isArray(v)) return v[0]?.naam ?? null;
-  return v.naam ?? null;
-}
-
 function hhmm(t: string | null): string | null {
   if (!t) return null;
-  // "14:00:00" -> "14:00"
   if (t.length >= 5) return t.slice(0, 5);
   return t;
 }
@@ -72,24 +65,25 @@ function hhmm(t: string | null): string | null {
 export default function ActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Activiteit[]>([]);
-  const [meedoen, setMeedoen] = useState<MeedoenRow[]>([]);
-  const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [meedoen, setMeedoen] = useState<MeedoenMetNaamRow[]>([]);
+  const [myAuthUserId, setMyAuthUserId] = useState<string | null>(null);
+  const [myVrijwilligerId, setMyVrijwilligerId] = useState<string | null>(null);
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const meedoenByAct = useMemo(() => {
-    const map = new Map<string, { userIds: Set<string>; namen: string[] }>();
+    const map = new Map<string, { vrijwilligerIds: Set<string>; namen: string[] }>();
 
     for (const r of meedoen) {
       const actId = r.activiteit_id;
-      if (!map.has(actId)) map.set(actId, { userIds: new Set(), namen: [] });
+      if (!map.has(actId)) map.set(actId, { vrijwilligerIds: new Set(), namen: [] });
 
       const entry = map.get(actId)!;
-      entry.userIds.add(r.vrijwilliger_id);
+      entry.vrijwilligerIds.add(r.vrijwilliger_id);
 
-      const naam = extractNaam(r.vrijwilligers);
-      if (naam) entry.namen.push(naam);
+      const nm = r.naam?.trim();
+      if (nm) entry.namen.push(nm);
     }
 
     for (const v of map.values()) v.namen.sort((a, b) => a.localeCompare(b));
@@ -97,9 +91,9 @@ export default function ActiviteitenPage() {
   }, [meedoen]);
 
   const ingeschreven = (activiteitId: string) => {
-    if (!myUserId) return false;
+    if (!myVrijwilligerId) return false;
     const entry = meedoenByAct.get(activiteitId);
-    return entry ? entry.userIds.has(myUserId) : false;
+    return entry ? entry.vrijwilligerIds.has(myVrijwilligerId) : false;
   };
 
   const grouped = useMemo(() => {
@@ -128,18 +122,46 @@ export default function ActiviteitenPage() {
     setLoading(true);
     setError(null);
 
-    const { data: sess } = await supabase.auth.getSession();
-    const user = sess.session?.user ?? null;
+    const { data: sess, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      setError(sessErr.message);
+      setLoading(false);
+      return;
+    }
 
+    const user = sess.session?.user ?? null;
     if (!user) {
       window.location.href = "/login";
       return;
     }
 
-    setMyUserId(user.id);
+    setMyAuthUserId(user.id);
+
+    // 1) Zoek de gekoppelde vrijwilligers.id (jouw “eigen” vrijwilliger-uuid)
+    const { data: vRow, error: vErr } = await supabase
+      .from("vrijwilligers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (vErr) {
+      setError(vErr.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!vRow?.id) {
+      // Geen profiel-rij gevonden: dan kan inschrijven nooit correct werken.
+      setError("Je vrijwilligersprofiel is nog niet aangemaakt. Ga eerst naar je profiel en vul je roepnaam in.");
+      setLoading(false);
+      return;
+    }
+
+    setMyVrijwilligerId(vRow.id);
 
     const vanaf = todayISODate();
 
+    // 2) Activiteiten laden
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,wanneer,startuur,einduur,aantal_vrijwilligers,toelichting")
@@ -163,9 +185,10 @@ export default function ActiviteitenPage() {
       return;
     }
 
+    // 3) Meedoen + roepnaam via view (geen join op vrijwilligers meer)
     const { data: md, error: e2 } = await supabase
-      .from("meedoen")
-      .select("activiteit_id,vrijwilliger_id,vrijwilligers(naam)")
+      .from("meedoen_met_naam")
+      .select("activiteit_id,vrijwilliger_id,naam")
       .in("activiteit_id", ids);
 
     if (e2) {
@@ -174,7 +197,7 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    setMeedoen((md ?? []) as unknown as MeedoenRow[]);
+    setMeedoen((md ?? []) as MeedoenMetNaamRow[]);
     setLoading(false);
   };
 
@@ -184,22 +207,23 @@ export default function ActiviteitenPage() {
   }, []);
 
   const inschrijven = async (activiteitId: string) => {
-    if (!myUserId) return;
+    if (!myVrijwilligerId) return;
     setBusyId(activiteitId);
     setError(null);
 
     const { error } = await supabase.from("meedoen").insert({
       activiteit_id: activiteitId,
-      vrijwilliger_id: myUserId,
+      vrijwilliger_id: myVrijwilligerId, // ✅ juiste id
     });
 
     if (error) setError(error.message);
+
     await loadAll();
     setBusyId(null);
   };
 
   const uitschrijven = async (activiteitId: string) => {
-    if (!myUserId) return;
+    if (!myVrijwilligerId) return;
     setBusyId(activiteitId);
     setError(null);
 
@@ -207,9 +231,10 @@ export default function ActiviteitenPage() {
       .from("meedoen")
       .delete()
       .eq("activiteit_id", activiteitId)
-      .eq("vrijwilliger_id", myUserId);
+      .eq("vrijwilliger_id", myVrijwilligerId); // ✅ juiste id
 
     if (error) setError(error.message);
+
     await loadAll();
     setBusyId(null);
   };
@@ -230,7 +255,6 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* maandtitel plakt tegen bovenrand */}
               <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 md:-mx-10">
                 <div className="bg-blue-100 text-black font-semibold px-4 sm:px-6 md:px-10 py-2 border-b border-blue-200">
                   {g.title}
@@ -304,7 +328,6 @@ export default function ActiviteitenPage() {
                           )}
                         </div>
 
-                        {/* NIEUW: uurregel onder datum */}
                         {showTime && (
                           <div className="text-sm text-gray-700">
                             <span className="text-gray-600">van</span> {s}{" "}
@@ -324,11 +347,10 @@ export default function ActiviteitenPage() {
                           )}
                         </div>
 
-                        {/* buttons onderaan, naast elkaar, volle breedte op gsm */}
                         <div className="pt-2 flex gap-2">
                           {!isIn ? (
                             <button
-                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
+                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition disabled:opacity-60"
                               onClick={() => inschrijven(a.id)}
                               disabled={busy}
                             >
@@ -336,7 +358,7 @@ export default function ActiviteitenPage() {
                             </button>
                           ) : (
                             <button
-                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
+                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition disabled:opacity-60"
                               onClick={() => uitschrijven(a.id)}
                               disabled={busy}
                             >
