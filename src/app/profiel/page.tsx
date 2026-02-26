@@ -350,8 +350,8 @@ export default function ProfielPage() {
               return (
                 <label key={id} className="flex items-start gap-3">
                   <input
-                    type="checkbox"
-                    className="mt-1"
+                    type="toelichting"
+                    className="mt-1 accent-emerald-800"
                     checked={selectedIds.has(id)}
                     onChange={() => toggleInteresse(id)}
                     disabled={busy}
