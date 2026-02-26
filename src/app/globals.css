@@ -22,3 +22,62 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* 1) Brand (hoofdknoppen / headers) */
+  .wa-brand {
+    @apply bg-blue-900 text-white;
+  }
+  .wa-brand-hover {
+    @apply hover:bg-blue-800 transition;
+  }
+
+  /* 2) Card / kader */
+  .wa-card {
+    @apply bg-white border border-gray-200 rounded-2xl shadow-sm;
+  }
+
+  /* 3) Ingeschreven (actieve state) */
+  .wa-active-card {
+    @apply border-2 border-emerald-700;
+  }
+  .wa-active-badge {
+    @apply bg-emerald-800 text-white border border-emerald-900;
+  }
+
+  /* 4) Neutrale kaart (niet ingeschreven) */
+  .wa-neutral-card {
+    @apply border border-gray-600;
+  }
+
+  /* 5) Buttons (optioneel maar handig) */
+  .wa-btn {
+    @apply rounded-xl px-4 py-2 font-medium transition disabled:opacity-60;
+  }
+  .wa-btn-brand {
+    @apply wa-brand wa-brand-hover;
+  }
+  .wa-btn-ghost {
+    @apply bg-white border border-gray-300 hover:bg-gray-50;
+  }
+}
+/* Alerts */
+
+.wa-alert {
+  @apply rounded-xl px-4 py-3 border text-sm;
+}
+
+.wa-alert-error {
+  @apply wa-alert bg-red-50 border-red-200 text-red-800;
+}
+
+.wa-alert-success {
+  @apply wa-alert bg-emerald-50 border-emerald-200 text-emerald-800;
+}
+
+.wa-alert-info {
+  @apply wa-alert bg-blue-50 border-blue-200 text-blue-800;
+}

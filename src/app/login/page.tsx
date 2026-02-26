@@ -41,7 +41,7 @@ export default function LoginPage() {
   return (
     <main className="mx-auto max-w-md p-4 sm:p-6 md:p-10">
       {/* Header in blauw (consistent met rest van app) */}
-      <div className="rounded-2xl p-5 mb-6 bg-blue-600 text-white shadow-sm">
+      <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
         <div className="text-xl font-semibold">Welkom terug</div>
         <div className="text-sm opacity-95 mt-1">
           Log in om activiteiten te bekijken en je in te schrijven.
@@ -63,7 +63,7 @@ export default function LoginPage() {
         </div>
 
         <button
-          className="rounded-xl px-5 py-3 font-medium w-full bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60"
+          className="rounded-xl px-5 py-3 font-medium w-full bg-blue-900 text-white hover:bg-blue-800 transition disabled:opacity-60"
           onClick={sendMagicLink}
           disabled={busy}
         >

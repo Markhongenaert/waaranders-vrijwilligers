@@ -29,7 +29,7 @@ function prioBadge(p: Todo["prioriteit"]) {
 
 function statusBadge(s: Todo["status"]) {
   if (s === "gedaan") return "bg-green-600 text-white";
-  if (s === "bezig") return "bg-blue-600 text-white";
+  if (s === "bezig") return "bg-blue-900 text-white";
   return "bg-gray-100 text-gray-800";
 }
 

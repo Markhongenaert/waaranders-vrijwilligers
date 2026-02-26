@@ -62,7 +62,6 @@ export default function ProfielPage() {
         return;
       }
 
-      // 1) Vrijwilliger ophalen via id = auth uid
       const { data: vExisting, error: vErr } = await supabase
         .from("vrijwilligers")
         .select("id, user_id, naam, voornaam, achternaam, telefoon, adres")
@@ -77,7 +76,6 @@ export default function ProfielPage() {
 
       let v = vExisting as Vrijwilliger | null;
 
-      // 1b) Indien nog geen rij: maak er één aan met id=user.id
       if (!v) {
         const guessed =
           (user.user_metadata as any)?.full_name ??
@@ -107,7 +105,6 @@ export default function ProfielPage() {
 
       setVrijwilliger(v);
 
-      // 2) Interesses lijst
       const { data: ints, error: iErr } = await supabase
         .from("interesses")
         .select("id, titel, omschrijving")
@@ -120,7 +117,6 @@ export default function ProfielPage() {
       }
       setInteresses((ints ?? []) as Interesse[]);
 
-      // 3) Mijn geselecteerde interesses
       const { data: mine, error: mErr } = await supabase
         .from("vrijwilliger_interesses")
         .select("interesse_id")
@@ -178,7 +174,6 @@ export default function ProfielPage() {
 
     setBusy(true);
 
-    // A) Update profiel (naam wordt door trigger afgeleid)
     const { error: uErr } = await supabase
       .from("vrijwilligers")
       .update({
@@ -195,14 +190,8 @@ export default function ProfielPage() {
       return;
     }
 
-    /**
-     * B) Interesses opslaan: diff i.p.v. delete-all
-     * - werkt beter met RLS (insert/delete own)
-     * - minder kans op “halfweg mislukt → alles weg”
-     */
     const current = new Set(selectedIds);
 
-    // haal huidige selectie opnieuw op (bron van waarheid)
     const { data: mine2, error: m2Err } = await supabase
       .from("vrijwilliger_interesses")
       .select("interesse_id")
@@ -215,12 +204,10 @@ export default function ProfielPage() {
     }
 
     const existing = new Set((mine2 ?? []).map((r: any) => String(r.interesse_id)));
-
     const toInsert = Array.from(current).filter((id) => !existing.has(id));
     const toDelete = Array.from(existing).filter((id) => !current.has(id));
 
     if (toDelete.length > 0) {
-      // delete per id (RLS-friendly)
       for (const interesse_id of toDelete) {
         const { error: dErr } = await supabase
           .from("vrijwilliger_interesses")
@@ -267,24 +254,25 @@ export default function ProfielPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6 md:p-10">
-      <div className="rounded-2xl p-5 mb-6 bg-blue-600 text-white shadow-sm">
+      <div className="rounded-2xl p-5 mb-6 wa-brand shadow-sm">
         <div className="text-xl font-semibold">Jouw profiel</div>
         <div className="text-sm opacity-95 mt-1">
           Vul minstens je voornaam en achternaam in. Daarna kan je naar de activiteiten.
         </div>
       </div>
 
-      <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-5">
-        {err && (
-          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">
-            Fout: {err}
-          </p>
-        )}
-        {msg && (
-          <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">
-            {msg}
-          </p>
-        )}
+      <div className="wa-card p-5 space-y-5">
+      {toelichting (
+        <div className="wa-alert-error">
+         <span className="font-semibold">Fout:</span> {err}
+        </div>
+      )}
+
+      {msg && (
+        <div className="wa-alert-success">
+         {msg}
+       </div>
+      )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -358,7 +346,8 @@ export default function ProfielPage() {
             <span className="text-sm text-gray-600">{selectedCount} geselecteerd</span>
           </div>
 
-          <div className="border rounded-xl p-4 space-y-3">
+          {/* inner container: liever geen tweede shadow; enkel border */}
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
             {interesses.map((i) => {
               const id = String(i.id);
               return (
@@ -372,7 +361,9 @@ export default function ProfielPage() {
                   />
                   <div>
                     <div className="font-medium">{i.titel}</div>
-                    {i.omschrijving && <div className="text-sm text-gray-600">{i.omschrijving}</div>}
+                    {i.omschrijving && (
+                      <div className="text-sm text-gray-600">{i.omschrijving}</div>
+                    )}
                   </div>
                 </label>
               );
@@ -385,7 +376,7 @@ export default function ProfielPage() {
         </div>
 
         <button
-          className="rounded-xl px-5 py-3 font-medium w-full bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60"
+          className="wa-btn wa-btn-brand w-full px-5 py-3 font-medium"
           onClick={save}
           disabled={busy || !isValid}
           title={!isValid ? "Vul voornaam en achternaam in" : ""}

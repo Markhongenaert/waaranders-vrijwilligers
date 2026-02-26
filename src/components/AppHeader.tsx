@@ -35,14 +35,14 @@ export default function AppHeader() {
         <nav className="flex items-center gap-2 sm:gap-3">
           <a
             href="/activiteiten"
-            className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+            className="wa-btn wa-btn-brand px-4 py-2 text-sm font-semibold"
           >
             Activiteiten
           </a>
 
           <a
             href="/profiel"
-            className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+            className="wa-btn wa-btn-brand px-4 py-2 text-sm font-semibold"
           >
             Je profiel
           </a>
@@ -50,7 +50,7 @@ export default function AppHeader() {
           {isDoenkerAdmin && (
             <a
               href="/doenkers"
-              className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
+              className="wa-btn wa-btn-brand px-4 py-2 text-sm font-semibold"
             >
               Doenkers
             </a>
@@ -59,7 +59,7 @@ export default function AppHeader() {
 
         <button
           onClick={logout}
-          className="bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm font-medium hover:bg-gray-50 transition"
+          className="wa-btn wa-btn-ghost px-3 py-2 text-sm font-medium"
         >
           Uitloggen
         </button>

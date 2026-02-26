@@ -8,7 +8,7 @@ type Activiteit = {
   titel: string;
   wanneer: string; // YYYY-MM-DD
   startuur: string | null; // "HH:MM:SS" of "HH:MM"
-  einduur: string | null;  // "HH:MM:SS" of "HH:MM"
+  einduur: string | null; // "HH:MM:SS" of "HH:MM"
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
 };
@@ -16,7 +16,7 @@ type Activiteit = {
 type MeedoenMetNaamRow = {
   activiteit_id: string;
   vrijwilliger_id: string; // bij jullie: = auth.uid()
-  naam: string | null;
+  naam: string | null; // roepnaam uit view
 };
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
@@ -72,8 +72,8 @@ export default function ActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Activiteit[]>([]);
   const [meedoen, setMeedoen] = useState<MeedoenMetNaamRow[]>([]);
+  const [myAuthUserId, setMyAuthUserId] = useState<string | null>(null);
 
-  const [myAuthUserId, setMyAuthUserId] = useState<string | null>(null); // auth.uid()
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,7 +142,7 @@ export default function ActiviteitenPage() {
 
     setMyAuthUserId(user.id);
 
-    // ✅ Onboarding guard: check profiel (bij jullie: vrijwilligers.id = auth.uid)
+    // Onboarding guard: profiel moet ingevuld zijn
     const { data: vRow, error: vErr } = await supabase
       .from("vrijwilligers")
       .select("id,voornaam,achternaam")
@@ -155,7 +155,6 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    // Als er nog geen rij is, of profiel niet compleet: naar profiel
     if (!vRow || !profielOk(vRow)) {
       window.location.href = "/profiel";
       return;
@@ -163,7 +162,7 @@ export default function ActiviteitenPage() {
 
     const vanaf = todayISODate();
 
-    // Activiteiten laden
+    // Activiteiten
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,wanneer,startuur,einduur,aantal_vrijwilligers,toelichting")
@@ -215,7 +214,7 @@ export default function ActiviteitenPage() {
 
     const { error } = await supabase.from("meedoen").insert({
       activiteit_id: activiteitId,
-      vrijwilliger_id: myAuthUserId, // ✅ bij jullie: auth.uid()
+      vrijwilliger_id: myAuthUserId,
     });
 
     if (error) setError(error.message);
@@ -233,7 +232,7 @@ export default function ActiviteitenPage() {
       .from("meedoen")
       .delete()
       .eq("activiteit_id", activiteitId)
-      .eq("vrijwilliger_id", myAuthUserId); // ✅ bij jullie: auth.uid()
+      .eq("vrijwilliger_id", myAuthUserId);
 
     if (error) setError(error.message);
 
@@ -244,9 +243,9 @@ export default function ActiviteitenPage() {
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
       {error && (
-        <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
-          Fout: {error}
-        </p>
+        <div className="wa-alert-error mb-4">
+          <span className="font-semibold">Fout:</span> {error}
+        </div>
       )}
 
       {loading ? (
@@ -257,6 +256,7 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
+              {/* maandtitel plakt tegen bovenrand */}
               <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 md:-mx-10">
                 <div className="bg-blue-100 text-black font-semibold px-4 sm:px-6 md:px-10 py-2 border-b border-blue-200">
                   {g.title}
@@ -290,20 +290,20 @@ export default function ActiviteitenPage() {
                     <li
                       key={a.id}
                       className={[
-                        "rounded-2xl p-4 shadow-sm bg-white",
-                        isIn ? "border-2 border-blue-600" : "border border-gray-200",
+                        "wa-card p-4",
+                        isIn ? "wa-active-card" : "wa-neutral-card",
                       ].join(" ")}
                     >
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">
+                            <div className={["whitespace-pre-line break-words text-base sm:text-lg", isIn ? "font-extrabold" : "font-semibold"].join(" ")}>
                               {a.titel}
                             </div>
                           </div>
 
                           {isIn && (
-                            <span className="font-bold text-blue-800 bg-blue-50 px-3 py-1 rounded-full text-sm border border-blue-200 whitespace-nowrap">
+                            <span className="wa-active-badge px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
                               Jij doet mee
                             </span>
                           )}
@@ -352,7 +352,7 @@ export default function ActiviteitenPage() {
                         <div className="pt-2 flex gap-2">
                           {!isIn ? (
                             <button
-                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition disabled:opacity-60"
+                              className="wa-btn wa-btn-ghost flex-1"
                               onClick={() => inschrijven(a.id)}
                               disabled={busy}
                             >
@@ -360,7 +360,7 @@ export default function ActiviteitenPage() {
                             </button>
                           ) : (
                             <button
-                              className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition disabled:opacity-60"
+                              className="wa-btn wa-btn-ghost flex-1"
                               onClick={() => uitschrijven(a.id)}
                               disabled={busy}
                             >
