@@ -256,9 +256,6 @@ export default function ProfielPage() {
     <main className="mx-auto max-w-2xl p-4 sm:p-6 md:p-10">
       <div className="rounded-2xl p-5 mb-6 wa-brand shadow-sm">
         <div className="text-xl font-semibold">Jouw profiel</div>
-        <div className="text-sm opacity-95 mt-1">
-          Vul minstens je voornaam en achternaam in. Daarna kan je naar de activiteiten.
-        </div>
       </div>
 
       <div className="wa-card p-5 space-y-5">
