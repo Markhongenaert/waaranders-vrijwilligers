@@ -22,11 +22,71 @@ function parseHashParams() {
   };
 }
 
+function isProfielOk(v: { voornaam: string | null; achternaam: string | null } | null) {
+  const vn = (v?.voornaam ?? "").trim();
+  const an = (v?.achternaam ?? "").trim();
+  return vn.length >= 2 && an.length >= 2;
+}
+
 export default function AuthCallbackPage() {
   const [msg, setMsg] = useState("Even geduld… We ronden je login af.");
   const [detail, setDetail] = useState<string | null>(null);
 
   useEffect(() => {
+    const finishAndRedirect = async () => {
+      // 1) user ophalen
+      const { data: userRes, error: uErr } = await supabase.auth.getUser();
+      if (uErr) throw new Error(uErr.message);
+
+      const user = userRes.user;
+      if (!user) {
+        window.location.href = "/login?error=" + encodeURIComponent("Geen gebruiker gevonden na login.");
+        return;
+      }
+
+      // 2) profiel checken / aanmaken (bij jullie: vrijwilligers.id = auth.uid())
+      const { data: vExisting, error: vErr } = await supabase
+        .from("vrijwilligers")
+        .select("id, voornaam, achternaam")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (vErr) throw new Error(vErr.message);
+
+      let v = vExisting as { id: string; voornaam: string | null; achternaam: string | null } | null;
+
+      // Als er nog geen rij is: maak er één aan (zoals je profielpagina nu doet)
+      if (!v) {
+        const guessed =
+          (user.user_metadata as any)?.full_name ??
+          (user.email ? user.email.split("@")[0] : null);
+
+        const { data: created, error: cErr } = await supabase
+          .from("vrijwilligers")
+          .insert({
+            id: user.id,
+            user_id: user.id,
+            voornaam: guessed,
+            achternaam: "Onbekend",
+            telefoon: null,
+            adres: null,
+            toestemming_privacy: false,
+          })
+          .select("id, voornaam, achternaam")
+          .single();
+
+        if (cErr) throw new Error(cErr.message);
+        v = created as any;
+      }
+
+      // 3) redirect op basis van profiel-compleetheid
+      if (!isProfielOk(v)) {
+        window.location.href = "/profiel";
+      } else {
+        window.location.href = "/activiteiten";
+      }
+    };
+
     const run = async () => {
       try {
         // 1) PKCE: ?code=...
@@ -35,23 +95,21 @@ export default function AuthCallbackPage() {
         if (code) {
           setDetail("PKCE login gedetecteerd (code).");
 
-          const { data, error } = await supabase.auth.exchangeCodeForSession(
-            window.location.href
-          );
+          // Let op: jouw supabase client verwacht hier window.location.href (zoals je had)
+          const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
 
           if (error) {
             setMsg("Login mislukt.");
             setDetail(error.message);
             return;
           }
-
           if (!data.session) {
             setMsg("Login gelukt, maar geen sessie gevonden.");
             setDetail("Geen session object teruggekregen.");
             return;
           }
 
-          window.location.href = "/activiteiten";
+          await finishAndRedirect();
           return;
         }
 
@@ -78,7 +136,7 @@ export default function AuthCallbackPage() {
             return;
           }
 
-          window.location.href = "/activiteiten";
+          await finishAndRedirect();
           return;
         }
 

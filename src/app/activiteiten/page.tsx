@@ -15,8 +15,8 @@ type Activiteit = {
 
 type MeedoenMetNaamRow = {
   activiteit_id: string;
-  vrijwilliger_id: string; // dit is public.vrijwilligers.id (niet auth.uid)
-  naam: string | null;     // roepnaam uit vrijwilligers_public
+  vrijwilliger_id: string; // bij jullie: = auth.uid()
+  naam: string | null;
 };
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
@@ -62,13 +62,18 @@ function hhmm(t: string | null): string | null {
   return t;
 }
 
+function profielOk(v: { voornaam: string | null; achternaam: string | null } | null) {
+  const vn = (v?.voornaam ?? "").trim();
+  const an = (v?.achternaam ?? "").trim();
+  return vn.length >= 2 && an.length >= 2;
+}
+
 export default function ActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Activiteit[]>([]);
   const [meedoen, setMeedoen] = useState<MeedoenMetNaamRow[]>([]);
-  const [myAuthUserId, setMyAuthUserId] = useState<string | null>(null);
-  const [myVrijwilligerId, setMyVrijwilligerId] = useState<string | null>(null);
 
+  const [myAuthUserId, setMyAuthUserId] = useState<string | null>(null); // auth.uid()
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,9 +96,9 @@ export default function ActiviteitenPage() {
   }, [meedoen]);
 
   const ingeschreven = (activiteitId: string) => {
-    if (!myVrijwilligerId) return false;
+    if (!myAuthUserId) return false;
     const entry = meedoenByAct.get(activiteitId);
-    return entry ? entry.vrijwilligerIds.has(myVrijwilligerId) : false;
+    return entry ? entry.vrijwilligerIds.has(myAuthUserId) : false;
   };
 
   const grouped = useMemo(() => {
@@ -137,11 +142,11 @@ export default function ActiviteitenPage() {
 
     setMyAuthUserId(user.id);
 
-    // 1) Zoek de gekoppelde vrijwilligers.id (jouw “eigen” vrijwilliger-uuid)
+    // ✅ Onboarding guard: check profiel (bij jullie: vrijwilligers.id = auth.uid)
     const { data: vRow, error: vErr } = await supabase
       .from("vrijwilligers")
-      .select("id")
-      .eq("user_id", user.id)
+      .select("id,voornaam,achternaam")
+      .eq("id", user.id)
       .maybeSingle();
 
     if (vErr) {
@@ -150,18 +155,15 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    if (!vRow?.id) {
-      // Geen profiel-rij gevonden: dan kan inschrijven nooit correct werken.
-      setError("Je vrijwilligersprofiel is nog niet aangemaakt. Ga eerst naar je profiel en vul je roepnaam in.");
-      setLoading(false);
+    // Als er nog geen rij is, of profiel niet compleet: naar profiel
+    if (!vRow || !profielOk(vRow)) {
+      window.location.href = "/profiel";
       return;
     }
 
-    setMyVrijwilligerId(vRow.id);
-
     const vanaf = todayISODate();
 
-    // 2) Activiteiten laden
+    // Activiteiten laden
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,wanneer,startuur,einduur,aantal_vrijwilligers,toelichting")
@@ -185,7 +187,7 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    // 3) Meedoen + roepnaam via view (geen join op vrijwilligers meer)
+    // Meedoen + roepnaam via view
     const { data: md, error: e2 } = await supabase
       .from("meedoen_met_naam")
       .select("activiteit_id,vrijwilliger_id,naam")
@@ -207,13 +209,13 @@ export default function ActiviteitenPage() {
   }, []);
 
   const inschrijven = async (activiteitId: string) => {
-    if (!myVrijwilligerId) return;
+    if (!myAuthUserId) return;
     setBusyId(activiteitId);
     setError(null);
 
     const { error } = await supabase.from("meedoen").insert({
       activiteit_id: activiteitId,
-      vrijwilliger_id: myVrijwilligerId, // ✅ juiste id
+      vrijwilliger_id: myAuthUserId, // ✅ bij jullie: auth.uid()
     });
 
     if (error) setError(error.message);
@@ -223,7 +225,7 @@ export default function ActiviteitenPage() {
   };
 
   const uitschrijven = async (activiteitId: string) => {
-    if (!myVrijwilligerId) return;
+    if (!myAuthUserId) return;
     setBusyId(activiteitId);
     setError(null);
 
@@ -231,7 +233,7 @@ export default function ActiviteitenPage() {
       .from("meedoen")
       .delete()
       .eq("activiteit_id", activiteitId)
-      .eq("vrijwilliger_id", myVrijwilligerId); // ✅ juiste id
+      .eq("vrijwilliger_id", myAuthUserId); // ✅ bij jullie: auth.uid()
 
     if (error) setError(error.message);
 
@@ -289,7 +291,7 @@ export default function ActiviteitenPage() {
                       key={a.id}
                       className={[
                         "rounded-2xl p-4 shadow-sm bg-white",
-                        isIn ? "border-2 border-emerald-600" : "border border-gray-200",
+                        isIn ? "border-2 border-blue-600" : "border border-gray-200",
                       ].join(" ")}
                     >
                       <div className="space-y-3">
@@ -301,7 +303,7 @@ export default function ActiviteitenPage() {
                           </div>
 
                           {isIn && (
-                            <span className="font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full text-sm border border-emerald-200 whitespace-nowrap">
+                            <span className="font-bold text-blue-800 bg-blue-50 px-3 py-1 rounded-full text-sm border border-blue-200 whitespace-nowrap">
                               Jij doet mee
                             </span>
                           )}

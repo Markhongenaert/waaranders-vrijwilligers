@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Vrijwilliger = {
-  id: string; // = auth user id
+  id: string; // = auth user id (jullie keuze)
   user_id: string | null;
-  naam: string | null; // afgeleid in DB via trigger
+  naam: string | null; // afgeleid in DB via trigger (bv. "Voornaam A.")
   voornaam: string | null;
   achternaam: string | null;
   telefoon: string | null;
@@ -18,6 +18,11 @@ type Interesse = {
   titel: string;
   omschrijving: string | null;
 };
+
+function trimOrNull(s: string | null | undefined): string | null {
+  const t = (s ?? "").trim();
+  return t.length ? t : null;
+}
 
 export default function ProfielPage() {
   const [loading, setLoading] = useState(true);
@@ -31,6 +36,12 @@ export default function ProfielPage() {
   const [busy, setBusy] = useState(false);
 
   const selectedCount = useMemo(() => selectedIds.size, [selectedIds]);
+
+  const isValid = useMemo(() => {
+    const vn = (vrijwilliger?.voornaam ?? "").trim();
+    const an = (vrijwilliger?.achternaam ?? "").trim();
+    return vn.length >= 2 && an.length >= 2;
+  }, [vrijwilliger?.voornaam, vrijwilliger?.achternaam]);
 
   useEffect(() => {
     const load = async () => {
@@ -66,7 +77,7 @@ export default function ProfielPage() {
 
       let v = vExisting as Vrijwilliger | null;
 
-      // 1b) Indien nog geen rij: maak er één aan MET id=user.id
+      // 1b) Indien nog geen rij: maak er één aan met id=user.id
       if (!v) {
         const guessed =
           (user.user_metadata as any)?.full_name ??
@@ -78,7 +89,7 @@ export default function ProfielPage() {
             id: user.id,
             user_id: user.id,
             voornaam: guessed,
-            achternaam: "Onbekend", // verplicht in DB; gebruiker past dit aan
+            achternaam: "Onbekend",
             telefoon: null,
             adres: null,
             toestemming_privacy: false,
@@ -146,6 +157,13 @@ export default function ProfielPage() {
       return;
     }
 
+    const { data: sessionRes } = await supabase.auth.getSession();
+    const user = sessionRes.session?.user;
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
     const vn = (vrijwilliger.voornaam ?? "").trim();
     const an = (vrijwilliger.achternaam ?? "").trim();
 
@@ -160,22 +178,14 @@ export default function ProfielPage() {
 
     setBusy(true);
 
-    const { data: sessionRes } = await supabase.auth.getSession();
-    const user = sessionRes.session?.user;
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    // A) Update profiel (voornaam, achternaam, telefoon, adres)
-    // naam wordt automatisch door DB-trigger gezet
+    // A) Update profiel (naam wordt door trigger afgeleid)
     const { error: uErr } = await supabase
       .from("vrijwilligers")
       .update({
         voornaam: vn,
         achternaam: an,
-        telefoon: vrijwilliger.telefoon,
-        adres: vrijwilliger.adres,
+        telefoon: trimOrNull(vrijwilliger.telefoon),
+        adres: trimOrNull(vrijwilliger.adres),
       })
       .eq("id", user.id);
 
@@ -185,24 +195,53 @@ export default function ProfielPage() {
       return;
     }
 
-    // B) Interesses opslaan: replace-all
-    const { error: dErr } = await supabase
+    /**
+     * B) Interesses opslaan: diff i.p.v. delete-all
+     * - werkt beter met RLS (insert/delete own)
+     * - minder kans op “halfweg mislukt → alles weg”
+     */
+    const current = new Set(selectedIds);
+
+    // haal huidige selectie opnieuw op (bron van waarheid)
+    const { data: mine2, error: m2Err } = await supabase
       .from("vrijwilliger_interesses")
-      .delete()
+      .select("interesse_id")
       .eq("vrijwilliger_id", user.id);
 
-    if (dErr) {
-      setErr(dErr.message);
+    if (m2Err) {
+      setErr(m2Err.message);
       setBusy(false);
       return;
     }
 
-    const rows = Array.from(selectedIds).map((interesse_id) => ({
-      vrijwilliger_id: user.id,
-      interesse_id,
-    }));
+    const existing = new Set((mine2 ?? []).map((r: any) => String(r.interesse_id)));
 
-    if (rows.length > 0) {
+    const toInsert = Array.from(current).filter((id) => !existing.has(id));
+    const toDelete = Array.from(existing).filter((id) => !current.has(id));
+
+    if (toDelete.length > 0) {
+      // delete per id (RLS-friendly)
+      for (const interesse_id of toDelete) {
+        const { error: dErr } = await supabase
+          .from("vrijwilliger_interesses")
+          .delete()
+          .eq("vrijwilliger_id", user.id)
+          .eq("interesse_id", interesse_id);
+
+        if (dErr) {
+          setErr(dErr.message);
+          setBusy(false);
+          return;
+        }
+      }
+    }
+
+    if (toInsert.length > 0) {
+      const rows = toInsert.map((interesse_id) => ({
+        vrijwilliger_id: user.id,
+        interesse_id,
+      }));
+
       const { error: insErr } = await supabase.from("vrijwilliger_interesses").insert(rows);
       if (insErr) {
         setErr(insErr.message);
@@ -227,107 +266,139 @@ export default function ProfielPage() {
   })();
 
   return (
-    <main className="p-8 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-6">Jouw profiel</h1>
-
-      <div className="mb-6">
-        <label className="block font-medium mb-2">Voornaam</label>
-        <input
-          className="w-full border rounded-xl p-3"
-          value={vrijwilliger?.voornaam ?? ""}
-          onChange={(e) =>
-            setVrijwilliger((v) => (v ? { ...v, voornaam: e.target.value } : v))
-          }
-          placeholder="bv. Mark"
-        />
-      </div>
-
-      <div className="mb-2">
-        <label className="block font-medium mb-2">
-          Achternaam <span className="text-sm opacity-70">verplicht</span>
-        </label>
-        <input
-          className="w-full border rounded-xl p-3"
-          value={vrijwilliger?.achternaam ?? ""}
-          onChange={(e) =>
-            setVrijwilliger((v) => (v ? { ...v, achternaam: e.target.value } : v))
-          }
-          placeholder="bv. Hongenaert"
-        />
-      </div>
-
-      <p className="text-sm opacity-70 mb-6">
-        We tonen je in de app als: <span className="font-medium opacity-100">{previewNaam}</span>
-      </p>
-
-      <div className="mb-6">
-        <label className="block font-medium mb-2">Telefoon</label>
-        <input
-          className="w-full border rounded-xl p-3"
-          value={vrijwilliger?.telefoon ?? ""}
-          onChange={(e) =>
-            setVrijwilliger((v) => (v ? { ...v, telefoon: e.target.value } : v))
-          }
-          placeholder="+32 …"
-        />
-      </div>
-
-      <div className="mb-6">
-        <label className="block font-medium mb-2">Adres</label>
-        <textarea
-          className="w-full border rounded-xl p-3"
-          rows={3}
-          value={vrijwilliger?.adres ?? ""}
-          onChange={(e) =>
-            setVrijwilliger((v) => (v ? { ...v, adres: e.target.value } : v))
-          }
-          placeholder="Straat + nr, postcode, gemeente"
-        />
-      </div>
-
-      <div className="mb-6">
-        <div className="flex items-baseline justify-between mb-2">
-          <label className="block font-medium">Interesses</label>
-          <span className="text-sm opacity-70">{selectedCount} geselecteerd</span>
-        </div>
-
-        <div className="border rounded-xl p-4 space-y-3">
-          {interesses.map((i) => {
-            const id = String(i.id);
-            return (
-              <label key={id} className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={selectedIds.has(id)}
-                  onChange={() => toggleInteresse(id)}
-                />
-                <div>
-                  <div className="font-medium">{i.titel}</div>
-                  {i.omschrijving && (
-                    <div className="text-sm opacity-70">{i.omschrijving}</div>
-                  )}
-                </div>
-              </label>
-            );
-          })}
-
-          {interesses.length === 0 && (
-            <p className="text-sm opacity-70">Geen interesses gevonden.</p>
-          )}
+    <main className="mx-auto max-w-2xl p-4 sm:p-6 md:p-10">
+      <div className="rounded-2xl p-5 mb-6 bg-blue-600 text-white shadow-sm">
+        <div className="text-xl font-semibold">Jouw profiel</div>
+        <div className="text-sm opacity-95 mt-1">
+          Vul minstens je voornaam en achternaam in. Daarna kan je naar de activiteiten.
         </div>
       </div>
 
-      <button
-        className="border rounded-xl px-5 py-3 font-medium"
-        onClick={save}
-        disabled={busy}
-      >
-        {busy ? "Bezig…" : "Opslaan"}
-      </button>
+      <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-5">
+        {err && (
+          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">
+            Fout: {err}
+          </p>
+        )}
+        {msg && (
+          <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">
+            {msg}
+          </p>
+        )}
 
-      {msg && <p className="mt-4 text-green-700">{msg}</p>}
-      {err && <p className="mt-4 text-red-600">Fout: {err}</p>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block font-medium mb-1">
+              Voornaam <span className="text-red-600">*</span>
+            </label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={vrijwilliger?.voornaam ?? ""}
+              onChange={(e) =>
+                setVrijwilliger((v) => (v ? { ...v, voornaam: e.target.value } : v))
+              }
+              placeholder="bv. Mark"
+              autoComplete="given-name"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">
+              Achternaam <span className="text-red-600">*</span>
+            </label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={vrijwilliger?.achternaam ?? ""}
+              onChange={(e) =>
+                setVrijwilliger((v) => (v ? { ...v, achternaam: e.target.value } : v))
+              }
+              placeholder="bv. Hongenaert"
+              autoComplete="family-name"
+            />
+          </div>
+        </div>
+
+        <p className="text-sm text-gray-600">
+          We tonen je in de app als:{" "}
+          <span className="font-medium text-gray-900">{previewNaam}</span>
+        </p>
+
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <label className="block font-medium mb-1">Telefoon</label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={vrijwilliger?.telefoon ?? ""}
+              onChange={(e) =>
+                setVrijwilliger((v) => (v ? { ...v, telefoon: e.target.value } : v))
+              }
+              placeholder="+32 …"
+              autoComplete="tel"
+              inputMode="tel"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">Adres</label>
+            <textarea
+              className="w-full border rounded-xl p-3 bg-white min-h-[96px]"
+              value={vrijwilliger?.adres ?? ""}
+              onChange={(e) =>
+                setVrijwilliger((v) => (v ? { ...v, adres: e.target.value } : v))
+              }
+              placeholder="Straat + nr, postcode, gemeente"
+              autoComplete="street-address"
+            />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-baseline justify-between mb-2">
+            <label className="block font-medium">Interesses</label>
+            <span className="text-sm text-gray-600">{selectedCount} geselecteerd</span>
+          </div>
+
+          <div className="border rounded-xl p-4 space-y-3">
+            {interesses.map((i) => {
+              const id = String(i.id);
+              return (
+                <label key={id} className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={selectedIds.has(id)}
+                    onChange={() => toggleInteresse(id)}
+                    disabled={busy}
+                  />
+                  <div>
+                    <div className="font-medium">{i.titel}</div>
+                    {i.omschrijving && <div className="text-sm text-gray-600">{i.omschrijving}</div>}
+                  </div>
+                </label>
+              );
+            })}
+
+            {interesses.length === 0 && (
+              <p className="text-sm text-gray-600">Geen interesses gevonden.</p>
+            )}
+          </div>
+        </div>
+
+        <button
+          className="rounded-xl px-5 py-3 font-medium w-full bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60"
+          onClick={save}
+          disabled={busy || !isValid}
+          title={!isValid ? "Vul voornaam en achternaam in" : ""}
+        >
+          {busy ? "Bezig…" : "Opslaan en verder"}
+        </button>
+
+        {!isValid && (
+          <p className="text-sm text-gray-600">
+            <span className="text-red-600">*</span> Voornaam en achternaam zijn verplicht (min. 2 tekens).
+          </p>
+        )}
+      </div>
     </main>
   );
 }
