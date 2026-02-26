@@ -10,14 +10,7 @@ type KlantMini = {
   naam: string;
 };
 
-type DoelgroepMini = {
-  id: string;
-  titel: string;
-  omschrijving: string | null;
-};
-
 function buildReturnTo(): string {
-  // /admin/klanten/nieuw?returnTo=/admin/toevoegen
   return encodeURIComponent("/admin/toevoegen");
 }
 
@@ -33,17 +26,17 @@ export default function ToevoegenActiviteitPage() {
   const [klanten, setKlanten] = useState<KlantMini[]>([]);
   const [klantenLoaded, setKlantenLoaded] = useState(false);
 
-  const [doelgroepen, setDoelgroepen] = useState<DoelgroepMini[]>([]);
-  const [doelgroepenLoaded, setDoelgroepenLoaded] = useState(false);
-
   const [titel, setTitel] = useState("");
   const [toelichting, setToelichting] = useState("");
   const [wanneer, setWanneer] = useState("");
+
+  const [startuur, setStartuur] = useState(""); // "HH:MM"
+  const [einduur, setEinduur] = useState(""); // "HH:MM"
+
   const [aantal, setAantal] = useState<number>(1);
 
-  // FK's (lege string = “nog niets gekozen”)
+  // FK
   const [klantId, setKlantId] = useState<string>("");
-  const [doelgroepId, setDoelgroepId] = useState<string>("");
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,10 +48,7 @@ export default function ToevoegenActiviteitPage() {
   );
   const klantenBeheerHref = "/admin/klanten";
 
-  const noKlanten = klantenLoaded && klanten.length === 0;
-  const noDoelgroepen = doelgroepenLoaded && doelgroepen.length === 0;
-
-  async function loadKlanten(): Promise<KlantMini[]> {
+  const loadKlanten = async (): Promise<KlantMini[]> => {
     setKlantenLoaded(false);
 
     const { data, error: e } = await supabase
@@ -79,28 +69,7 @@ export default function ToevoegenActiviteitPage() {
     setKlanten(list);
     setKlantenLoaded(true);
     return list;
-  }
-
-  async function loadDoelgroepen(): Promise<DoelgroepMini[]> {
-    setDoelgroepenLoaded(false);
-
-    const { data, error: e } = await supabase
-      .from("doelgroepen")
-      .select("id,titel,omschrijving")
-      .order("titel", { ascending: true });
-
-    if (e) {
-      setError(e.message);
-      setDoelgroepen([]);
-      setDoelgroepenLoaded(true);
-      return [];
-    }
-
-    const list = (data ?? []) as DoelgroepMini[];
-    setDoelgroepen(list);
-    setDoelgroepenLoaded(true);
-    return list;
-  }
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -121,18 +90,14 @@ export default function ToevoegenActiviteitPage() {
         return;
       }
 
-      const [kList, dgList] = await Promise.all([loadKlanten(), loadDoelgroepen()]);
+      const kList = await loadKlanten();
 
       // Preselect klant enkel als URL klant_id geldig is
       if (klantIdFromUrl && kList.some((k) => k.id === klantIdFromUrl)) {
         setKlantId(klantIdFromUrl);
       } else {
-        setKlantId(""); // blijft leeg tot user kiest
+        setKlantId("");
       }
-
-      // Doelgroep: geen default; user moet kiezen
-      if (dgList.length > 0) setDoelgroepId("");
-      else setDoelgroepId("");
 
       setLoading(false);
     };
@@ -140,6 +105,8 @@ export default function ToevoegenActiviteitPage() {
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const noKlanten = klantenLoaded && klanten.length === 0;
 
   const save = async () => {
     setError(null);
@@ -157,8 +124,18 @@ export default function ToevoegenActiviteitPage() {
       setError("Klant is verplicht. Maak eerst een klant aan of selecteer er één.");
       return;
     }
-    if (!doelgroepId) {
-      setError("Doelgroep is verplicht. Voeg eerst doelgroepen toe of kies er één.");
+    if (!startuur) {
+      setError("Startuur is verplicht.");
+      return;
+    }
+    if (!einduur) {
+      setError("Einduur is verplicht.");
+      return;
+    }
+
+    // simpele check: einduur moet na startuur liggen (zelfde dag)
+    if (einduur <= startuur) {
+      setError("Einduur moet later zijn dan startuur.");
       return;
     }
 
@@ -168,9 +145,10 @@ export default function ToevoegenActiviteitPage() {
       titel: titel.trim(),
       toelichting: toelichting?.trim() ? toelichting.trim() : null,
       wanneer, // YYYY-MM-DD
+      startuur, // "HH:MM"
+      einduur,  // "HH:MM"
       aantal_vrijwilligers: Number.isFinite(aantal) ? Number(aantal) : 0,
       klant_id: klantId,
-      doelgroep_id: doelgroepId,
       status: "gepland",
     };
 
@@ -184,10 +162,12 @@ export default function ToevoegenActiviteitPage() {
 
     setMsg("Activiteit toegevoegd.");
 
-    // reset (klant/doelgroep houden we NIET automatisch; liever expliciet)
+    // reset (klant laten staan is handig)
     setTitel("");
     setToelichting("");
     setWanneer("");
+    setStartuur("");
+    setEinduur("");
     setAantal(1);
 
     setBusy(false);
@@ -212,9 +192,7 @@ export default function ToevoegenActiviteitPage() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteit toevoegen</h1>
-          <p className="text-sm text-gray-600">
-            Maak een nieuwe activiteit aan en koppel meteen klant + doelgroep.
-          </p>
+          <p className="text-sm text-gray-600">Maak een nieuwe activiteit aan en koppel een klant.</p>
         </div>
 
         <a className="border bg-white rounded-xl px-3 py-2 text-sm" href="/admin/activiteiten">
@@ -233,34 +211,20 @@ export default function ToevoegenActiviteitPage() {
         </p>
       )}
 
-      {(noKlanten || noDoelgroepen) && (
+      {noKlanten && (
         <div className="mb-6 border rounded-2xl p-4 bg-white shadow-sm">
-          {noKlanten && (
-            <>
-              <div className="font-semibold">Er zijn nog geen klanten</div>
-              <p className="text-sm text-gray-700 mt-1">
-                “Klant” is verplicht bij een activiteit. Maak eerst minstens één klant aan.
-              </p>
-              <div className="mt-3 flex gap-2 flex-wrap">
-                <a className="border bg-white rounded-xl px-3 py-2 text-sm" href={nieuweKlantHref}>
-                  + Nieuwe klant
-                </a>
-                <a className="border bg-white rounded-xl px-3 py-2 text-sm" href={klantenBeheerHref}>
-                  Klanten beheren
-                </a>
-              </div>
-            </>
-          )}
-
-          {noDoelgroepen && (
-            <>
-              <div className="font-semibold mt-4">Er zijn nog geen doelgroepen</div>
-              <p className="text-sm text-gray-700 mt-1">
-                “Doelgroep” is verplicht. Voeg eerst doelgroepen toe (tabel{" "}
-                <span className="font-mono">doelgroepen</span>).
-              </p>
-            </>
-          )}
+          <div className="font-semibold">Er zijn nog geen klanten</div>
+          <p className="text-sm text-gray-700 mt-1">
+            “Klant” is verplicht bij een activiteit. Maak eerst minstens één klant aan.
+          </p>
+          <div className="mt-3 flex gap-2 flex-wrap">
+            <a className="border bg-white rounded-xl px-3 py-2 text-sm" href={nieuweKlantHref}>
+              + Nieuwe klant
+            </a>
+            <a className="border bg-white rounded-xl px-3 py-2 text-sm" href={klantenBeheerHref}>
+              Klanten beheren
+            </a>
+          </div>
         </div>
       )}
 
@@ -288,31 +252,6 @@ export default function ToevoegenActiviteitPage() {
               + Nieuwe klant
             </a>
           </div>
-        </div>
-
-        {/* DOELGROEP */}
-        <div>
-          <label className="text-sm font-medium block mb-1">Doelgroep (verplicht)</label>
-          <select
-            className="w-full border rounded-xl p-3 bg-white"
-            value={doelgroepId}
-            onChange={(e) => setDoelgroepId(e.target.value)}
-            disabled={!doelgroepenLoaded || busy || doelgroepen.length === 0}
-            required
-          >
-            <option value="">-- kies doelgroep --</option>
-            {doelgroepen.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.titel}
-              </option>
-            ))}
-          </select>
-
-          {doelgroepId && (
-            <div className="text-xs text-gray-600 mt-1">
-              {doelgroepen.find((d) => d.id === doelgroepId)?.omschrijving ?? ""}
-            </div>
-          )}
         </div>
 
         {/* TITEL */}
@@ -351,6 +290,31 @@ export default function ToevoegenActiviteitPage() {
           />
         </div>
 
+        {/* START/EIND */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium block mb-1">Startuur</label>
+            <input
+              type="time"
+              className="w-full border rounded-xl p-3 bg-white"
+              value={startuur}
+              onChange={(e) => setStartuur(e.target.value)}
+              disabled={busy}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium block mb-1">Einduur</label>
+            <input
+              type="time"
+              className="w-full border rounded-xl p-3 bg-white"
+              value={einduur}
+              onChange={(e) => setEinduur(e.target.value)}
+              disabled={busy}
+            />
+          </div>
+        </div>
+
         {/* AANTAL */}
         <div>
           <label className="text-sm font-medium block mb-1">Aantal vrijwilligers (nodig)</label>
@@ -368,7 +332,7 @@ export default function ToevoegenActiviteitPage() {
           <button
             className="border bg-white rounded-xl px-4 py-2"
             onClick={save}
-            disabled={busy || noKlanten || noDoelgroepen || !klantId || !doelgroepId}
+            disabled={busy || noKlanten || !klantId || !startuur || !einduur}
           >
             {busy ? "Bezig…" : "Opslaan"}
           </button>

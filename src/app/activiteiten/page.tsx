@@ -7,9 +7,10 @@ type Activiteit = {
   id: string;
   titel: string;
   wanneer: string; // YYYY-MM-DD
+  startuur: string | null; // "HH:MM:SS" of "HH:MM"
+  einduur: string | null;  // "HH:MM:SS" of "HH:MM"
   aantal_vrijwilligers: number | null;
   toelichting: string | null;
-  doelgroep: string | null;
 };
 
 type MeedoenRow = {
@@ -61,6 +62,13 @@ function extractNaam(v: MeedoenRow["vrijwilligers"]): string | null {
   return v.naam ?? null;
 }
 
+function hhmm(t: string | null): string | null {
+  if (!t) return null;
+  // "14:00:00" -> "14:00"
+  if (t.length >= 5) return t.slice(0, 5);
+  return t;
+}
+
 export default function ActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Activiteit[]>([]);
@@ -95,7 +103,9 @@ export default function ActiviteitenPage() {
   };
 
   const grouped = useMemo(() => {
-    const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
+    const sorted = [...items].sort((a, b) =>
+      a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0
+    );
 
     const groups: { key: string; title: string; items: Activiteit[] }[] = [];
     const idx = new Map<string, number>();
@@ -132,9 +142,10 @@ export default function ActiviteitenPage() {
 
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
-      .select("id,titel,wanneer,aantal_vrijwilligers,toelichting,doelgroep")
+      .select("id,titel,wanneer,startuur,einduur,aantal_vrijwilligers,toelichting")
       .gte("wanneer", vanaf)
-      .order("wanneer", { ascending: true });
+      .order("wanneer", { ascending: true })
+      .order("startuur", { ascending: true });
 
     if (e1) {
       setError(e1.message);
@@ -245,6 +256,10 @@ export default function ActiviteitenPage() {
                   const showNeed = nodig != null && x > 0;
                   const isAllMissing = nodig != null && x === nodig;
 
+                  const s = hhmm(a.startuur);
+                  const e = hhmm(a.einduur);
+                  const showTime = !!(s && e);
+
                   return (
                     <li
                       key={a.id}
@@ -288,6 +303,14 @@ export default function ActiviteitenPage() {
                             </span>
                           )}
                         </div>
+
+                        {/* NIEUW: uurregel onder datum */}
+                        {showTime && (
+                          <div className="text-sm text-gray-700">
+                            <span className="text-gray-600">van</span> {s}{" "}
+                            <span className="text-gray-600">tot</span> {e}
+                          </div>
+                        )}
 
                         <div className="text-sm text-gray-700">
                           <span className="text-gray-600">Meedoen:</span>{" "}
