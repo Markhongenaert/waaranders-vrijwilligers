@@ -4,8 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Vrijwilliger = {
-  id: string; // = auth user id in jullie schema
-  naam: string | null;
+  id: string; // = auth user id
+  user_id: string | null;
+  naam: string | null; // afgeleid in DB via trigger
+  voornaam: string | null;
+  achternaam: string | null;
   telefoon: string | null;
   adres: string | null;
 };
@@ -48,10 +51,10 @@ export default function ProfielPage() {
         return;
       }
 
-      // 1) Vrijwilliger ophalen via id = auth uid (niet via user_id)
+      // 1) Vrijwilliger ophalen via id = auth uid
       const { data: vExisting, error: vErr } = await supabase
         .from("vrijwilligers")
-        .select("id, naam, telefoon, adres")
+        .select("id, user_id, naam, voornaam, achternaam, telefoon, adres")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -63,19 +66,24 @@ export default function ProfielPage() {
 
       let v = vExisting as Vrijwilliger | null;
 
-      // 1b) Indien nog geen rij: maak er één aan MET id=user.id (anders FK error)
+      // 1b) Indien nog geen rij: maak er één aan MET id=user.id
       if (!v) {
+        const guessed =
+          (user.user_metadata as any)?.full_name ??
+          (user.email ? user.email.split("@")[0] : null);
+
         const { data: created, error: cErr } = await supabase
           .from("vrijwilligers")
           .insert({
-          id: user.id,
-          user_id: user.id,
-          naam: (user.user_metadata as any)?.full_name ?? user.email ?? null,
-          telefoon: null,
-          adres: null,
-          toestemming_privacy: false,  
+            id: user.id,
+            user_id: user.id,
+            voornaam: guessed,
+            achternaam: "Onbekend", // verplicht in DB; gebruiker past dit aan
+            telefoon: null,
+            adres: null,
+            toestemming_privacy: false,
           })
-          .select("id, naam, telefoon, adres")
+          .select("id, user_id, naam, voornaam, achternaam, telefoon, adres")
           .single();
 
         if (cErr) {
@@ -88,7 +96,7 @@ export default function ProfielPage() {
 
       setVrijwilliger(v);
 
-      // 2) Interesses lijst (kolommen: titel/omschrijving)
+      // 2) Interesses lijst
       const { data: ints, error: iErr } = await supabase
         .from("interesses")
         .select("id, titel, omschrijving")
@@ -101,7 +109,7 @@ export default function ProfielPage() {
       }
       setInteresses((ints ?? []) as Interesse[]);
 
-      // 3) Mijn geselecteerde interesses (vrijwilliger_id = auth uid)
+      // 3) Mijn geselecteerde interesses
       const { data: mine, error: mErr } = await supabase
         .from("vrijwilliger_interesses")
         .select("interesse_id")
@@ -138,9 +146,15 @@ export default function ProfielPage() {
       return;
     }
 
-    const n = (vrijwilliger.naam ?? "").trim();
-    if (n.length < 2) {
-      setErr("Kies een naam van minstens 2 tekens.");
+    const vn = (vrijwilliger.voornaam ?? "").trim();
+    const an = (vrijwilliger.achternaam ?? "").trim();
+
+    if (vn.length < 2) {
+      setErr("Voornaam is verplicht (minstens 2 tekens).");
+      return;
+    }
+    if (an.length < 2) {
+      setErr("Achternaam is verplicht (minstens 2 tekens).");
       return;
     }
 
@@ -153,11 +167,13 @@ export default function ProfielPage() {
       return;
     }
 
-    // A) Update profiel (naam, telefoon, adres)
+    // A) Update profiel (voornaam, achternaam, telefoon, adres)
+    // naam wordt automatisch door DB-trigger gezet
     const { error: uErr } = await supabase
       .from("vrijwilligers")
       .update({
-        naam: n,
+        voornaam: vn,
+        achternaam: an,
         telefoon: vrijwilliger.telefoon,
         adres: vrijwilliger.adres,
       })
@@ -169,7 +185,7 @@ export default function ProfielPage() {
       return;
     }
 
-    // B) Interesses opslaan: replace-all (delete + insert)
+    // B) Interesses opslaan: replace-all
     const { error: dErr } = await supabase
       .from("vrijwilliger_interesses")
       .delete()
@@ -202,21 +218,47 @@ export default function ProfielPage() {
 
   if (loading) return <main className="p-8">Laden…</main>;
 
+  const previewNaam = (() => {
+    const vn = (vrijwilliger?.voornaam ?? "").trim();
+    const an = (vrijwilliger?.achternaam ?? "").trim();
+    if (!vn) return "…";
+    if (!an) return vn;
+    return `${vn} ${an.slice(0, 1).toUpperCase()}.`;
+  })();
+
   return (
     <main className="p-8 max-w-2xl">
       <h1 className="text-3xl font-bold mb-6">Jouw profiel</h1>
 
       <div className="mb-6">
-        <label className="block font-medium mb-2">Hoe mogen we je noemen?</label>
+        <label className="block font-medium mb-2">Voornaam</label>
         <input
           className="w-full border rounded-xl p-3"
-          value={vrijwilliger?.naam ?? ""}
+          value={vrijwilliger?.voornaam ?? ""}
           onChange={(e) =>
-            setVrijwilliger((v) => (v ? { ...v, naam: e.target.value } : v))
+            setVrijwilliger((v) => (v ? { ...v, voornaam: e.target.value } : v))
           }
           placeholder="bv. Mark"
         />
       </div>
+
+      <div className="mb-2">
+        <label className="block font-medium mb-2">
+          Achternaam <span className="text-sm opacity-70">verplicht</span>
+        </label>
+        <input
+          className="w-full border rounded-xl p-3"
+          value={vrijwilliger?.achternaam ?? ""}
+          onChange={(e) =>
+            setVrijwilliger((v) => (v ? { ...v, achternaam: e.target.value } : v))
+          }
+          placeholder="bv. Hongenaert"
+        />
+      </div>
+
+      <p className="text-sm opacity-70 mb-6">
+        We tonen je in de app als: <span className="font-medium opacity-100">{previewNaam}</span>
+      </p>
 
       <div className="mb-6">
         <label className="block font-medium mb-2">Telefoon</label>
