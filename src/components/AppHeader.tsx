@@ -44,7 +44,7 @@ export default function AppHeader() {
             href="/profiel"
             className="bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-800 transition"
           >
-            Profiel
+            Jouw profiel
           </a>
 
           {isDoenkerAdmin && (
