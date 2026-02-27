@@ -15,7 +15,7 @@ type Activiteit = {
 
 type MeedoenMetNaamRow = {
   activiteit_id: string;
-  vrijwilliger_id: string; // bij jullie: = auth.uid()
+  vrijwilliger_id: string; // = auth.uid()
   naam: string | null; // roepnaam uit view
 };
 
@@ -58,8 +58,7 @@ function todayISODate() {
 
 function hhmm(t: string | null): string | null {
   if (!t) return null;
-  if (t.length >= 5) return t.slice(0, 5);
-  return t;
+  return t.length >= 5 ? t.slice(0, 5) : t;
 }
 
 function profielOk(v: { voornaam: string | null; achternaam: string | null } | null) {
@@ -72,7 +71,7 @@ export default function ActiviteitenPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Activiteit[]>([]);
   const [meedoen, setMeedoen] = useState<MeedoenMetNaamRow[]>([]);
-  const [myAuthUserId, setMyAuthUserId] = useState<string | null>(null);
+  const [myId, setMyId] = useState<string | null>(null);
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,9 +95,9 @@ export default function ActiviteitenPage() {
   }, [meedoen]);
 
   const ingeschreven = (activiteitId: string) => {
-    if (!myAuthUserId) return false;
+    if (!myId) return false;
     const entry = meedoenByAct.get(activiteitId);
-    return entry ? entry.vrijwilligerIds.has(myAuthUserId) : false;
+    return entry ? entry.vrijwilligerIds.has(myId) : false;
   };
 
   const grouped = useMemo(() => {
@@ -127,20 +126,23 @@ export default function ActiviteitenPage() {
     setLoading(true);
     setError(null);
 
-    const { data: sess, error: sessErr } = await supabase.auth.getSession();
-    if (sessErr) {
-      setError(sessErr.message);
+    // AuthBootstrap heeft al gecheckt dat je ingelogd bent,
+    // maar we halen hier 1x de user op zodat we myId hebben.
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr) {
+      setError(userErr.message);
       setLoading(false);
       return;
     }
 
-    const user = sess.session?.user ?? null;
+    const user = userData.user;
     if (!user) {
+      // Normaal zou AuthBootstrap al redirecten, maar dit is een safe fallback.
       window.location.href = "/login";
       return;
     }
 
-    setMyAuthUserId(user.id);
+    setMyId(user.id);
 
     // Onboarding guard: profiel moet ingevuld zijn
     const { data: vRow, error: vErr } = await supabase
@@ -208,23 +210,34 @@ export default function ActiviteitenPage() {
   }, []);
 
   const inschrijven = async (activiteitId: string) => {
-    if (!myAuthUserId) return;
+    if (!myId) return;
+
     setBusyId(activiteitId);
     setError(null);
 
     const { error } = await supabase.from("meedoen").insert({
       activiteit_id: activiteitId,
-      vrijwilliger_id: myAuthUserId,
+      vrijwilliger_id: myId,
     });
 
-    if (error) setError(error.message);
+    if (error) {
+      setError(error.message);
+      setBusyId(null);
+      return;
+    }
 
-    await loadAll();
+    // Snelle lokale update (voelt sneller dan alles herladen)
+    setMeedoen((prev) => [
+      ...prev,
+      { activiteit_id: activiteitId, vrijwilliger_id: myId, naam: "Jij" },
+    ]);
+
     setBusyId(null);
   };
 
   const uitschrijven = async (activiteitId: string) => {
-    if (!myAuthUserId) return;
+    if (!myId) return;
+
     setBusyId(activiteitId);
     setError(null);
 
@@ -232,11 +245,20 @@ export default function ActiviteitenPage() {
       .from("meedoen")
       .delete()
       .eq("activiteit_id", activiteitId)
-      .eq("vrijwilliger_id", myAuthUserId);
+      .eq("vrijwilliger_id", myId);
 
-    if (error) setError(error.message);
+    if (error) {
+      setError(error.message);
+      setBusyId(null);
+      return;
+    }
 
-    await loadAll();
+    setMeedoen((prev) =>
+      prev.filter(
+        (r) => !(r.activiteit_id === activiteitId && r.vrijwilliger_id === myId)
+      )
+    );
+
     setBusyId(null);
   };
 
@@ -256,7 +278,6 @@ export default function ActiviteitenPage() {
         <div className="space-y-8">
           {grouped.map((g) => (
             <section key={g.key}>
-              {/* maandtitel plakt tegen bovenrand */}
               <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 md:-mx-10">
                 <div className="bg-blue-100 text-black font-semibold px-4 sm:px-6 md:px-10 py-2 border-b border-blue-200">
                   {g.title}
@@ -297,7 +318,12 @@ export default function ActiviteitenPage() {
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className={["whitespace-pre-line break-words text-base sm:text-lg", isIn ? "font-extrabold" : "font-semibold"].join(" ")}>
+                            <div
+                              className={[
+                                "whitespace-pre-line break-words text-base sm:text-lg",
+                                isIn ? "font-extrabold" : "font-semibold",
+                              ].join(" ")}
+                            >
                               {a.titel}
                             </div>
                           </div>

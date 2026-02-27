@@ -1,180 +1,140 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-const COOLDOWN_MS = 60_000;
-
 function isValidEmail(e: string) {
-  // Niet perfect, wel genoeg om obvious typos te vangen zonder streng te zijn.
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
+function humanize(raw?: string) {
+  const msg = (raw || "").toLowerCase();
+  if (msg.includes("invalid login credentials")) return "E-mail of wachtwoord klopt niet.";
+  if (msg.includes("email not confirmed")) return "Je e-mailadres is nog niet bevestigd.";
+  if (msg.includes("rate limit")) return "Te veel pogingen. Wacht even en probeer opnieuw.";
+  return raw || "Onbekende fout.";
+}
+
 export default function LoginPage() {
+  const [mode, setMode] = useState<"login" | "forgot">("login");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-
-  // Cooldown state
-  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
-  const [nowTick, setNowTick] = useState<number>(() => Date.now());
-
-  // tick om countdown te renderen
-  useEffect(() => {
-    const t = setInterval(() => setNowTick(Date.now()), 250);
-    return () => clearInterval(t);
-  }, []);
-
-  const cooldownLeftMs = Math.max(0, cooldownUntil - nowTick);
-  const cooldownLeftSec = Math.ceil(cooldownLeftMs / 1000);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
-  const canSend = !busy && cooldownLeftMs === 0;
-
-  const humanizeAuthError = (raw: string) => {
-    const msg = (raw || "").toLowerCase();
-
-    if (msg.includes("rate limit")) {
-      return "We hebben net al veel login-links verstuurd. Wacht even (± 1–2 minuten) en probeer opnieuw.";
-    }
-    if (msg.includes("invalid email") || msg.includes("email is invalid")) {
-      return "Dit e-mailadres lijkt niet juist. Controleer het even.";
-    }
-    if (msg.includes("redirect") || msg.includes("redirect_to")) {
-      return "De login-link kan niet correct terugkeren naar de app (redirect-instelling). Meld dit even aan Mark.";
-    }
-    if (msg.includes("database error saving new user") || msg.includes("unexpected_failure")) {
-      return "Er liep intern iets mis bij het aanmaken van je account. Probeer straks opnieuw, of verwittig Mark.";
-    }
-    return raw || "Onbekende fout.";
-  };
-
-  const startCooldown = () => {
-    setCooldownUntil(Date.now() + COOLDOWN_MS);
-  };
-
-  const sendMagicLink = async () => {
-    // Harde guards tegen dubbele calls
-    if (busy) return;
-
-    // Cooldown is globaal (niet per mail) omdat Supabase rate limiting niet per e-mail werkt
-    if (cooldownLeftMs > 0) {
-      setErr(`Even wachten: je kan opnieuw proberen over ${cooldownLeftSec}s.`);
-      return;
-    }
-
+  const guardEmail = () => {
     setErr(null);
-    setMessage(null);
-
+    setMsg(null);
     const e = normalizedEmail;
-    if (!e) {
-      setErr("Vul een e-mailadres in.");
-      return;
-    }
-    if (!isValidEmail(e)) {
-      setErr("Dit e-mailadres lijkt niet correct. Controleer het even.");
-      return;
-    }
+    if (!e) return setErr("Vul een e-mailadres in."), null;
+    if (!isValidEmail(e)) return setErr("Dit e-mailadres lijkt niet correct."), null;
+    return e;
+  };
+
+  const login = async () => {
+    const e = guardEmail();
+    if (!e) return;
+    if (!password) return setErr("Vul je wachtwoord in."), undefined;
 
     setBusy(true);
-    startCooldown(); // ook bij mislukking: voorkomt spam-klikken en verergert rate-limits niet
-
     try {
-      // Gebruik steeds dezelfde origin als de gebruiker momenteel gebruikt.
-      // (Let op: als je straks een custom domain gebruikt, zorg dat die in Supabase Redirect URLs staat.)
-      const redirectTo = `${window.location.origin}/auth/callback`;
-
-      // Debug hint (mag je later verwijderen)
-      // console.log("[auth] OTP request for", e, "redirect:", redirectTo);
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: e,
-        options: { emailRedirectTo: redirectTo },
-      });
-
-      if (error) {
-        setErr(humanizeAuthError(error.message));
-        return;
-      }
-
-      setMessage(
-        "Gelukt. Check je mailbox — en je spamfolder als hij zich verstopt 😉"
-      );
+      const { error } = await supabase.auth.signInWithPassword({ email: e, password });
+      if (error) return setErr(humanize(error.message)), undefined;
+      setMsg("Ingelogd.");
+      // je app kan nu vanzelf naar /activiteiten gaan via guard of nav
     } catch (ex: any) {
-      setErr(humanizeAuthError(ex?.message ?? String(ex)));
+      setErr(humanize(ex?.message ?? String(ex)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const forgot = async () => {
+    const e = guardEmail();
+    if (!e) return;
+
+    setBusy(true);
+    try {
+      // Belangrijk: redirectTo moet naar jouw reset route
+      const redirectTo = `${window.location.origin}/auth/reset`;
+      const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo });
+      if (error) return setErr(humanize(error.message)), undefined;
+      setMsg("Reset-mail verstuurd. Check je mailbox (en eventueel spam).");
+      setMode("login");
+    } catch (ex: any) {
+      setErr(humanize(ex?.message ?? String(ex)));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <main className="mx-auto max-w-md p-4 sm:p-6 md:p-10">
-      {/* Header */}
+    <main className="mx-auto max-w-md p-6">
       <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
-        <div className="text-xl font-semibold">Welkom terug</div>
+        <div className="text-xl font-semibold">Waaranders — vrijwilligers</div>
         <div className="text-sm opacity-95 mt-1">
-          Log in om activiteiten te bekijken en je in te schrijven.
+          Je krijgt een uitnodiging van Mark. Daarna kan je hier inloggen.
         </div>
       </div>
 
-      {/* Card */}
-      <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMagicLink();
-          }}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <button
+          className={`rounded-xl py-2 text-sm font-medium border ${mode === "login" ? "bg-white" : "bg-slate-50"}`}
+          onClick={() => { setMsg(null); setErr(null); setMode("login"); }}
+          disabled={busy}
         >
+          Login
+        </button>
+        <button
+          className={`rounded-xl py-2 text-sm font-medium border ${mode === "forgot" ? "bg-white" : "bg-slate-50"}`}
+          onClick={() => { setMsg(null); setErr(null); setMode("forgot"); }}
+          disabled={busy}
+        >
+          Wachtwoord vergeten
+        </button>
+      </div>
+
+      <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
+        <div>
+          <label className="block font-medium mb-1">Email</label>
+          <input
+            className="w-full border rounded-xl p-3 bg-white"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            inputMode="email"
+            disabled={busy}
+          />
+        </div>
+
+        {mode === "login" && (
           <div>
-            <label className="block font-medium mb-1">Email</label>
+            <label className="block font-medium mb-1">Wachtwoord</label>
             <input
               className="w-full border rounded-xl p-3 bg-white"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="naam@voorbeeld.be"
-              autoComplete="email"
-              inputMode="email"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              autoComplete="current-password"
               disabled={busy}
             />
           </div>
-
-          <button
-            type="submit"
-            className="rounded-xl px-5 py-3 font-medium w-full bg-blue-900 text-white hover:bg-blue-800 transition disabled:opacity-60"
-            disabled={!canSend}
-          >
-            {busy
-              ? "Bezig…"
-              : cooldownLeftMs > 0
-              ? `Even wachten… (${cooldownLeftSec}s)`
-              : "Stuur login-link"}
-          </button>
-
-          {cooldownLeftMs > 0 && (
-            <p className="text-sm text-slate-600">
-              Tip: klik niet opnieuw. Je krijgt dezelfde link niet sneller, wél sneller een rate-limit.
-            </p>
-          )}
-        </form>
-
-        {message && (
-          <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">
-            {message}
-          </p>
         )}
 
-        {err && (
-          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">
-            Fout: {err}
-          </p>
-        )}
+        <button
+          className="rounded-xl px-5 py-3 font-medium w-full bg-blue-900 text-white hover:bg-blue-800 transition disabled:opacity-60"
+          disabled={busy}
+          onClick={mode === "login" ? login : forgot}
+        >
+          {busy ? "Bezig…" : mode === "login" ? "Inloggen" : "Stuur reset-mail"}
+        </button>
 
-        <div className="text-xs text-slate-500">
-          Geen mail ontvangen? Kijk even in spam/ongewenst. Hotmail/Outlook durft soms eigenwijs te zijn.
-        </div>
+        {msg && <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">{msg}</p>}
+        {err && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">Fout: {err}</p>}
       </div>
     </main>
   );
