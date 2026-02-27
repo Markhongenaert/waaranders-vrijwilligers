@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-const COOLDOWN_MS = 30_000;
+const COOLDOWN_MS = 60_000;
 
 function isValidEmail(e: string) {
   // Niet perfect, wel genoeg om obvious typos te vangen zonder streng te zijn.
