@@ -5,7 +5,9 @@ import { cookies } from "next/headers";
 export async function GET(request: Request) {
   const url = new URL(request.url);
 
-  const cookieStore = cookies();
+  // ✅ Next 16: cookies() is async
+  const cookieStore = await cookies();
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -21,9 +23,7 @@ export async function GET(request: Request) {
     }
   );
 
-  // Wissel code -> session cookie
   await supabase.auth.exchangeCodeForSession(url);
 
-  // Land na auth op home of activiteiten
   return NextResponse.redirect(new URL("/activiteiten", url.origin));
 }
