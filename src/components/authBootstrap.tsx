@@ -5,9 +5,9 @@ import { supabase } from "@/lib/supabaseClient";
 
 export default function AuthBootstrap() {
   useEffect(() => {
-    const ensureProfile = async () => {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
+    const run = async () => {
+      const { data: sess } = await supabase.auth.getSession();
+      const user = sess.session?.user;
       if (!user) return;
 
       const { error } = await supabase
@@ -26,12 +26,12 @@ export default function AuthBootstrap() {
       }
     };
 
-    ensureProfile();
+    run();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (session?.user) {
-          ensureProfile();
+          run();
         }
       }
     );
