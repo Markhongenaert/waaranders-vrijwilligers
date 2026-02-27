@@ -2,7 +2,7 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import AppHeader from "@/components/AppHeader";
-import AuthBootstrap from "@/components/AuthBootstrap";
+import AuthBootstrap from "@/components/AuthBootstrapTMP";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
