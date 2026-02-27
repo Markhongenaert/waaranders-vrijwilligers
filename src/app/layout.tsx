@@ -2,14 +2,12 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import AppHeader from "@/components/AppHeader";
-import AuthBootstrap from "@/components/AuthBootstrap";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="nl">
       <body>
         {/* Client-side auth bootstrap: maakt/controleert vrijwilligers-profiel na login */}
-        <AuthBootstrap />
 
         <div className="min-h-screen bg-slate-200 text-gray-900">
           <AppHeader />
