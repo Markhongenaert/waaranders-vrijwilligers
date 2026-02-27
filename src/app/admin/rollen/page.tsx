@@ -22,6 +22,20 @@ type VrijwilligerRoleRow = {
 
 type RoleCode = "vrijwilliger" | "doenker" | "admin";
 
+function extractRoleCode(row: any): RoleCode | null {
+  const rr = row?.roles;
+  const code = Array.isArray(rr) ? rr[0]?.code : rr?.code;
+  if (code === "admin" || code === "doenker" || code === "vrijwilliger") return code;
+  return null;
+}
+
+function fmtSupabaseError(e: any): string {
+  if (!e) return "Onbekende fout.";
+  // Supabase errors often have: message, details, hint, code
+  const parts = [e.message, e.details, e.hint, e.code].filter(Boolean);
+  return parts.join(" | ");
+}
+
 export default function RollenPage() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -40,35 +54,19 @@ export default function RollenPage() {
     return m;
   }, [roles]);
 
-  // Huidige rol per vrijwilliger, default = 'vrijwilliger'
   const currentRoleByUser = useMemo(() => {
     const m = new Map<string, RoleCode>();
-
-    const extractCode = (row: any): RoleCode | null => {
-      const rr = row?.roles;
-      if (Array.isArray(rr)) {
-        const c = rr[0]?.code;
-        if (c === "admin" || c === "doenker" || c === "vrijwilliger") return c;
-        return null;
-      }
-      const c = rr?.code;
-      if (c === "admin" || c === "doenker" || c === "vrijwilliger") return c;
-      return null;
-    };
-
     for (const row of vRoles) {
-      const code = extractCode(row);
+      const code = extractRoleCode(row);
       if (code) m.set(row.vrijwilliger_id, code);
     }
-
     return m;
   }, [vRoles]);
 
   const adminCount = useMemo(() => {
     let c = 0;
     for (const row of vRoles) {
-      const rr: any = (row as any).roles;
-      const code = Array.isArray(rr) ? rr[0]?.code : rr?.code;
+      const code = extractRoleCode(row);
       if (code === "admin") c++;
     }
     return c;
@@ -79,22 +77,27 @@ export default function RollenPage() {
     setError(null);
     setMsg(null);
 
-    const { data: sess } = await supabase.auth.getSession();
-    const user = sess.session?.user;
+    const { data: sess, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      setError(`Session fout: ${fmtSupabaseError(sessErr)}`);
+      setLoading(false);
+      return;
+    }
 
+    const user = sess.session?.user;
     if (!user) {
       window.location.href = "/login";
       return;
     }
 
-    // Rollen ophalen (moet bestaan: vrijwilliger/doenker/admin)
+    // Rollen ophalen
     const { data: r, error: er } = await supabase
       .from("roles")
       .select("id,code,titel")
       .in("code", ["vrijwilliger", "doenker", "admin"]);
 
     if (er) {
-      setError(er.message);
+      setError(`Roles lezen faalde: ${fmtSupabaseError(er)}`);
       setLoading(false);
       return;
     }
@@ -103,24 +106,18 @@ export default function RollenPage() {
     setRoles(rolesList);
 
     // Check: ben ik admin?
-    // (via vrijwilliger_roles join roles)
     const { data: myRoles, error: e0 } = await supabase
       .from("vrijwilliger_roles")
       .select("roles(code)")
       .eq("vrijwilliger_id", user.id);
 
     if (e0) {
-      setError(e0.message);
+      setError(`Mijn rollen lezen faalde: ${fmtSupabaseError(e0)} (mogelijk RLS)`);
       setLoading(false);
       return;
     }
 
-    const hasAdmin = (myRoles ?? []).some((row: any) => {
-      const rr = row.roles;
-      const code = Array.isArray(rr) ? rr[0]?.code : rr?.code;
-      return code === "admin";
-    });
-
+    const hasAdmin = (myRoles ?? []).some((row: any) => extractRoleCode(row) === "admin");
     setIsAdmin(hasAdmin);
 
     if (!hasAdmin) {
@@ -135,18 +132,18 @@ export default function RollenPage() {
       .order("naam", { ascending: true });
 
     if (e1) {
-      setError(e1.message);
+      setError(`Vrijwilligers lezen faalde: ${fmtSupabaseError(e1)} (mogelijk RLS)`);
       setLoading(false);
       return;
     }
 
-    // Alle vrijwilliger_roles met join naar role code
+    // Alle vrijwilliger_roles (met join naar role code)
     const { data: vr, error: e2 } = await supabase
       .from("vrijwilliger_roles")
       .select("vrijwilliger_id,rol_id,roles(code)");
 
     if (e2) {
-      setError(e2.message);
+      setError(`Vrijwilliger_roles lezen faalde: ${fmtSupabaseError(e2)} (mogelijk RLS)`);
       setLoading(false);
       return;
     }
@@ -161,13 +158,13 @@ export default function RollenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setRoleForUser = async (userId: string, newRole: RoleCode, myUserId: string) => {
-    setBusyUserId(userId);
+  const setRoleForUser = async (targetVrijwilligerId: string, newRole: RoleCode, myVrijwilligerId: string) => {
+    setBusyUserId(targetVrijwilligerId);
     setError(null);
     setMsg(null);
 
     // voorkom dat je jezelf als laatste admin verwijdert
-    if (userId === myUserId && newRole !== "admin" && adminCount <= 1) {
+    if (targetVrijwilligerId === myVrijwilligerId && newRole !== "admin" && adminCount <= 1) {
       setError("Je kan jezelf niet verwijderen als laatste admin.");
       setBusyUserId(null);
       return;
@@ -180,32 +177,37 @@ export default function RollenPage() {
       return;
     }
 
-    const allRoleIds = ["vrijwilliger", "doenker", "admin"]
-      .map((c) => roleIdByCode.get(c as RoleCode))
+    const allRoleIds = (["vrijwilliger", "doenker", "admin"] as RoleCode[])
+      .map((c) => roleIdByCode.get(c))
       .filter(Boolean) as string[];
 
-    // 1) verwijder bestaande van de 3 basisrollen (zodat het single-choice blijft)
+    // 1) verwijder bestaande basisrollen (single-choice)
     const { error: dErr } = await supabase
       .from("vrijwilliger_roles")
       .delete()
-      .eq("vrijwilliger_id", userId)
+      .eq("vrijwilliger_id", targetVrijwilligerId)
       .in("rol_id", allRoleIds);
 
     if (dErr) {
-      setError(dErr.message);
+      console.error("delete role error:", dErr);
+      setError(`Verwijderen faalde: ${fmtSupabaseError(dErr)} (RLS policy ontbreekt?)`);
       setBusyUserId(null);
       return;
     }
 
     // 2) voeg gekozen rol toe
     const { error: iErr } = await supabase.from("vrijwilliger_roles").insert({
-      vrijwilliger_id: userId,
+      vrijwilliger_id: targetVrijwilligerId,
       rol_id: targetRoleId,
-      toegekend_door: myUserId,
+      toegekend_door: myVrijwilligerId,
     });
 
-    if (iErr) setError(iErr.message);
-    else setMsg("Rol aangepast.");
+    if (iErr) {
+      console.error("insert role error:", iErr);
+      setError(`Toevoegen faalde: ${fmtSupabaseError(iErr)} (RLS policy ontbreekt?)`);
+    } else {
+      setMsg("Rol aangepast.");
+    }
 
     await load();
     setBusyUserId(null);
@@ -293,11 +295,7 @@ function Row({
       </div>
 
       <div className="text-right">
-        <button
-          className="border rounded-xl px-3 py-2 text-sm"
-          onClick={() => onSave(value)}
-          disabled={busy}
-        >
+        <button className="border rounded-xl px-3 py-2 text-sm" onClick={() => onSave(value)} disabled={busy}>
           {busy ? "Bezig…" : "Opslaan"}
         </button>
       </div>

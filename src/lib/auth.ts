@@ -3,21 +3,39 @@ import { supabase } from "@/lib/supabaseClient";
 export type RoleCode = "vrijwilliger" | "doenker" | "admin";
 
 export async function getMyRoleCodes(): Promise<RoleCode[]> {
-  const { data: sess } = await supabase.auth.getSession();
+  const { data: sess, error: sessErr } = await supabase.auth.getSession();
+  if (sessErr) {
+    console.error("getSession error:", sessErr.message);
+    return [];
+  }
+
   const user = sess.session?.user;
   if (!user) return [];
 
+  // 1) Find my vrijwilliger row (public.vrijwilligers.user_id == auth.users.id)
+  const { data: v, error: vErr } = await supabase
+    .from("vrijwilligers")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (vErr) {
+    console.error("getMyRoleCodes vrijwilligers lookup error:", vErr.message);
+    return [];
+  }
+  if (!v?.id) return [];
+
+  // 2) Fetch role codes for that vrijwilliger_id
   const { data, error } = await supabase
     .from("vrijwilliger_roles")
     .select("roles(code)")
-    .eq("vrijwilliger_id", user.id);
+    .eq("vrijwilliger_id", v.id);
 
   if (error) {
     console.error("getMyRoleCodes error:", error.message);
     return [];
   }
 
-  // data looks like: [{ roles: { code: "admin" } }, ...]  OR roles may be array-ish depending on FK
   const codes = (data ?? [])
     .map((r: any) => r.roles?.code)
     .filter(Boolean);
