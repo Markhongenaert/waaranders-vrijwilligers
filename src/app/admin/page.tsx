@@ -36,7 +36,6 @@ export default function AdminPage() {
             className="border rounded-2xl p-6 hover:bg-gray-50 hover:shadow-sm transition"
           >
             <div className="text-lg font-semibold">{t.title}</div>
-            <div className="text-sm text-gray-600 mt-1">{t.desc}</div>
           </a>
         ))}
       </div>
