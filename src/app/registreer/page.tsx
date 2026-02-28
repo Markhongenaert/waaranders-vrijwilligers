@@ -1,3 +1,4 @@
+// src/app/registreer/page.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -12,6 +13,7 @@ function humanize(raw?: string) {
   if (msg.includes("user already registered")) return "Dit e-mailadres bestaat al. Ga naar login.";
   if (msg.includes("password")) return "Wachtwoord is niet sterk genoeg.";
   if (msg.includes("email")) return "Controleer je e-mailadres.";
+  if (msg.includes("rate limit")) return "Te veel pogingen. Wacht even en probeer opnieuw.";
   return raw || "Onbekende fout.";
 }
 
@@ -52,7 +54,9 @@ export default function RegistreerPage() {
         return;
       }
 
-      setMsg("Gelukt. Check je mailbox en klik op de bevestigingslink. Daarna kom je automatisch in je profiel terecht.");
+      setMsg(
+        "Gelukt. Check je mailbox en klik op de bevestigingslink. Daarna kom je automatisch in je profiel terecht."
+      );
     } catch (ex: any) {
       setErr(humanize(ex?.message ?? String(ex)));
     } finally {
@@ -62,8 +66,10 @@ export default function RegistreerPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
-      <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
-        <div className="text-xl font-semibold">Waaranders — eerste keer</div>
+      {/* Header: zoals login (kleiner + lichtblauw + gecentreerd) */}
+      <div className="rounded-2xl p-4 mb-5 bg-sky-100 text-slate-900 shadow-sm border border-sky-200 text-center">
+        <div className="text-lg font-semibold leading-tight">Waaranders vrijwilligers</div>
+        <div className="text-sm text-slate-700 mt-0.5">Account aanmaken</div>
       </div>
 
       <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
@@ -89,6 +95,7 @@ export default function RegistreerPage() {
             autoComplete="new-password"
             disabled={busy}
           />
+          <p className="text-xs text-gray-600 mt-1">Minstens 8 tekens.</p>
         </div>
 
         <div>
@@ -114,13 +121,30 @@ export default function RegistreerPage() {
           {busy ? "Bezig…" : "Account aanmaken"}
         </button>
 
-        <div className="text-sm text-gray-700">
-          Heb je al een account?{" "}
-          <a className="underline" href="/login">Ga naar login</a>
+        {/* Link naar login: prominenter in lichtblauw kadertje */}
+        <div className="rounded-2xl bg-sky-50 border border-sky-200 p-4">
+          <div className="text-sm font-semibold text-slate-900 text-center mb-3">
+            Heb je al een account?
+          </div>
+
+          <a
+            className="block rounded-xl bg-white border border-sky-200 px-4 py-3 text-center font-medium hover:bg-sky-100 transition"
+            href="/login"
+          >
+            Ga naar login
+          </a>
         </div>
 
-        {msg && <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">{msg}</p>}
-        {err && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">{err}</p>}
+        {msg && (
+          <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">
+            {msg}
+          </p>
+        )}
+        {err && (
+          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">
+            {err}
+          </p>
+        )}
       </div>
     </main>
   );
