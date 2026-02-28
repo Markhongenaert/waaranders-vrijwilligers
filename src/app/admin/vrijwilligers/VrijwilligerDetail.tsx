@@ -30,12 +30,21 @@ function toList<T>(x: T | T[] | null | undefined): T[] {
   return Array.isArray(x) ? x : [x];
 }
 
+function uniqSorted(list: string[]) {
+  return Array.from(new Set(list)).sort((a, b) => a.localeCompare(b));
+}
+
 export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // local editable fields
   const [telefoon, setTelefoon] = useState(vrijwilliger.telefoon ?? "");
   const [adres, setAdres] = useState(vrijwilliger.adres ?? "");
+
+  const naam = useMemo(() => {
+    return [vrijwilliger.voornaam ?? "", vrijwilliger.achternaam ?? ""].join(" ").trim() || "—";
+  }, [vrijwilliger.voornaam, vrijwilliger.achternaam]);
 
   const interests = useMemo(() => {
     const vi = toList(vrijwilliger.vrijwilliger_interesses as any);
@@ -43,7 +52,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
       .flatMap((row: any) => toList(row?.interesses))
       .map((i: any) => (i?.titel ?? "").trim())
       .filter(Boolean);
-    return Array.from(new Set(titles)).sort((a, b) => a.localeCompare(b));
+    return uniqSorted(titles);
   }, [vrijwilliger.vrijwilliger_interesses]);
 
   const roles = useMemo(() => {
@@ -52,7 +61,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
       .flatMap((row: any) => toList(row?.roles))
       .map((r: any) => (r?.titel ?? "").trim())
       .filter(Boolean);
-    return Array.from(new Set(titles)).sort((a, b) => a.localeCompare(b));
+    return uniqSorted(titles);
   }, [vrijwilliger.vrijwilliger_roles]);
 
   const save = async () => {
@@ -80,48 +89,77 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
     }
   };
 
-  const naam = [vrijwilliger.voornaam ?? "", vrijwilliger.achternaam ?? ""]
-    .join(" ")
-    .trim();
+  const archive = async () => {
+    const ok = confirm("Vrijwilliger archiveren?");
+    if (!ok) return;
+
+    setErr(null);
+    setBusy(true);
+
+    try {
+      const { error } = await supabase
+        .from("vrijwilligers")
+        .update({
+          actief: false,
+          gearchiveerd_op: new Date().toISOString(),
+        })
+        .eq("id", vrijwilliger.id);
+
+      if (error) throw error;
+
+      // terug naar overzicht (met eventueel q-param)
+      window.location.href = returnHref ?? "/admin/vrijwilligers";
+    } catch (e: any) {
+      setErr(e?.message ?? "Fout bij archiveren.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div className="rounded-xl border p-4 space-y-4">
-      <div>
-        <div className="text-sm text-gray-600">Vrijwilliger</div>
-        <div className="text-lg font-semibold">{naam || "—"}</div>
+    // key zorgt dat local state (telefoon/adres) reset bij wisselen van record
+    <div key={vrijwilliger.id} className="space-y-4">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 shadow-sm p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm text-gray-600">Vrijwilliger</div>
+            <div className="text-lg font-semibold text-gray-900">{naam}</div>
+          </div>
+        </div>
+
+        {err && (
+          <div className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-red-700">
+            {err}
+          </div>
+        )}
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block font-medium mb-1">Telefoon</label>
+            <input
+              className="w-full border border-gray-200 rounded-xl p-3 bg-white"
+              value={telefoon}
+              onChange={(e) => setTelefoon(e.target.value)}
+              inputMode="tel"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">Adres</label>
+            <input
+              className="w-full border border-gray-200 rounded-xl p-3 bg-white"
+              value={adres}
+              onChange={(e) => setAdres(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
-      {err && (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700">
-          {err}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className="block font-medium mb-1">Telefoon</label>
-          <input
-            className="w-full border rounded-xl p-3"
-            value={telefoon}
-            onChange={(e) => setTelefoon(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="block font-medium mb-1">Adres</label>
-          <input
-            className="w-full border rounded-xl p-3"
-            value={adres}
-            onChange={(e) => setAdres(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-xl border p-3">
-          <div className="font-medium mb-2">Interesses</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+          <div className="font-semibold mb-2">Interesses</div>
           {interests.length ? (
-            <ul className="list-disc pl-5 space-y-1">
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-800">
               {interests.map((t) => (
                 <li key={t}>{t}</li>
               ))}
@@ -131,10 +169,10 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
           )}
         </div>
 
-        <div className="rounded-xl border p-3">
-          <div className="font-medium mb-2">Rol(len)</div>
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+          <div className="font-semibold mb-2">Rol(len)</div>
           {roles.length ? (
-            <ul className="list-disc pl-5 space-y-1">
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-800">
               {roles.map((t) => (
                 <li key={t}>{t}</li>
               ))}
@@ -145,16 +183,27 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <button
-          className="border rounded-xl px-5 py-3 font-medium"
+          className="border rounded-xl px-5 py-3 font-semibold bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
           onClick={save}
           disabled={busy}
         >
           {busy ? "Bezig…" : "Opslaan"}
         </button>
 
-        <a className="border rounded-xl px-5 py-3 font-medium" href={returnHref ?? "/admin/vrijwilligers"}>
+        <button
+          className="border rounded-xl px-5 py-3 font-semibold text-red-700 bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
+          onClick={archive}
+          disabled={busy}
+        >
+          Archiveren
+        </button>
+
+        <a
+          className="border rounded-xl px-5 py-3 font-semibold bg-white shadow-sm hover:shadow-md transition"
+          href={returnHref ?? "/admin/vrijwilligers"}
+        >
           Terug
         </a>
       </div>
