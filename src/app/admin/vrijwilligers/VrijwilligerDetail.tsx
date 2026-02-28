@@ -17,14 +17,8 @@ type Props = {
       | null;
 
     vrijwilliger_roles:
-      | {
-          roles: { titel: string | null } | { titel: string | null }[] | null;
-          rollen?: { titel: string | null } | { titel: string | null }[] | null;
-        }
-      | {
-          roles: { titel: string | null } | { titel: string | null }[] | null;
-          rollen?: { titel: string | null } | { titel: string | null }[] | null;
-        }[]
+      | { roles: { titel: string | null } | { titel: string | null }[] | null }
+      | { roles: { titel: string | null } | { titel: string | null }[] | null }[]
       | null;
   };
   onSaved: (patch: { telefoon: string | null; adres: string | null }) => void;
@@ -42,29 +36,28 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
   const [telefoon, setTelefoon] = useState(vrijwilliger.telefoon ?? "");
   const [adres, setAdres] = useState(vrijwilliger.adres ?? "");
 
-  // als je van vrijwilliger wisselt, moeten inputs mee wisselen
-  // (simpel gehouden zonder useEffect: key op root div)
   const interests = useMemo(() => {
     const vi = toList(vrijwilliger.vrijwilliger_interesses as any);
     const titles = vi
       .flatMap((row: any) => toList(row?.interesses))
       .map((i: any) => (i?.titel ?? "").trim())
       .filter(Boolean);
-    return Array.from(new Set(titles)).sort((a, b) => a.localeCompare(b));
+
+    return Array.from(new Set(titles)).sort((a, b) =>
+      a.localeCompare(b)
+    );
   }, [vrijwilliger.vrijwilliger_interesses]);
 
   const roles = useMemo(() => {
     const vr = toList(vrijwilliger.vrijwilliger_roles as any);
-    // ondersteunt zowel roles(titel) als rollen(titel)
     const titles = vr
-      .flatMap((row: any) => {
-        const a = toList(row?.roles);
-        const b = toList(row?.rollen);
-        return [...a, ...b];
-      })
+      .flatMap((row: any) => toList(row?.roles))
       .map((r: any) => (r?.titel ?? "").trim())
       .filter(Boolean);
-    return Array.from(new Set(titles)).sort((a, b) => a.localeCompare(b));
+
+    return Array.from(new Set(titles)).sort((a, b) =>
+      a.localeCompare(b)
+    );
   }, [vrijwilliger.vrijwilliger_roles]);
 
   const save = async () => {
@@ -86,7 +79,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
 
       onSaved(payload);
     } catch (e: any) {
-      setErr(e?.message ?? "Onbekende fout bij opslaan.");
+      setErr(e?.message ?? "Fout bij opslaan.");
     } finally {
       setBusy(false);
     }
@@ -97,7 +90,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
     .trim();
 
   return (
-    <div key={vrijwilliger.id} className="rounded-xl border p-4 space-y-4">
+    <div className="rounded-xl border p-4 space-y-4">
       <div>
         <div className="text-sm text-gray-600">Vrijwilliger</div>
         <div className="text-lg font-semibold">{naam || "—"}</div>
@@ -139,7 +132,9 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
               ))}
             </ul>
           ) : (
-            <div className="text-sm text-gray-600">Geen interesses aangevinkt.</div>
+            <div className="text-sm text-gray-600">
+              Geen interesses.
+            </div>
           )}
         </div>
 
@@ -152,7 +147,9 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
               ))}
             </ul>
           ) : (
-            <div className="text-sm text-gray-600">Geen rol gevonden.</div>
+            <div className="text-sm text-gray-600">
+              Geen rollen.
+            </div>
           )}
         </div>
       </div>
@@ -165,8 +162,12 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
         >
           {busy ? "Bezig…" : "Opslaan"}
         </button>
-        <a className="border rounded-xl px-5 py-3 font-medium" href="/admin">
-          Annuleren
+
+        <a
+          className="border rounded-xl px-5 py-3 font-medium"
+          href="/admin"
+        >
+          Terug
         </a>
       </div>
     </div>
