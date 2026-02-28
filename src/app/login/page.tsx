@@ -93,9 +93,7 @@ export default function LoginPage() {
     <main className="mx-auto max-w-md p-6">
       <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
         <div className="text-xl font-semibold">Waaranders — vrijwilligers</div>
-        <div className="text-sm opacity-95 mt-1">
-          Gebruik de link die je van Mark kreeg. Daarna kan je hier inloggen.
-        </div>
+
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
