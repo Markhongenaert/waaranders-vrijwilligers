@@ -3,40 +3,47 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export default async function RootPage() {
-  const cookieStore = cookies();
+  // Next.js 16: cookies() is async
+  const cookieStore = await cookies();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: () => cookieStore }
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          // In Server Components kan setten soms niet (read-only). Voor onze redirect-flow is dat ok.
+          // Toch proberen we best-effort, zodat het in contexts waar het wél kan (bv. route handlers) blijft werken.
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // ignore
+          }
+        },
+      },
+    }
   );
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Niet ingelogd → login
-  if (!session?.user) {
-    redirect("/login");
-  }
+  if (!session?.user) redirect("/login");
 
-  // Vrijwilliger ophalen
   const { data: v } = await supabase
     .from("vrijwilligers")
     .select("voornaam, achternaam, actief")
     .eq("user_id", session.user.id)
     .maybeSingle();
 
-  // Geen vrijwilliger-record of gearchiveerd → login
-  if (!v || v.actief === false) {
-    redirect("/login?blocked=1");
-  }
+  if (!v || v.actief === false) redirect("/login?blocked=1");
 
-  // Eerste keer? (naam ontbreekt)
-  if (!v.voornaam || !v.achternaam) {
-    redirect("/profiel");
-  }
+  if (!v.voornaam || !v.achternaam) redirect("/profiel");
 
-  // Normale situatie
   redirect("/activiteiten");
 }
