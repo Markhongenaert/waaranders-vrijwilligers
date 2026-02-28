@@ -16,6 +16,7 @@ type Todo = {
 type Vrijwilliger = {
   id: string;
   naam: string | null;
+  actief?: boolean | null;
 };
 
 function formatTodoDatum(dateStr: string | null) {
@@ -75,9 +76,11 @@ export default function AdminTodosPage() {
       return;
     }
 
+    // ✅ Alleen actieve vrijwilligers in de selector
     const { data: v, error: eV } = await supabase
       .from("vrijwilligers")
-      .select("id,naam")
+      .select("id,naam,actief")
+      .eq("actief", true)
       .order("naam", { ascending: true });
 
     if (eV) {
@@ -96,8 +99,14 @@ export default function AdminTodosPage() {
       return;
     }
 
-    setVrijwilligers((v ?? []) as Vrijwilliger[]);
+    const activeVrijwilligers = (v ?? []) as Vrijwilliger[];
+    setVrijwilligers(activeVrijwilligers);
     setItems((t ?? []) as Todo[]);
+
+    // ✅ Safety net: als geselecteerde persoon niet meer actief is -> terug naar "Iedereen"
+    const activeIds = new Set(activeVrijwilligers.map((x) => x.id));
+    setSelectedUserId((prev) => (prev !== "alle" && !activeIds.has(prev) ? "alle" : prev));
+
     setLoading(false);
   };
 
@@ -134,7 +143,6 @@ export default function AdminTodosPage() {
   const groupedByPerson = useMemo(() => {
     if (selectedUserId !== "alle") return [];
 
-    // per persoon id groeperen
     const map = new Map<string, Todo[]>();
     for (const t of filtered) {
       const uid = t.wie_vrijwilliger_id;
@@ -142,7 +150,6 @@ export default function AdminTodosPage() {
       map.get(uid)!.push(t);
     }
 
-    // sorteer per persoon op naam
     const groups = Array.from(map.entries()).map(([uid, todos]) => ({
       uid,
       naam: naamById.get(uid) || "(onbekend)",
@@ -154,7 +161,6 @@ export default function AdminTodosPage() {
   }, [filtered, selectedUserId, naamById]);
 
   const flatSorted = useMemo(() => {
-    // wanneer 1 persoon gekozen is
     if (selectedUserId === "alle") return [];
     const arr = [...filtered];
     arr.sort(sortByDateAsc);

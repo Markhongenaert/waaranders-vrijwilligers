@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { isDoenkerOrAdmin } from "@/lib/auth";
+import { isDoenkerOrAdmin, isMyVolunteerActive } from "@/lib/auth";
 
 export default function AppHeader() {
   const [isDoenkerAdmin, setIsDoenkerAdmin] = useState(false);
@@ -14,6 +14,15 @@ export default function AppHeader() {
 
       if (!user) {
         setIsDoenkerAdmin(false);
+        return;
+      }
+
+      // 🔒 Controle: is vrijwilliger nog actief?
+      const active = await isMyVolunteerActive();
+      if (!active) {
+        await supabase.auth.signOut();
+        window.location.href =
+          "/login?blocked=1";
         return;
       }
 
@@ -49,7 +58,7 @@ export default function AppHeader() {
 
           {isDoenkerAdmin && (
             <a
-              href="/admin"
+              href="/doenkers"
               className="wa-btn wa-btn-brand px-4 py-2 text-sm font-semibold"
             >
               Doenkers
