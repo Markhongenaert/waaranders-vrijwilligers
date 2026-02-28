@@ -1,13 +1,7 @@
 "use client";
 
-type Tile = {
-  title: string;
-  desc: string;
-  href: string;
-};
-
 export default function AdminPage() {
-  const tiles: Tile[] = [
+  const tiles = [
     {
       title: "Activiteiten",
       desc: "Overzicht en beheer van activiteiten.",
@@ -36,13 +30,8 @@ export default function AdminPage() {
   ];
 
   return (
-    <main className="p-4 md:p-6 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Beheer</h1>
-        <a className="border rounded-xl px-4 py-2" href="/">
-          Home
-        </a>
-      </div>
+    <main className="p-6 space-y-4">
+      <h1 className="text-xl font-semibold">Beheer</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {tiles.map((t) => (
