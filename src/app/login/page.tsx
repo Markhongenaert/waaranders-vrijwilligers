@@ -68,8 +68,9 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
-      <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
-        <div className="text-xl font-semibold">Waaranders — vrijwilligers</div>
+      {/* Header: kleiner + lichtblauw + gecentreerd + zonder koppelteken */}
+      <div className="rounded-2xl p-4 mb-5 bg-sky-100 text-slate-900 shadow-sm border border-sky-200 text-center">
+        <div className="text-lg font-semibold leading-tight">Waaranders vrijwilligers</div>
       </div>
 
       <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
@@ -108,13 +109,27 @@ export default function LoginPage() {
           {busy ? "Bezig…" : "Inloggen"}
         </button>
 
-        <div className="text-sm text-gray-700 flex flex-col gap-2">
-          <a className="underline" href="/registreer">
-            Eerste keer? Account aanmaken
-          </a>
-          <a className="underline" href="/wachtwoord-vergeten">
-            Wachtwoord vergeten?
-          </a>
+        {/* Links: in lichtblauw kadertje, opvallender */}
+        <div className="rounded-2xl bg-sky-50 border border-sky-200 p-4">
+          <div className="text-sm font-semibold text-slate-900 text-center mb-3">
+            Eerste keer of probleem met je wachtwoord?
+          </div>
+
+          <div className="grid grid-cols-1 gap-2">
+            <a
+              className="rounded-xl bg-white border border-sky-200 px-4 py-3 text-center font-medium hover:bg-sky-100 transition"
+              href="/registreer"
+            >
+              Eerste keer account aanmaken
+            </a>
+
+            <a
+              className="rounded-xl bg-white border border-sky-200 px-4 py-3 text-center font-medium hover:bg-sky-100 transition"
+              href="/wachtwoord-vergeten"
+            >
+              Wachtwoord vergeten
+            </a>
+          </div>
         </div>
 
         {msg && (
