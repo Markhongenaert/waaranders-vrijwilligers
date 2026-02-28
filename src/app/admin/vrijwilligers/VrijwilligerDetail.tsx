@@ -22,6 +22,7 @@ type Props = {
       | null;
   };
   onSaved: (patch: { telefoon: string | null; adres: string | null }) => void;
+  returnHref?: string;
 };
 
 function toList<T>(x: T | T[] | null | undefined): T[] {
@@ -29,7 +30,7 @@ function toList<T>(x: T | T[] | null | undefined): T[] {
   return Array.isArray(x) ? x : [x];
 }
 
-export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
+export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -42,10 +43,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
       .flatMap((row: any) => toList(row?.interesses))
       .map((i: any) => (i?.titel ?? "").trim())
       .filter(Boolean);
-
-    return Array.from(new Set(titles)).sort((a, b) =>
-      a.localeCompare(b)
-    );
+    return Array.from(new Set(titles)).sort((a, b) => a.localeCompare(b));
   }, [vrijwilliger.vrijwilliger_interesses]);
 
   const roles = useMemo(() => {
@@ -54,10 +52,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
       .flatMap((row: any) => toList(row?.roles))
       .map((r: any) => (r?.titel ?? "").trim())
       .filter(Boolean);
-
-    return Array.from(new Set(titles)).sort((a, b) =>
-      a.localeCompare(b)
-    );
+    return Array.from(new Set(titles)).sort((a, b) => a.localeCompare(b));
   }, [vrijwilliger.vrijwilliger_roles]);
 
   const save = async () => {
@@ -132,9 +127,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
               ))}
             </ul>
           ) : (
-            <div className="text-sm text-gray-600">
-              Geen interesses.
-            </div>
+            <div className="text-sm text-gray-600">Geen interesses.</div>
           )}
         </div>
 
@@ -147,9 +140,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
               ))}
             </ul>
           ) : (
-            <div className="text-sm text-gray-600">
-              Geen rollen.
-            </div>
+            <div className="text-sm text-gray-600">Geen rollen.</div>
           )}
         </div>
       </div>
@@ -163,10 +154,7 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved }: Props) {
           {busy ? "Bezig…" : "Opslaan"}
         </button>
 
-        <a
-          className="border rounded-xl px-5 py-3 font-medium"
-          href="/admin"
-        >
+        <a className="border rounded-xl px-5 py-3 font-medium" href={returnHref ?? "/admin/vrijwilligers"}>
           Terug
         </a>
       </div>

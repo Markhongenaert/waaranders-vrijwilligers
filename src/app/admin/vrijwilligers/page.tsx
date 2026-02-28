@@ -3,10 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
-import VrijwilligerDetail from "./VrijwilligerDetail";
-
-type InteresseMini = { titel: string | null };
-type RolMini = { titel: string | null };
 
 type Vrijwilliger = {
   id: string;
@@ -14,56 +10,42 @@ type Vrijwilliger = {
   achternaam: string | null;
   telefoon: string | null;
   adres: string | null;
-
-  vrijwilliger_interesses:
-    | { interesses: InteresseMini | InteresseMini[] | null }
-    | { interesses: InteresseMini | InteresseMini[] | null }[]
-    | null;
-
-  vrijwilliger_roles:
-    | { roles: RolMini | RolMini[] | null }
-    | { roles: RolMini | RolMini[] | null }[]
-    | null;
 };
 
 function norm(s: string) {
-  return s.trim().toLowerCase();
+  return (s ?? "").trim().toLowerCase();
 }
 
 function fullName(v: Vrijwilliger) {
   return [v.voornaam ?? "", v.achternaam ?? ""].join(" ").trim() || "—";
 }
 
-export default function VrijwilligersAdminPage() {
+export default function VrijwilligersOverzichtPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const [rows, setRows] = useState<Vrijwilliger[]>([]);
   const [q, setQ] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // 🔐 rechtencontrole
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       const ok = await isDoenkerOrAdmin();
       if (!mounted) return;
       setAllowed(ok);
     })();
-
     return () => {
       mounted = false;
     };
   }, []);
 
-  // 📥 data ophalen
+  // 📥 lijst ophalen (licht: enkel velden nodig voor tegels)
   useEffect(() => {
     if (allowed !== true) return;
 
     let mounted = true;
-
     (async () => {
       setLoading(true);
       setErr(null);
@@ -71,32 +53,14 @@ export default function VrijwilligersAdminPage() {
       try {
         const { data, error } = await supabase
           .from("vrijwilligers")
-          .select(`
-            id,
-            voornaam,
-            achternaam,
-            telefoon,
-            adres,
-            vrijwilliger_interesses(
-              interesses(titel)
-            ),
-            vrijwilliger_roles!vr_vrijwilliger_fkey(
-              roles(titel)
-            )
-          `)
+          .select("id, voornaam, achternaam, telefoon, adres")
           .order("achternaam", { ascending: true, nullsFirst: false })
           .order("voornaam", { ascending: true, nullsFirst: false });
 
         if (error) throw error;
 
-        const list = (data ?? []) as Vrijwilliger[];
-
         if (!mounted) return;
-        setRows(list);
-
-        if (!selectedId && list.length) {
-          setSelectedId(list[0].id);
-        }
+        setRows((data ?? []) as Vrijwilliger[]);
       } catch (e: any) {
         if (!mounted) return;
         setErr(e?.message ?? "Fout bij laden.");
@@ -114,29 +78,10 @@ export default function VrijwilligersAdminPage() {
   const filtered = useMemo(() => {
     const needle = norm(q);
     if (!needle) return rows;
-
-    return rows.filter((v) =>
-      fullName(v).toLowerCase().includes(needle)
-    );
+    return rows.filter((v) => norm(fullName(v)).includes(needle));
   }, [q, rows]);
 
-  const selected = useMemo(
-    () => rows.find((r) => r.id === selectedId) ?? null,
-    [rows, selectedId]
-  );
-
-  const updateLocal = (
-    id: string,
-    patch: { telefoon: string | null; adres: string | null }
-  ) => {
-    setRows((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...patch } : r))
-    );
-  };
-
-  if (allowed === null) {
-    return <main className="p-6">Laden…</main>;
-  }
+  if (allowed === null) return <main className="p-6">Laden…</main>;
 
   if (allowed === false) {
     return (
@@ -150,7 +95,12 @@ export default function VrijwilligersAdminPage() {
 
   return (
     <main className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold">Vrijwilligers</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Vrijwilligers</h1>
+        <a className="border rounded-xl px-4 py-2" href="/admin">
+          Terug naar Beheer
+        </a>
+      </div>
 
       {err && (
         <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700">
@@ -158,54 +108,41 @@ export default function VrijwilligersAdminPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Lijst */}
-        <div className="space-y-3">
-          <input
-            className="w-full border rounded-xl p-3"
-            placeholder="Zoek vrijwilliger…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+      <input
+        className="w-full border rounded-xl p-3"
+        placeholder="Zoek op voornaam/achternaam…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
 
-          <div className="rounded-xl border divide-y">
-            {loading ? (
-              <div className="p-3 text-gray-600">Laden…</div>
-            ) : filtered.length === 0 ? (
-              <div className="p-3 text-gray-600">Geen resultaten</div>
-            ) : (
-              filtered.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => setSelectedId(v.id)}
-                  className={`w-full text-left p-3 hover:bg-gray-50 ${
-                    selectedId === v.id ? "bg-gray-50" : ""
-                  }`}
-                >
-                  <div className="font-medium">{fullName(v)}</div>
-                  <div className="text-sm text-gray-600">
-                    {v.telefoon ?? "—"}
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+      {loading ? (
+        <div className="text-gray-600">Laden…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-gray-600">Geen resultaten.</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((v) => {
+            const name = fullName(v);
+            const href = `/admin/vrijwilligers/${v.id}?q=${encodeURIComponent(
+              q.trim()
+            )}`;
 
-        {/* Detail */}
-        <div className="lg:col-span-2">
-          {selected ? (
-            <VrijwilligerDetail
-              vrijwilliger={selected}
-              onSaved={(patch) => updateLocal(selected.id, patch)}
-            />
-          ) : (
-            <div className="rounded-xl border p-4 text-gray-600">
-              Selecteer links een vrijwilliger.
-            </div>
-          )}
+            return (
+              <a
+                key={v.id}
+                href={href}
+                className="border rounded-2xl p-5 hover:bg-gray-50 hover:shadow-sm transition"
+              >
+                <div className="text-lg font-semibold">{name}</div>
+                <div className="text-sm text-gray-600 mt-1">
+                  {v.telefoon ? v.telefoon : "—"}
+                  {v.adres ? ` • ${v.adres}` : ""}
+                </div>
+              </a>
+            );
+          })}
         </div>
-      </div>
+      )}
     </main>
   );
 }
