@@ -58,7 +58,7 @@ export default function AppHeader() {
 
           {isDoenkerAdmin && (
             <a
-              href="/doenkers"
+              href="/admin"
               className="wa-btn wa-btn-brand px-4 py-2 text-sm font-semibold"
             >
               Doenkers
