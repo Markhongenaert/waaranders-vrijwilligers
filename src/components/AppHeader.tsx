@@ -8,29 +8,51 @@ export default function AppHeader() {
   const [isDoenkerAdmin, setIsDoenkerAdmin] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const init = async () => {
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user ?? null;
 
       if (!user) {
-        setIsDoenkerAdmin(false);
+        if (!cancelled) setIsDoenkerAdmin(false);
         return;
       }
 
-      // 🔒 Controle: is vrijwilliger nog actief?
+      // 🔒 geblokkeerde/gearchiveerde vrijwilliger -> uitloggen + melding
       const active = await isMyVolunteerActive();
       if (!active) {
         await supabase.auth.signOut();
-        window.location.href =
-          "/login?blocked=1";
+        window.location.href = "/login?blocked=1";
         return;
       }
 
       const ok = await isDoenkerOrAdmin();
-      setIsDoenkerAdmin(ok);
+      if (!cancelled) setIsDoenkerAdmin(ok);
     };
 
+    // eerste init
     init();
+
+    // ✅ luister naar login/logout en refresh meteen
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        setIsDoenkerAdmin(false);
+        return;
+      }
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        // kleine tick zodat session zeker beschikbaar is
+        setTimeout(() => {
+          if (!cancelled) init();
+        }, 0);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      sub?.subscription?.unsubscribe();
+    };
   }, []);
 
   const logout = async () => {

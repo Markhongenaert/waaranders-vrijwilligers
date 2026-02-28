@@ -3,14 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+type RoleCode = "vrijwilliger" | "doenker" | "admin";
+
 type Vrijwilliger = {
   id: string;
   naam: string | null;
+  actief?: boolean | null;
 };
 
 type Role = {
   id: string;
-  code: "vrijwilliger" | "doenker" | "admin";
+  code: RoleCode;
   titel: string;
 };
 
@@ -19,8 +22,6 @@ type VrijwilligerRoleRow = {
   rol_id: string;
   roles?: { code?: string } | { code?: string }[] | null;
 };
-
-type RoleCode = "vrijwilliger" | "doenker" | "admin";
 
 function extractRoleCode(row: any): RoleCode | null {
   const rr = row?.roles;
@@ -31,7 +32,6 @@ function extractRoleCode(row: any): RoleCode | null {
 
 function fmtSupabaseError(e: any): string {
   if (!e) return "Onbekende fout.";
-  // Supabase errors often have: message, details, hint, code
   const parts = [e.message, e.details, e.hint, e.code].filter(Boolean);
   return parts.join(" | ");
 }
@@ -72,25 +72,51 @@ export default function RollenPage() {
     return c;
   }, [vRoles]);
 
+  // Belangrijk: in jouw schema is `vrijwilliger_roles.vrijwilliger_id` een FK naar `vrijwilligers.id`
+  // (niet naar auth.users.id). Dus: eerst mijn vrijwilligers.id ophalen via user_id.
+  const getMyVrijwilligerId = async (): Promise<string | null> => {
+    const { data: sess, error: sessErr } = await supabase.auth.getSession();
+    if (sessErr) {
+      setError(`Session fout: ${fmtSupabaseError(sessErr)}`);
+      return null;
+    }
+    const user = sess.session?.user ?? null;
+    if (!user) return null;
+
+    const { data: v, error } = await supabase
+      .from("vrijwilligers")
+      .select("id, actief")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      setError(`Vrijwilliger lookup faalde: ${fmtSupabaseError(error)} (mogelijk RLS)`);
+      return null;
+    }
+
+    // Als je geen vrijwilliger-record hebt of je bent gearchiveerd, geen admin-tools.
+    if (!v?.id) return null;
+    if (v.actief === false) return null;
+
+    return v.id as string;
+  };
+
   const load = async () => {
     setLoading(true);
     setError(null);
     setMsg(null);
 
-    const { data: sess, error: sessErr } = await supabase.auth.getSession();
-    if (sessErr) {
-      setError(`Session fout: ${fmtSupabaseError(sessErr)}`);
+    const myVrijwilligerId = await getMyVrijwilligerId();
+    if (!myVrijwilligerId) {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user ?? null;
+      if (!user) window.location.href = "/login";
+      setIsAdmin(false);
       setLoading(false);
       return;
     }
 
-    const user = sess.session?.user;
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    // Rollen ophalen
+    // 1) Rollen (ids) ophalen
     const { data: r, error: er } = await supabase
       .from("roles")
       .select("id,code,titel")
@@ -105,11 +131,11 @@ export default function RollenPage() {
     const rolesList = (r ?? []) as Role[];
     setRoles(rolesList);
 
-    // Check: ben ik admin?
+    // 2) Check: ben ik admin? (via vrijwilliger_roles voor mijn vrijwilligers.id)
     const { data: myRoles, error: e0 } = await supabase
       .from("vrijwilliger_roles")
       .select("roles(code)")
-      .eq("vrijwilliger_id", user.id);
+      .eq("vrijwilliger_id", myVrijwilligerId);
 
     if (e0) {
       setError(`Mijn rollen lezen faalde: ${fmtSupabaseError(e0)} (mogelijk RLS)`);
@@ -125,11 +151,12 @@ export default function RollenPage() {
       return;
     }
 
-    // Vrijwilligerslijst
+    // 3) Vrijwilligerslijst (✅ enkel actief)
     const { data: v, error: e1 } = await supabase
       .from("vrijwilligers")
-      .select("id,naam")
-      .order("naam", { ascending: true });
+      .select("id, naam, actief")
+      .eq("actief", true)
+      .order("naam", { ascending: true, nullsFirst: false });
 
     if (e1) {
       setError(`Vrijwilligers lezen faalde: ${fmtSupabaseError(e1)} (mogelijk RLS)`);
@@ -137,7 +164,7 @@ export default function RollenPage() {
       return;
     }
 
-    // Alle vrijwilliger_roles (met join naar role code)
+    // 4) Alle vrijwilliger_roles (met join naar role code)
     const { data: vr, error: e2 } = await supabase
       .from("vrijwilliger_roles")
       .select("vrijwilliger_id,rol_id,roles(code)");
@@ -158,10 +185,16 @@ export default function RollenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setRoleForUser = async (targetVrijwilligerId: string, newRole: RoleCode, myVrijwilligerId: string) => {
+  const setRoleForUser = async (targetVrijwilligerId: string, newRole: RoleCode) => {
     setBusyUserId(targetVrijwilligerId);
     setError(null);
     setMsg(null);
+
+    const myVrijwilligerId = await getMyVrijwilligerId();
+    if (!myVrijwilligerId) {
+      window.location.href = "/login";
+      return;
+    }
 
     // voorkom dat je jezelf als laatste admin verwijdert
     if (targetVrijwilligerId === myVrijwilligerId && newRole !== "admin" && adminCount <= 1) {
@@ -189,7 +222,6 @@ export default function RollenPage() {
       .in("rol_id", allRoleIds);
 
     if (dErr) {
-      console.error("delete role error:", dErr);
       setError(`Verwijderen faalde: ${fmtSupabaseError(dErr)} (RLS policy ontbreekt?)`);
       setBusyUserId(null);
       return;
@@ -203,7 +235,6 @@ export default function RollenPage() {
     });
 
     if (iErr) {
-      console.error("insert role error:", iErr);
       setError(`Toevoegen faalde: ${fmtSupabaseError(iErr)} (RLS policy ontbreekt?)`);
     } else {
       setMsg("Rol aangepast.");
@@ -244,15 +275,7 @@ export default function RollenPage() {
             v={v}
             busy={busyUserId === v.id}
             currentRole={(currentRoleByUser.get(v.id) ?? "vrijwilliger") as RoleCode}
-            onSave={async (newRole) => {
-              const { data: sess } = await supabase.auth.getSession();
-              const me = sess.session?.user?.id;
-              if (!me) {
-                window.location.href = "/login";
-                return;
-              }
-              await setRoleForUser(v.id, newRole, me);
-            }}
+            onSave={(newRole) => setRoleForUser(v.id, newRole)}
           />
         ))}
       </div>
@@ -267,11 +290,11 @@ function Row({
   onSave,
 }: {
   v: { id: string; naam: string | null };
-  currentRole: "vrijwilliger" | "doenker" | "admin";
+  currentRole: RoleCode;
   busy: boolean;
-  onSave: (newRole: "vrijwilliger" | "doenker" | "admin") => Promise<void>;
+  onSave: (newRole: RoleCode) => Promise<void>;
 }) {
-  const [value, setValue] = useState(currentRole);
+  const [value, setValue] = useState<RoleCode>(currentRole);
 
   useEffect(() => {
     setValue(currentRole);
@@ -285,7 +308,7 @@ function Row({
         <select
           className="border rounded-xl px-3 py-2 text-sm w-full"
           value={value}
-          onChange={(e) => setValue(e.target.value as any)}
+          onChange={(e) => setValue(e.target.value as RoleCode)}
           disabled={busy}
         >
           <option value="vrijwilliger">Vrijwilliger</option>
@@ -295,7 +318,11 @@ function Row({
       </div>
 
       <div className="text-right">
-        <button className="border rounded-xl px-3 py-2 text-sm" onClick={() => onSave(value)} disabled={busy}>
+        <button
+          className="border rounded-xl px-3 py-2 text-sm"
+          onClick={() => onSave(value)}
+          disabled={busy}
+        >
           {busy ? "Bezig…" : "Opslaan"}
         </button>
       </div>
