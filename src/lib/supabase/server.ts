@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 export async function supabaseServer() {
+  // Next.js 16: cookies() is async
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -13,9 +14,15 @@ export async function supabaseServer() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+          // In Server Components kan cookies() soms read-only zijn.
+          // Best-effort: in contexts waar het wel kan (bv. route handlers) zetten we ze netjes.
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // ignore
+          }
         },
       },
     }
