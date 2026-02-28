@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 function isValidEmail(e: string) {
@@ -9,29 +9,16 @@ function isValidEmail(e: string) {
 
 function humanize(raw?: string) {
   const msg = (raw || "").toLowerCase();
-  if (msg.includes("invalid login credentials")) return "E-mail of wachtwoord klopt niet.";
-  if (msg.includes("email not confirmed")) return "Je e-mailadres is nog niet bevestigd.";
   if (msg.includes("rate limit")) return "Te veel pogingen. Wacht even en probeer opnieuw.";
   return raw || "Onbekende fout.";
 }
 
-export default function LoginPage() {
+export default function WachtwoordVergetenPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-
-  // ✅ Geen useSearchParams → geen Suspense-probleem
-  useEffect(() => {
-    const qs = new URLSearchParams(window.location.search);
-    const blocked = qs.get("blocked");
-    if (blocked === "1") {
-      setErr("Je staat niet meer in de lijst vrijwilligers. Contacteer iemand van het kernteam.");
-      setMsg(null);
-    }
-  }, []);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
@@ -44,21 +31,20 @@ export default function LoginPage() {
     return e;
   };
 
-  const login = async () => {
+  const send = async () => {
     const e = guardEmail();
     if (!e) return;
-    if (!password) return setErr("Vul je wachtwoord in."), undefined;
 
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: e, password });
+      const redirectTo = `${window.location.origin}/auth/reset`;
+      const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo });
       if (error) {
         setErr(humanize(error.message));
         return;
       }
 
-      // ✅ root beslist: /profiel (eerste keer) of /activiteiten
-      window.location.href = "/";
+      setMsg("Reset-mail verstuurd. Check je mailbox (en eventueel spam).");
     } catch (ex: any) {
       setErr(humanize(ex?.message ?? String(ex)));
     } finally {
@@ -69,7 +55,7 @@ export default function LoginPage() {
   return (
     <main className="mx-auto max-w-md p-6">
       <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
-        <div className="text-xl font-semibold">Waaranders — vrijwilligers</div>
+        <div className="text-xl font-semibold">Wachtwoord vergeten</div>
       </div>
 
       <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
@@ -82,20 +68,8 @@ export default function LoginPage() {
             autoComplete="email"
             inputMode="email"
             disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="block font-medium mb-1">Wachtwoord</label>
-          <input
-            className="w-full border rounded-xl p-3 bg-white"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            autoComplete="current-password"
-            disabled={busy}
             onKeyDown={(e) => {
-              if (e.key === "Enter") login();
+              if (e.key === "Enter") send();
             }}
           />
         </div>
@@ -103,17 +77,14 @@ export default function LoginPage() {
         <button
           className="rounded-xl px-5 py-3 font-medium w-full bg-blue-900 text-white hover:bg-blue-800 transition disabled:opacity-60"
           disabled={busy}
-          onClick={login}
+          onClick={send}
         >
-          {busy ? "Bezig…" : "Inloggen"}
+          {busy ? "Bezig…" : "Stuur reset-mail"}
         </button>
 
-        <div className="text-sm text-gray-700 flex flex-col gap-2">
-          <a className="underline" href="/registreer">
-            Eerste keer? Account aanmaken
-          </a>
-          <a className="underline" href="/wachtwoord-vergeten">
-            Wachtwoord vergeten?
+        <div className="text-sm text-gray-700">
+          <a className="underline" href="/login">
+            Terug naar login
           </a>
         </div>
 

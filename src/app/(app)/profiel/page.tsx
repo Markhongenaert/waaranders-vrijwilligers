@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Vrijwilliger = {
-  id: string; // = auth user id (jullie keuze)
+  id: string; // = auth user id
   user_id: string | null;
-  naam: string | null; // afgeleid in DB via trigger (bv. "Voornaam A.")
+  naam: string | null;
   voornaam: string | null;
   achternaam: string | null;
   telefoon: string | null;
   adres: string | null;
+  profiel_afgewerkt?: boolean | null;
 };
 
 type Interesse = {
@@ -65,7 +66,7 @@ export default function ProfielPage() {
       // 1) Vrijwilliger ophalen via id = auth uid
       const { data: vExisting, error: vErr } = await supabase
         .from("vrijwilligers")
-        .select("id, user_id, naam, voornaam, achternaam, telefoon, adres")
+        .select("id, user_id, naam, voornaam, achternaam, telefoon, adres, profiel_afgewerkt")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -93,8 +94,9 @@ export default function ProfielPage() {
             telefoon: null,
             adres: null,
             toestemming_privacy: false,
+            profiel_afgewerkt: false,
           })
-          .select("id, user_id, naam, voornaam, achternaam, telefoon, adres")
+          .select("id, user_id, naam, voornaam, achternaam, telefoon, adres, profiel_afgewerkt")
           .single();
 
         if (cErr) {
@@ -178,7 +180,7 @@ export default function ProfielPage() {
 
     setBusy(true);
 
-    // A) Update profiel
+    // A) Update profiel + markeer onboarding als afgewerkt
     const { error: uErr } = await supabase
       .from("vrijwilligers")
       .update({
@@ -186,6 +188,7 @@ export default function ProfielPage() {
         achternaam: an,
         telefoon: trimOrNull(vrijwilliger.telefoon),
         adres: trimOrNull(vrijwilliger.adres),
+        profiel_afgewerkt: true,
       })
       .eq("id", user.id);
 

@@ -16,7 +16,7 @@ type Activiteit = {
 type MeedoenMetNaamRow = {
   activiteit_id: string;
   vrijwilliger_id: string; // = auth.uid()
-  naam: string | null; // roepnaam uit view
+  naam: string | null;
 };
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
@@ -59,12 +59,6 @@ function todayISODate() {
 function hhmm(t: string | null): string | null {
   if (!t) return null;
   return t.length >= 5 ? t.slice(0, 5) : t;
-}
-
-function profielOk(v: { voornaam: string | null; achternaam: string | null } | null) {
-  const vn = (v?.voornaam ?? "").trim();
-  const an = (v?.achternaam ?? "").trim();
-  return vn.length >= 2 && an.length >= 2;
 }
 
 export default function ActiviteitenPage() {
@@ -126,8 +120,6 @@ export default function ActiviteitenPage() {
     setLoading(true);
     setError(null);
 
-    // AuthBootstrap heeft al gecheckt dat je ingelogd bent,
-    // maar we halen hier 1x de user op zodat we myId hebben.
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr) {
       setError(userErr.message);
@@ -137,17 +129,16 @@ export default function ActiviteitenPage() {
 
     const user = userData.user;
     if (!user) {
-      // Normaal zou AuthBootstrap al redirecten, maar dit is een safe fallback.
       window.location.href = "/login";
       return;
     }
 
     setMyId(user.id);
 
-    // Onboarding guard: profiel moet ingevuld zijn
+    // ✅ Onboarding guard: profiel_afgewerkt + actief
     const { data: vRow, error: vErr } = await supabase
       .from("vrijwilligers")
-      .select("id,voornaam,achternaam")
+      .select("id, actief, profiel_afgewerkt")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -157,7 +148,17 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    if (!vRow || !profielOk(vRow)) {
+    if (!vRow) {
+      window.location.href = "/profiel";
+      return;
+    }
+
+    if (vRow.actief === false) {
+      window.location.href = "/login?blocked=1";
+      return;
+    }
+
+    if (!vRow.profiel_afgewerkt) {
       window.location.href = "/profiel";
       return;
     }
@@ -226,7 +227,6 @@ export default function ActiviteitenPage() {
       return;
     }
 
-    // Snelle lokale update (voelt sneller dan alles herladen)
     setMeedoen((prev) => [
       ...prev,
       { activiteit_id: activiteitId, vrijwilliger_id: myId, naam: "Jij" },
@@ -370,7 +370,7 @@ export default function ActiviteitenPage() {
                           ) : (
                             <>
                               {preview.join(", ")}
-                              {rest > 0 ? ` (+${rest} meer)` : ""}
+                              {rest > 0 ? ` (+${rest} meer)` : ""}{" "}
                             </>
                           )}
                         </div>

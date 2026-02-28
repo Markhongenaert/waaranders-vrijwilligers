@@ -1,56 +1,29 @@
+// src/app/page.tsx
 import { redirect } from "next/navigation";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { supabaseServer } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export default async function HomePage() {
+  const supabase = await supabaseServer();
 
-export default async function RootPage() {
-  const cookieStore = await cookies();
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          } catch {
-            // in sommige contexts is cookies() read-only; ok
-          }
-        },
-      },
-    }
-  );
-
-  // ✅ SSR-robust: haal user op (ipv session)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: userRes, error: userErr } = await supabase.auth.getUser();
+  if (userErr) redirect("/login");
+  const user = userRes.user;
   if (!user) redirect("/login");
 
+  // Vrijwilliger ophalen
   const { data: v, error: vErr } = await supabase
     .from("vrijwilligers")
-    .select("voornaam, achternaam, actief")
-    .eq("user_id", user.id)
+    .select("id, actief, profiel_afgewerkt")
+    .eq("id", user.id)
     .maybeSingle();
 
-  // als RLS hier blokkeert zie je dit meteen in logs
-  if (vErr) {
-    console.error("RootPage vrijwilligers lookup error:", vErr.message);
-    redirect("/login");
-  }
+  // Geen vrijwilliger rij? -> stuur naar profiel (profielpagina maakt rij aan)
+  if (vErr) redirect("/login");
+  if (!v) redirect("/profiel");
 
-  if (!v || v.actief === false) redirect("/login?blocked=1");
+  if (v.actief === false) redirect("/login?blocked=1");
 
-  if (!v.voornaam || !v.achternaam) redirect("/profiel");
+  if (!v.profiel_afgewerkt) redirect("/profiel");
 
   redirect("/activiteiten");
 }
