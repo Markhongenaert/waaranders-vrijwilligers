@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 function isValidEmail(e: string) {
@@ -12,10 +13,13 @@ function humanize(raw?: string) {
   if (msg.includes("invalid login credentials")) return "E-mail of wachtwoord klopt niet.";
   if (msg.includes("email not confirmed")) return "Je e-mailadres is nog niet bevestigd.";
   if (msg.includes("rate limit")) return "Te veel pogingen. Wacht even en probeer opnieuw.";
+  if (msg.includes("user already registered")) return "Dit e-mailadres bestaat al. Probeer in te loggen.";
   return raw || "Onbekende fout.";
 }
 
 export default function LoginPage() {
+  const params = useSearchParams();
+
   const [mode, setMode] = useState<"login" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +27,24 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // Meldingen vanuit redirects
+  useEffect(() => {
+    const blocked = params.get("blocked");
+    if (blocked === "1") {
+      setErr("Je staat niet meer in de lijst vrijwilligers. Contacteer iemand van het kernteam.");
+      setMsg(null);
+      return;
+    }
+
+    // optioneel: na password reset flow
+    const reset = params.get("reset");
+    if (reset === "1") {
+      setMsg("Je kan nu inloggen met je nieuwe wachtwoord.");
+      setErr(null);
+      return;
+    }
+  }, [params]);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
@@ -43,9 +65,13 @@ export default function LoginPage() {
     setBusy(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: e, password });
-      if (error) return setErr(humanize(error.message)), undefined;
-      setMsg("Ingelogd.");
-      // je app kan nu vanzelf naar /activiteiten gaan via guard of nav
+      if (error) {
+        setErr(humanize(error.message));
+        return;
+      }
+
+      // ✅ Laat de root-route beslissen: /profiel (eerste keer) of /activiteiten (normaal)
+      window.location.href = "/";
     } catch (ex: any) {
       setErr(humanize(ex?.message ?? String(ex)));
     } finally {
@@ -59,10 +85,15 @@ export default function LoginPage() {
 
     setBusy(true);
     try {
-      // Belangrijk: redirectTo moet naar jouw reset route
+      // Zorg dat deze route bestaat in je app
       const redirectTo = `${window.location.origin}/auth/reset`;
       const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo });
-      if (error) return setErr(humanize(error.message)), undefined;
+
+      if (error) {
+        setErr(humanize(error.message));
+        return;
+      }
+
       setMsg("Reset-mail verstuurd. Check je mailbox (en eventueel spam).");
       setMode("login");
     } catch (ex: any) {
@@ -77,21 +108,33 @@ export default function LoginPage() {
       <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
         <div className="text-xl font-semibold">Waaranders — vrijwilligers</div>
         <div className="text-sm opacity-95 mt-1">
-          Je krijgt een uitnodiging van Mark. Daarna kan je hier inloggen.
+          Gebruik de link die je van Mark kreeg. Daarna kan je hier inloggen.
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
         <button
-          className={`rounded-xl py-2 text-sm font-medium border ${mode === "login" ? "bg-white" : "bg-slate-50"}`}
-          onClick={() => { setMsg(null); setErr(null); setMode("login"); }}
+          className={`rounded-xl py-2 text-sm font-medium border ${
+            mode === "login" ? "bg-white" : "bg-slate-50"
+          }`}
+          onClick={() => {
+            setMsg(null);
+            setErr(null);
+            setMode("login");
+          }}
           disabled={busy}
         >
           Login
         </button>
         <button
-          className={`rounded-xl py-2 text-sm font-medium border ${mode === "forgot" ? "bg-white" : "bg-slate-50"}`}
-          onClick={() => { setMsg(null); setErr(null); setMode("forgot"); }}
+          className={`rounded-xl py-2 text-sm font-medium border ${
+            mode === "forgot" ? "bg-white" : "bg-slate-50"
+          }`}
+          onClick={() => {
+            setMsg(null);
+            setErr(null);
+            setMode("forgot");
+          }}
           disabled={busy}
         >
           Wachtwoord vergeten
@@ -100,7 +143,7 @@ export default function LoginPage() {
 
       <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
         <div>
-          <label className="block font-medium mb-1">Email</label>
+          <label className="block font-medium mb-1">E-mail</label>
           <input
             className="w-full border rounded-xl p-3 bg-white"
             value={email}
@@ -121,6 +164,9 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               disabled={busy}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") login();
+              }}
             />
           </div>
         )}
@@ -133,8 +179,16 @@ export default function LoginPage() {
           {busy ? "Bezig…" : mode === "login" ? "Inloggen" : "Stuur reset-mail"}
         </button>
 
-        {msg && <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">{msg}</p>}
-        {err && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">Fout: {err}</p>}
+        {msg && (
+          <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">
+            {msg}
+          </p>
+        )}
+        {err && (
+          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">
+            {err}
+          </p>
+        )}
       </div>
     </main>
   );
