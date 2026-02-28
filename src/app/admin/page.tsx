@@ -4,27 +4,22 @@ export default function AdminPage() {
   const tiles = [
     {
       title: "Activiteiten",
-      desc: "Overzicht en beheer van activiteiten.",
       href: "/admin/activiteiten",
     },
     {
       title: "Klanten",
-      desc: "Beheer klanten en contactpersonen.",
       href: "/admin/klanten",
     },
     {
       title: "Vrijwilligers",
-      desc: "Contactgegevens aanpassen, rollen en interesses bekijken.",
       href: "/admin/vrijwilligers",
     },
     {
       title: "Todo",
-      desc: "Takenlijst en opvolging.",
       href: "/admin/todo",
     },
     {
       title: "Admin",
-      desc: "Beheer instellingen en rechten.",
       href: "/admin/admin",
     },
   ];
