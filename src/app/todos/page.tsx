@@ -7,7 +7,7 @@ import { isDoenkerOrAdmin } from "@/lib/auth";
 type Todo = {
   id: string;
   wat: string;
-  streefdatum: string | null; // date (YYYY-MM-DD)
+  streefdatum: string | null; // YYYY-MM-DD
   status: "gepland" | "bezig" | "gedaan";
   prioriteit: "laag" | "normaal" | "hoog";
   thema_id: string | null;
@@ -16,9 +16,9 @@ type Todo = {
 function formatTodoDatum(dateStr: string | null) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}`;
+  return `${String(d.getDate()).padStart(2, "0")}/${String(
+    d.getMonth() + 1
+  ).padStart(2, "0")}`;
 }
 
 function prioBadge(p: Todo["prioriteit"]) {
@@ -34,10 +34,9 @@ function statusBadge(s: Todo["status"]) {
 }
 
 function isOverdue(dateStr: string | null, status: Todo["status"]) {
-  if (!dateStr) return false;
-  if (status === "gedaan") return false;
+  if (!dateStr || status === "gedaan") return false;
   const today = new Date().toISOString().slice(0, 10);
-  return dateStr < today; // YYYY-MM-DD string compare werkt
+  return dateStr < today;
 }
 
 export default function TodosPage() {
@@ -45,7 +44,6 @@ export default function TodosPage() {
   const [items, setItems] = useState<Todo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
-
   const [canBeheer, setCanBeheer] = useState(false);
 
   const load = async () => {
@@ -55,13 +53,13 @@ export default function TodosPage() {
 
     const { data: sess } = await supabase.auth.getSession();
     const user = sess.session?.user ?? null;
+
     if (!user) {
       window.location.href = "/login";
       return;
     }
 
-    const ok = await isDoenkerOrAdmin();
-    setCanBeheer(ok);
+    setCanBeheer(await isDoenkerOrAdmin());
 
     const { data, error } = await supabase
       .from("todos")
@@ -89,31 +87,38 @@ export default function TodosPage() {
     setError(null);
     setMsg(null);
 
-    const { error } = await supabase.from("todos").update({ status }).eq("id", id);
+    const { error } = await supabase
+      .from("todos")
+      .update({ status })
+      .eq("id", id);
 
-    if (error) setError(error.message);
-    else setMsg("Status aangepast.");
-
-    await load();
+    if (error) {
+      setError(error.message);
+    } else {
+      setMsg("Status aangepast.");
+      await load();
+    }
   };
 
   const sorted = useMemo(() => {
-    // defensief: API geeft al sort, maar houden consistent
     const arr = [...items];
+
     arr.sort((a, b) => {
       const ad = a.streefdatum ?? "9999-12-31";
       const bd = b.streefdatum ?? "9999-12-31";
+
       if (ad < bd) return -1;
       if (ad > bd) return 1;
 
-      // binnen dezelfde datum: hoog -> normaal -> laag
-      const rank = (p: Todo["prioriteit"]) => (p === "hoog" ? 0 : p === "normaal" ? 1 : 2);
+      const rank = (p: Todo["prioriteit"]) =>
+        p === "hoog" ? 0 : p === "normaal" ? 1 : 2;
+
       const pr = rank(a.prioriteit) - rank(b.prioriteit);
       if (pr !== 0) return pr;
 
-      // tie-breaker: tekst
       return a.wat.localeCompare(b.wat);
     });
+
     return arr;
   }, [items]);
 
@@ -124,11 +129,16 @@ export default function TodosPage() {
           <h1 className="text-2xl bg-blue-900 text-white font-bold px-4 py-2 rounded-xl">
             Mijn TODO’s
           </h1>
-          <p className="text-gray-600 mt-2">Open taken (status niet “gedaan”).</p>
+          <p className="text-gray-600 mt-2">
+            Open taken (status niet “gedaan”).
+          </p>
         </div>
 
         {canBeheer && (
-          <a href="/admin/todos/toevoegen" className="border rounded-xl px-3 py-2 text-sm">
+          <a
+            href="/admin/todos/toevoegen"
+            className="border rounded-xl px-3 py-2 text-sm"
+          >
             + Toevoegen
           </a>
         )}
@@ -149,13 +159,17 @@ export default function TodosPage() {
             return (
               <li
                 key={t.id}
-                className={`border rounded-2xl p-4 bg-white/80 shadow-sm ${
+                className={`border rounded-2xl p-4 bg-white shadow-sm flex flex-col ${
                   overdue ? "border-red-500" : ""
                 }`}
               >
-                <div className="font-medium break-words">{t.wat}</div>
+                {/* Titel */}
+                <div className="font-medium text-base break-words leading-snug">
+                  {t.wat}
+                </div>
 
-                <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2 items-center">
+                {/* Badges */}
+                <div className="text-sm text-gray-600 mt-3 flex flex-wrap gap-2 items-center">
                   {t.streefdatum ? (
                     <span className="px-2 py-0.5 rounded-full border text-xs">
                       {formatTodoDatum(t.streefdatum)}
@@ -166,11 +180,19 @@ export default function TodosPage() {
                     </span>
                   )}
 
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(t.prioriteit)}`}>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(
+                      t.prioriteit
+                    )}`}
+                  >
                     {t.prioriteit}
                   </span>
 
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(t.status)}`}>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(
+                      t.status
+                    )}`}
+                  >
                     {t.status}
                   </span>
 
@@ -181,26 +203,21 @@ export default function TodosPage() {
                   )}
                 </div>
 
-                <div className="flex gap-2 mt-3 flex-wrap">
-                  <button
-                    className="border rounded-xl px-3 py-2 text-sm"
-                    onClick={() => setStatus(t.id, "gepland")}
-                    disabled={t.status === "gepland"}
+                {/* Acties */}
+                <div className="mt-4 flex justify-between items-center border-t pt-3">
+                  <a
+                    href={`/admin/todos/${t.id}`}
+                    className="text-sm text-blue-900 font-medium hover:underline"
                   >
-                    Gepland
-                  </button>
+                    Bewerken
+                  </a>
+
                   <button
-                    className="border rounded-xl px-3 py-2 text-sm"
-                    onClick={() => setStatus(t.id, "bezig")}
-                    disabled={t.status === "bezig"}
-                  >
-                    Bezig
-                  </button>
-                  <button
-                    className="border rounded-xl px-3 py-2 text-sm"
                     onClick={() => setStatus(t.id, "gedaan")}
+                    className="rounded-full w-9 h-9 flex items-center justify-center bg-green-600 text-white text-lg hover:bg-green-700 transition"
+                    title="Markeer als klaar"
                   >
-                    Gedaan
+                    ✓
                   </button>
                 </div>
               </li>
