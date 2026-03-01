@@ -95,7 +95,7 @@ function TodoCard({
         {t.status !== "gedaan" ? (
           <button
             onClick={() => onSetStatus(t.id, "gedaan")}
-            className="rounded-full w-9 h-9 flex items-center justify-center bg-green-600 text-white text-lg hover:bg-green-700 transition"
+            className="px-2 py-0.5 rounded-full border border-green-500 text-green-700 text-xs font-semibold bg-white hover:bg-green-50 transition" 
             title="Markeer als gedaan"
           >
             ✓
