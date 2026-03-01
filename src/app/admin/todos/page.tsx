@@ -22,9 +22,7 @@ type Vrijwilliger = {
 function formatTodoDatum(dateStr: string | null) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}`;
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function prioBadge(p: Todo["prioriteit"]) {
@@ -40,10 +38,80 @@ function statusBadge(s: Todo["status"]) {
 }
 
 function isOverdue(dateStr: string | null, status: Todo["status"]) {
-  if (!dateStr) return false;
-  if (status === "gedaan") return false;
+  if (!dateStr || status === "gedaan") return false;
   const today = new Date().toISOString().slice(0, 10);
   return dateStr < today;
+}
+
+function TodoCard({
+  t,
+  overdue,
+  onSetStatus,
+  editHref,
+}: {
+  t: Todo;
+  overdue: boolean;
+  onSetStatus: (id: string, status: Todo["status"]) => void;
+  editHref: string;
+}) {
+  return (
+    <li
+      className={`border rounded-2xl p-4 bg-white/80 shadow-sm flex flex-col ${
+        overdue ? "border-red-500" : ""
+      }`}
+    >
+      {/* Titel – volle breedte */}
+      <div className="font-medium text-base break-words leading-snug">{t.wat}</div>
+
+      {/* Badges */}
+      <div className="text-sm text-gray-600 mt-3 flex flex-wrap gap-2 items-center">
+        {t.streefdatum ? (
+          <span
+            className={`px-2 py-0.5 rounded-full border text-xs ${
+              overdue ? "text-red-700 font-bold" : ""
+            }`}
+          >
+            {formatTodoDatum(t.streefdatum)}
+          </span>
+        ) : (
+          <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">geen datum</span>
+        )}
+
+        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(t.prioriteit)}`}>
+          {t.prioriteit}
+        </span>
+
+        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(t.status)}`}>
+          {t.status}
+        </span>
+      </div>
+
+      {/* Acties onderaan */}
+      <div className="mt-4 flex justify-between items-center border-t pt-3">
+        <a href={editHref} className="text-sm text-blue-900 font-medium hover:underline">
+          Bewerken
+        </a>
+
+        {t.status !== "gedaan" ? (
+          <button
+            onClick={() => onSetStatus(t.id, "gedaan")}
+            className="rounded-full w-9 h-9 flex items-center justify-center bg-green-600 text-white text-lg hover:bg-green-700 transition"
+            title="Markeer als gedaan"
+          >
+            ✓
+          </button>
+        ) : (
+          <button
+            onClick={() => onSetStatus(t.id, "gepland")}
+            className="rounded-full w-9 h-9 flex items-center justify-center bg-gray-200 text-gray-800 text-lg hover:bg-gray-300 transition"
+            title="Terug naar gepland"
+          >
+            ↩
+          </button>
+        )}
+      </div>
+    </li>
+  );
 }
 
 export default function AdminTodosPage() {
@@ -76,7 +144,7 @@ export default function AdminTodosPage() {
       return;
     }
 
-    // ✅ Alleen actieve vrijwilligers in de selector
+    // Alleen actieve vrijwilligers in de selector
     const { data: v, error: eV } = await supabase
       .from("vrijwilligers")
       .select("id,naam,actief")
@@ -103,7 +171,7 @@ export default function AdminTodosPage() {
     setVrijwilligers(activeVrijwilligers);
     setItems((t ?? []) as Todo[]);
 
-    // ✅ Safety net: als geselecteerde persoon niet meer actief is -> terug naar "Iedereen"
+    // Safety net: als geselecteerde persoon niet meer actief is -> terug naar "Iedereen"
     const activeIds = new Set(activeVrijwilligers.map((x) => x.id));
     setSelectedUserId((prev) => (prev !== "alle" && !activeIds.has(prev) ? "alle" : prev));
 
@@ -124,13 +192,10 @@ export default function AdminTodosPage() {
   const filtered = useMemo(() => {
     let arr = [...items];
     if (!showDone) arr = arr.filter((t) => t.status !== "gedaan");
-    if (selectedUserId !== "alle") {
-      arr = arr.filter((t) => t.wie_vrijwilliger_id === selectedUserId);
-    }
+    if (selectedUserId !== "alle") arr = arr.filter((t) => t.wie_vrijwilliger_id === selectedUserId);
     return arr;
   }, [items, showDone, selectedUserId]);
 
-  // Helpers voor sort: datum dichtsbij eerst, null onderaan
   const sortByDateAsc = (a: Todo, b: Todo) => {
     const ad = a.streefdatum ?? "9999-12-31";
     const bd = b.streefdatum ?? "9999-12-31";
@@ -139,7 +204,6 @@ export default function AdminTodosPage() {
     return a.wat.localeCompare(b.wat);
   };
 
-  // Group view wanneer "alle"
   const groupedByPerson = useMemo(() => {
     if (selectedUserId !== "alle") return [];
 
@@ -186,9 +250,7 @@ export default function AdminTodosPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-4">
-        TODO’s (beheer)
-      </div>
+      <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-4">TODO’s (beheer)</div>
 
       <div className="flex gap-3 flex-wrap mb-4 items-center">
         <select
@@ -205,11 +267,7 @@ export default function AdminTodosPage() {
         </select>
 
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={showDone}
-            onChange={(e) => setShowDone(e.target.checked)}
-          />
+          <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
           Toon ook gedaan
         </label>
 
@@ -224,7 +282,6 @@ export default function AdminTodosPage() {
 
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
 
-      {/* Weergave */}
       {selectedUserId === "alle" ? (
         groupedByPerson.length === 0 ? (
           <p className="text-gray-600">Geen TODO’s.</p>
@@ -239,74 +296,13 @@ export default function AdminTodosPage() {
                 <ul className="space-y-3 mt-3">
                   {g.todos.map((t) => {
                     const overdue = isOverdue(t.streefdatum, t.status);
-
                     return (
-                      <li key={t.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
-                        <div className="flex justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="font-medium break-words">{t.wat}</div>
-
-                            <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2 items-center">
-                              {t.streefdatum ? (
-                                <span
-                                  className={`px-2 py-0.5 rounded-full border text-xs ${
-                                    overdue ? "text-red-700 font-bold" : ""
-                                  }`}
-                                >
-                                  {formatTodoDatum(t.streefdatum)}
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">
-                                  geen datum
-                                </span>
-                              )}
-
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(
-                                  t.prioriteit
-                                )}`}
-                              >
-                                {t.prioriteit}
-                              </span>
-
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(
-                                  t.status
-                                )}`}
-                              >
-                                {t.status}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 shrink-0 items-start">
-                            <a
-                              href={`/admin/todos/${t.id}`}
-                              className="border rounded-xl px-3 py-2 text-sm"
-                            >
-                              Bewerken
-                            </a>
-
-                            {t.status !== "gedaan" ? (
-                              <button
-                                onClick={() => setStatus(t.id, "gedaan")}
-                                className="border rounded-xl px-3 py-2 text-sm"
-                                title="Markeer als gedaan"
-                              >
-                                ✔
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => setStatus(t.id, "gepland")}
-                                className="border rounded-xl px-3 py-2 text-sm"
-                                title="Terug naar gepland"
-                              >
-                                ↩
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </li>
+                      <TodoCard
+                        t={t}
+                        overdue={overdue}
+                        onSetStatus={setStatus}
+                        editHref={`/admin/todos/${t.id}`}
+                      />
                     );
                   })}
                 </ul>
@@ -320,74 +316,13 @@ export default function AdminTodosPage() {
         <ul className="space-y-3">
           {flatSorted.map((t) => {
             const overdue = isOverdue(t.streefdatum, t.status);
-
             return (
-              <li key={t.id} className="border rounded-2xl p-4 bg-white/80 shadow-sm">
-                <div className="flex justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="font-medium break-words">{t.wat}</div>
-
-                    <div className="text-sm text-gray-600 mt-2 flex flex-wrap gap-2 items-center">
-                      {t.streefdatum ? (
-                        <span
-                          className={`px-2 py-0.5 rounded-full border text-xs ${
-                            overdue ? "text-red-700 font-bold" : ""
-                          }`}
-                        >
-                          {formatTodoDatum(t.streefdatum)}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">
-                          geen datum
-                        </span>
-                      )}
-
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(
-                          t.prioriteit
-                        )}`}
-                      >
-                        {t.prioriteit}
-                      </span>
-
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(
-                          t.status
-                        )}`}
-                      >
-                        {t.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 shrink-0 items-start">
-                    <a
-                      href={`/admin/todos/${t.id}`}
-                      className="border rounded-xl px-3 py-2 text-sm"
-                    >
-                      Bewerken
-                    </a>
-
-                    {t.status !== "gedaan" ? (
-                      <button
-                        onClick={() => setStatus(t.id, "gedaan")}
-                        className="border rounded-xl px-3 py-2 text-sm"
-                        title="Markeer als gedaan"
-                      >
-                        ✔
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setStatus(t.id, "gepland")}
-                        className="border rounded-xl px-3 py-2 text-sm"
-                        title="Terug naar gepland"
-                      >
-                        ↩
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </li>
+              <TodoCard
+                t={t}
+                overdue={overdue}
+                onSetStatus={setStatus}
+                editHref={`/admin/todos/${t.id}`}
+              />
             );
           })}
         </ul>
