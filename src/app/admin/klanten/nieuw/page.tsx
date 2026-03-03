@@ -96,6 +96,7 @@ export default function NieuweKlantPage() {
       const { data: vw, error: eVw } = await supabase
         .from("vrijwilligers")
         .select("id,naam")
+        .eq("actief", true)
         .order("naam", { ascending: true });
 
       if (eVw) {

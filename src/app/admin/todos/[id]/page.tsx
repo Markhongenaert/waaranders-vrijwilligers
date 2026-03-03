@@ -84,6 +84,7 @@ export default function TodoEditPage() {
     const { data: v, error: eV } = await supabase
       .from("vrijwilligers")
       .select("id,naam")
+      .eq("actief", true)
       .order("naam", { ascending: true });
 
     if (!eV) setVrijwilligers((v ?? []) as Vrijwilliger[]);

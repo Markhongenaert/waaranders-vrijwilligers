@@ -121,6 +121,7 @@ export default function KlantDetailPage() {
     const { data: vw, error: eVw } = await supabase
       .from("vrijwilligers")
       .select("id,naam")
+      .eq("actief", true)
       .order("naam", { ascending: true });
 
     if (eVw) {
