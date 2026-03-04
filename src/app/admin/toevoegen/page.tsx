@@ -498,7 +498,15 @@ export default function ToevoegenActiviteitPage() {
           <button
             className="border bg-white rounded-xl px-4 py-2"
             onClick={save}
-            disabled={busy || noKlanten || !klantId || !startuur || !einduur}
+            disabled={
+              busy ||
+              noKlanten ||
+              !klantId ||
+              !wanneer ||
+              !startuur ||
+              !einduur ||
+              (herhaling && stopType === "datum" && !stopDatum)
+            }
           >
             {busy ? "Bezig…" : herhaling ? "Reeks aanmaken" : "Opslaan"}
           </button>
