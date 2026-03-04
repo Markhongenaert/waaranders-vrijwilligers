@@ -394,7 +394,7 @@ export default function ToevoegenActiviteitPage() {
           {saveAttempted && startuur && !einduur && (
             <p className="text-sm text-red-600 mt-1">Einduur is verplicht.</p>
           )}
-          {startuur && einduur && einduur <= startuur && (
+          {saveAttempted && startuur && einduur && einduur <= startuur && (
             <p className="text-sm text-red-600 mt-1">Einduur moet later zijn dan startuur.</p>
           )}
         </div>

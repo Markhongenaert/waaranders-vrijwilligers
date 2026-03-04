@@ -94,8 +94,11 @@ export default function AdminActiviteitenPage() {
 
   // Reeks edit state
   const [editReeksId, setEditReeksId] = useState<string | null>(null);
-  const [editOriginalWanneer, setEditOriginalWanneer] = useState<string>("");
-  const [showReeksModal, setShowReeksModal] = useState(false);
+
+  type ReeksModal =
+    | { mode: "bewerken"; reeksId: string }
+    | { mode: "verwijderen"; reeksId: string; deleteId: string };
+  const [reeksModal, setReeksModal] = useState<ReeksModal | null>(null);
 
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
@@ -199,7 +202,6 @@ export default function AdminActiviteitenPage() {
     setEditEinduur(hhmm(a.einduur) ?? "");
     setEditAantal(a.aantal_vrijwilligers ?? 1);
     setEditReeksId(a.herhaling_reeks_id ?? null);
-    setEditOriginalWanneer(a.wanneer ?? "");
 
     const klantFallback = kList[0]?.id ?? "";
     setEditKlantId(a.klant_id ?? klantFallback);
@@ -215,16 +217,15 @@ export default function AdminActiviteitenPage() {
     setEditAantal(1);
     setEditKlantId("");
     setEditReeksId(null);
-    setEditOriginalWanneer("");
-    setShowReeksModal(false);
+    setReeksModal(null);
   };
 
   /** Voer de opslaan-logica uit na keuze van scope. */
-  const executeEdit = async (scope: "enkel" | "toekomst") => {
+  const executeEdit = async (scope: "enkel" | "reeks") => {
     if (!editingId) return;
 
     setBusy(true);
-    setShowReeksModal(false);
+    setReeksModal(null);
     setError(null);
     setMsg(null);
 
@@ -247,12 +248,11 @@ export default function AdminActiviteitenPage() {
         .eq("id", editingId);
       dbError = error;
     } else {
-      // Alle toekomstige: update alle in reeks vanaf originele datum, datum ongewijzigd
+      // Hele reeks: update alle activiteiten met zelfde reeks_id, datum ongewijzigd
       const { error } = await supabase
         .from("activiteiten")
         .update(contentPayload)
-        .eq("herhaling_reeks_id", editReeksId)
-        .gte("wanneer", editOriginalWanneer);
+        .eq("herhaling_reeks_id", editReeksId);
       dbError = error;
     }
 
@@ -262,8 +262,36 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
-    setMsg(scope === "toekomst" ? "Alle toekomstige herhalingen bijgewerkt." : "Activiteit bijgewerkt.");
+    setMsg(scope === "reeks" ? "Hele reeks bijgewerkt." : "Activiteit bijgewerkt.");
     cancelEdit();
+    await load();
+    setBusy(false);
+  };
+
+  /** Verwijder een activiteit of hele reeks. */
+  const executeDelete = async (scope: "enkel" | "reeks", id: string, reeksId: string | null) => {
+    setBusy(true);
+    setReeksModal(null);
+    setError(null);
+    setMsg(null);
+
+    let dbError = null;
+
+    if (scope === "enkel") {
+      const { error } = await supabase.from("activiteiten").delete().eq("id", id);
+      dbError = error;
+    } else {
+      const { error } = await supabase.from("activiteiten").delete().eq("herhaling_reeks_id", reeksId);
+      dbError = error;
+    }
+
+    if (dbError) {
+      setError(dbError.message);
+      setBusy(false);
+      return;
+    }
+
+    setMsg(scope === "reeks" ? "Hele reeks verwijderd." : "Activiteit verwijderd.");
     await load();
     setBusy(false);
   };
@@ -283,32 +311,23 @@ export default function AdminActiviteitenPage() {
     if (editEinduur <= editStartuur) return setError("Einduur moet later zijn dan startuur.");
 
     if (editReeksId) {
-      setShowReeksModal(true);
+      setReeksModal({ mode: "bewerken", reeksId: editReeksId });
       return;
     }
 
     await executeEdit("enkel");
   };
 
-  const deleteActiviteit = async (id: string) => {
-    const ok = window.confirm("Activiteit verwijderen? Dit kan niet ongedaan gemaakt worden.");
-    if (!ok) return;
-
-    setBusy(true);
-    setError(null);
-    setMsg(null);
-
-    const { error } = await supabase.from("activiteiten").delete().eq("id", id);
-
-    if (error) {
-      setError(error.message);
-      setBusy(false);
+  const deleteActiviteit = (a: Activiteit) => {
+    if (a.herhaling_reeks_id) {
+      setReeksModal({ mode: "verwijderen", reeksId: a.herhaling_reeks_id, deleteId: a.id });
       return;
     }
 
-    setMsg("Activiteit verwijderd.");
-    await load();
-    setBusy(false);
+    const ok = window.confirm("Activiteit verwijderen? Dit kan niet ongedaan gemaakt worden.");
+    if (!ok) return;
+
+    executeDelete("enkel", a.id, null);
   };
 
   if (loading) return <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">Laden…</main>;
@@ -324,34 +343,53 @@ export default function AdminActiviteitenPage() {
 
   return (
     <>
-      {/* Modaal voor reeksbewerking */}
-      {showReeksModal && (
+      {/* Modaal voor reeksbewerking of -verwijdering */}
+      {reeksModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
-            <h2 className="font-semibold text-lg">Herhalende activiteit aanpassen</h2>
+            <h2 className="font-semibold text-lg">
+              {reeksModal.mode === "bewerken" ? "Herhalende activiteit aanpassen" : "Herhalende activiteit verwijderen"}
+            </h2>
             <p className="text-sm text-gray-700">
-              Wil je enkel deze activiteit aanpassen, of ook alle toekomstige herhalingen in deze reeks?
+              Wil je deze wijziging toepassen op enkel deze activiteit, of op alle toekomstige activiteiten in deze reeks?
             </p>
             <div className="flex flex-col gap-2">
               <button
                 className="border rounded-xl px-4 py-3 text-sm bg-white hover:bg-gray-50 transition text-left"
-                onClick={() => executeEdit("enkel")}
+                onClick={() => {
+                  if (reeksModal.mode === "bewerken") executeEdit("enkel");
+                  else executeDelete("enkel", reeksModal.deleteId, null);
+                }}
                 disabled={busy}
               >
-                <span className="font-medium">Enkel deze activiteit</span>
-                <span className="block text-xs text-gray-500 mt-0.5">Alleen de geselecteerde datum wordt aangepast.</span>
+                <span className="font-medium">Enkel deze</span>
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  Alleen deze activiteit wordt {reeksModal.mode === "bewerken" ? "aangepast" : "verwijderd"}.
+                </span>
               </button>
               <button
-                className="border rounded-xl px-4 py-3 text-sm bg-white hover:bg-gray-50 transition text-left"
-                onClick={() => executeEdit("toekomst")}
+                className={[
+                  "border rounded-xl px-4 py-3 text-sm transition text-left",
+                  reeksModal.mode === "verwijderen"
+                    ? "bg-red-50 border-red-200 hover:bg-red-100"
+                    : "bg-white hover:bg-gray-50",
+                ].join(" ")}
+                onClick={() => {
+                  if (reeksModal.mode === "bewerken") executeEdit("reeks");
+                  else executeDelete("reeks", reeksModal.deleteId, reeksModal.reeksId);
+                }}
                 disabled={busy}
               >
-                <span className="font-medium">Alle toekomstige herhalingen</span>
-                <span className="block text-xs text-gray-500 mt-0.5">Deze en alle volgende in de reeks worden aangepast.</span>
+                <span className={["font-medium", reeksModal.mode === "verwijderen" ? "text-red-700" : ""].join(" ")}>
+                  Hele reeks
+                </span>
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  Alle activiteiten in deze reeks worden {reeksModal.mode === "bewerken" ? "aangepast" : "verwijderd"}.
+                </span>
               </button>
               <button
                 className="border rounded-xl px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition"
-                onClick={() => setShowReeksModal(false)}
+                onClick={() => setReeksModal(null)}
                 disabled={busy}
               >
                 Annuleren
@@ -445,7 +483,7 @@ export default function AdminActiviteitenPage() {
                               </button>
                               <button
                                 className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
-                                onClick={() => deleteActiviteit(a.id)}
+                                onClick={() => deleteActiviteit(a)}
                                 disabled={busy}
                               >
                                 Verwijderen
@@ -456,7 +494,7 @@ export default function AdminActiviteitenPage() {
                           <div className="space-y-4">
                             {editReeksId && (
                               <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                                Dit is een herhalende activiteit. Bij opslaan wordt gevraagd of je enkel deze of alle toekomstige herhalingen wil aanpassen.
+                                Dit is een herhalende activiteit. Bij opslaan wordt gevraagd of je enkel deze activiteit of de hele reeks wil aanpassen.
                               </p>
                             )}
 
