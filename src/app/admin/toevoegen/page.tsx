@@ -70,12 +70,13 @@ export default function ToevoegenActiviteitPage() {
   const [herhalingType, setHerhalingType] = useState<"wekelijks" | "maandelijks">("wekelijks");
   const [herhalingInterval, setHerhalingInterval] = useState(1);
   const [stopType, setStopType] = useState<"aantal" | "datum">("aantal");
-  const [stopAantal, setStopAantal] = useState(4);
+  const [stopAantal, setStopAantal] = useState("4");
   const [stopDatum, setStopDatum] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [saveAttempted, setSaveAttempted] = useState(false);
 
   const nieuweKlantHref = useMemo(
     () => `/admin/klanten/nieuw?returnTo=${buildReturnTo()}`,
@@ -143,6 +144,7 @@ export default function ToevoegenActiviteitPage() {
   const noKlanten = klantenLoaded && klanten.length === 0;
 
   const save = async () => {
+    setSaveAttempted(true);
     setError(null);
     setMsg(null);
 
@@ -158,7 +160,8 @@ export default function ToevoegenActiviteitPage() {
       if (herhalingInterval < 1) return setError("Interval moet minstens 1 zijn.");
       if (stopType === "datum" && !stopDatum) return setError("Einddatum is verplicht bij 'Tot datum'.");
       if (stopType === "datum" && stopDatum <= wanneer) return setError("Einddatum moet na de startdatum liggen.");
-      if (stopType === "aantal" && stopAantal < 1) return setError("Aantal herhalingen moet minstens 1 zijn.");
+      const stopAantalNum = parseInt(stopAantal, 10);
+      if (stopType === "aantal" && (isNaN(stopAantalNum) || stopAantalNum < 1)) return setError("Aantal herhalingen moet minstens 1 zijn.");
     }
 
     setBusy(true);
@@ -179,7 +182,7 @@ export default function ToevoegenActiviteitPage() {
         herhalingType,
         herhalingInterval,
         stopType === "aantal"
-          ? { type: "aantal", count: stopAantal }
+          ? { type: "aantal", count: parseInt(stopAantal, 10) }
           : { type: "datum", until: stopDatum }
       );
 
@@ -196,7 +199,7 @@ export default function ToevoegenActiviteitPage() {
         herhaling_type: herhalingType,
         herhaling_interval: herhalingInterval,
         herhaling_einde_datum: stopType === "datum" ? stopDatum : null,
-        herhaling_einde_aantal: stopType === "aantal" ? stopAantal : null,
+        herhaling_einde_aantal: stopType === "aantal" ? parseInt(stopAantal, 10) : null,
         herhaling_reeks_id: reeksId,
       }));
 
@@ -235,7 +238,7 @@ export default function ToevoegenActiviteitPage() {
     setHerhalingInterval(1);
     setHerhalingType("wekelijks");
     setStopType("aantal");
-    setStopAantal(4);
+    setStopAantal("4");
     setStopDatum("");
 
     setBusy(false);
@@ -354,28 +357,46 @@ export default function ToevoegenActiviteitPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium block mb-1">Startuur</label>
-            <input
-              type="time"
-              className="w-full border rounded-xl p-3 bg-white"
-              value={startuur}
-              onChange={(e) => setStartuur(e.target.value)}
-              disabled={busy}
-            />
+        <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium block mb-1">Startuur</label>
+              <input
+                type="time"
+                className={[
+                  "w-full border rounded-xl p-3 bg-white",
+                  saveAttempted && !startuur ? "border-red-400" : "",
+                ].join(" ")}
+                value={startuur}
+                onChange={(e) => setStartuur(e.target.value)}
+                disabled={busy}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium block mb-1">Einduur</label>
+              <input
+                type="time"
+                className={[
+                  "w-full border rounded-xl p-3 bg-white",
+                  saveAttempted && !einduur ? "border-red-400" : "",
+                ].join(" ")}
+                value={einduur}
+                onChange={(e) => setEinduur(e.target.value)}
+                disabled={busy}
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium block mb-1">Einduur</label>
-            <input
-              type="time"
-              className="w-full border rounded-xl p-3 bg-white"
-              value={einduur}
-              onChange={(e) => setEinduur(e.target.value)}
-              disabled={busy}
-            />
-          </div>
+          {saveAttempted && !startuur && (
+            <p className="text-sm text-red-600 mt-1">Startuur is verplicht.</p>
+          )}
+          {saveAttempted && startuur && !einduur && (
+            <p className="text-sm text-red-600 mt-1">Einduur is verplicht.</p>
+          )}
+          {startuur && einduur && einduur <= startuur && (
+            <p className="text-sm text-red-600 mt-1">Einduur moet later zijn dan startuur.</p>
+          )}
         </div>
 
         <div>
@@ -458,7 +479,11 @@ export default function ToevoegenActiviteitPage() {
                       onClick={() => setStopType("aantal")}
                       onChange={(e) => {
                         setStopType("aantal");
-                        setStopAantal(Math.max(1, Number(e.target.value)));
+                        setStopAantal(e.target.value);
+                      }}
+                      onBlur={() => {
+                        const n = parseInt(stopAantal, 10);
+                        setStopAantal(isNaN(n) || n < 1 ? "1" : String(n));
                       }}
                       disabled={busy}
                     />
