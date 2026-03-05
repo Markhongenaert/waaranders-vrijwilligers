@@ -10,6 +10,7 @@ type Props = {
     achternaam: string | null;
     telefoon: string | null;
     adres: string | null;
+    actief?: boolean | null;
 
     werkgroep_deelnemers:
       | { werkgroepen: { titel: string | null } | { titel: string | null }[] | null }
@@ -21,7 +22,9 @@ type Props = {
       | { roles: { titel: string | null } | { titel: string | null }[] | null }[]
       | null;
   };
+  isAdmin?: boolean;
   onSaved: (patch: { telefoon: string | null; adres: string | null }) => void;
+  onActiefChanged?: (actief: boolean) => void;
   returnHref?: string;
 };
 
@@ -34,7 +37,7 @@ function uniqSorted(list: string[]) {
   return Array.from(new Set(list)).sort((a, b) => a.localeCompare(b));
 }
 
-export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }: Props) {
+export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSaved, onActiefChanged, returnHref }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -106,10 +109,33 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
 
       if (error) throw error;
 
-      // terug naar overzicht (met eventueel q-param)
+      onActiefChanged?.(false);
       window.location.href = returnHref ?? "/admin/vrijwilligers";
     } catch (e: any) {
       setErr(e?.message ?? "Fout bij archiveren.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const activate = async () => {
+    const ok = confirm("Vrijwilliger opnieuw activeren?");
+    if (!ok) return;
+
+    setErr(null);
+    setBusy(true);
+
+    try {
+      const { error } = await supabase
+        .from("vrijwilligers")
+        .update({ actief: true, gearchiveerd_op: null })
+        .eq("id", vrijwilliger.id);
+
+      if (error) throw error;
+
+      onActiefChanged?.(true);
+    } catch (e: any) {
+      setErr(e?.message ?? "Fout bij activeren.");
     } finally {
       setBusy(false);
     }
@@ -191,13 +217,25 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
           {busy ? "Bezig…" : "Opslaan"}
         </button>
 
-        <button
-          className="border rounded-xl px-5 py-3 font-semibold text-red-700 bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
-          onClick={archive}
-          disabled={busy}
-        >
-          Archiveren
-        </button>
+        {isAdmin && vrijwilliger.actief !== false && (
+          <button
+            className="border rounded-xl px-5 py-3 font-semibold text-red-700 bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
+            onClick={archive}
+            disabled={busy}
+          >
+            Archiveren
+          </button>
+        )}
+
+        {isAdmin && vrijwilliger.actief === false && (
+          <button
+            className="border rounded-xl px-5 py-3 font-semibold text-green-700 bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
+            onClick={activate}
+            disabled={busy}
+          >
+            Activeren
+          </button>
+        )}
 
         <a
           className="border rounded-xl px-5 py-3 font-semibold bg-white shadow-sm hover:shadow-md transition"

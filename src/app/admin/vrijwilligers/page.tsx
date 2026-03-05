@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { isDoenkerOrAdmin } from "@/lib/auth";
+import { isDoenkerOrAdmin, isAdmin as checkIsAdmin } from "@/lib/auth";
 
 type Vrijwilliger = {
   id: string;
@@ -27,6 +27,7 @@ export default function VrijwilligersOverzichtPage() {
   const initialQ = (searchParams.get("q") ?? "").trim();
 
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [adminUser, setAdminUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -37,16 +38,17 @@ export default function VrijwilligersOverzichtPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const ok = await isDoenkerOrAdmin();
+      const [ok, admin] = await Promise.all([isDoenkerOrAdmin(), checkIsAdmin()]);
       if (!mounted) return;
       setAllowed(ok);
+      setAdminUser(admin);
     })();
     return () => {
       mounted = false;
     };
   }, []);
 
-  // 📥 lijst ophalen (enkel actieve)
+  // 📥 lijst ophalen
   useEffect(() => {
     if (allowed !== true) return;
 
@@ -56,10 +58,15 @@ export default function VrijwilligersOverzichtPage() {
       setErr(null);
 
       try {
-        const { data, error } = await supabase
+        // Filter vóór order zodat de Supabase builder correct werkt
+        let baseQuery = supabase
           .from("vrijwilligers")
-          .select("id, voornaam, achternaam, telefoon, adres, actief")
-          .eq("actief", true)
+          .select("id, voornaam, achternaam, telefoon, adres, actief");
+
+        // Doenkers zien alleen actieve vrijwilligers; admins zien iedereen
+        if (!adminUser) baseQuery = baseQuery.eq("actief", true);
+
+        const { data, error } = await baseQuery
           .order("achternaam", { ascending: true, nullsFirst: false })
           .order("voornaam", { ascending: true, nullsFirst: false });
 
@@ -79,7 +86,7 @@ export default function VrijwilligersOverzichtPage() {
     return () => {
       mounted = false;
     };
-  }, [allowed]);
+  }, [allowed, adminUser]);
 
   // 🔎 filter (voornaam, achternaam, full name)
   const filtered = useMemo(() => {
@@ -140,17 +147,17 @@ export default function VrijwilligersOverzichtPage() {
           {filtered.map((v) => {
             const name = fullName(v);
             const href = `/admin/vrijwilligers/${v.id}${qParam}`;
+            const gearchiveerd = v.actief === false;
 
             return (
               <a
                 key={v.id}
                 href={href}
-                className="
+                className={`
                   h-28 sm:h-24
                   flex flex-col justify-center
                   rounded-xl
-                  bg-blue-50
-                  border border-blue-100
+                  border
                   shadow-sm
                   hover:shadow-md
                   hover:-translate-y-0.5
@@ -158,13 +165,20 @@ export default function VrijwilligersOverzichtPage() {
                   transition
                   duration-150
                   px-4
-                "
+                  ${gearchiveerd
+                    ? "bg-gray-100 border-gray-300"
+                    : "bg-blue-50 border-blue-100"}
+                `}
               >
-                <div className="text-base sm:text-sm font-semibold text-gray-800 leading-snug">
+                <div className={`text-base sm:text-sm font-semibold leading-snug ${gearchiveerd ? "text-gray-500" : "text-gray-800"}`}>
                   {name}
                 </div>
 
-                <div className="text-xs text-gray-600 mt-1 truncate">
+                {gearchiveerd && (
+                  <div className="text-xs font-medium text-gray-400 mt-0.5">Gearchiveerd</div>
+                )}
+
+                <div className={`text-xs mt-1 truncate ${gearchiveerd ? "text-gray-400" : "text-gray-600"}`}>
                   {v.telefoon ? v.telefoon : "—"}
                   {v.adres ? ` • ${v.adres}` : ""}
                 </div>

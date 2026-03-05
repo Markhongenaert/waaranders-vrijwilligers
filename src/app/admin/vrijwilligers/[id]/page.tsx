@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { isDoenkerOrAdmin } from "@/lib/auth";
+import { isDoenkerOrAdmin, isAdmin as checkIsAdmin } from "@/lib/auth";
 import VrijwilligerDetail from "../VrijwilligerDetail";
 
 type RolMini = { titel: string | null };
@@ -15,6 +15,7 @@ type VrijwilligerFull = {
   achternaam: string | null;
   telefoon: string | null;
   adres: string | null;
+  actief: boolean | null;
 
   werkgroep_deelnemers:
     | { werkgroepen: WerkgroepMini | WerkgroepMini[] | null }
@@ -35,6 +36,7 @@ export default function VrijwilligerDetailPage() {
   const id = params?.id;
 
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [adminUser, setAdminUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [vrijwilliger, setVrijwilliger] = useState<VrijwilligerFull | null>(null);
@@ -42,9 +44,10 @@ export default function VrijwilligerDetailPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const ok = await isDoenkerOrAdmin();
+      const [ok, admin] = await Promise.all([isDoenkerOrAdmin(), checkIsAdmin()]);
       if (!mounted) return;
       setAllowed(ok);
+      setAdminUser(admin);
     })();
     return () => {
       mounted = false;
@@ -70,6 +73,7 @@ export default function VrijwilligerDetailPage() {
             achternaam,
             telefoon,
             adres,
+            actief,
             werkgroep_deelnemers(
               werkgroepen(titel)
             ),
@@ -135,8 +139,12 @@ export default function VrijwilligerDetailPage() {
       ) : vrijwilliger ? (
         <VrijwilligerDetail
           vrijwilliger={vrijwilliger}
+          isAdmin={adminUser}
           onSaved={(patch) =>
             setVrijwilliger((prev) => (prev ? { ...prev, ...patch } : prev))
+          }
+          onActiefChanged={(actief) =>
+            setVrijwilliger((prev) => (prev ? { ...prev, actief } : prev))
           }
           returnHref={`/admin/vrijwilligers${q ? `?q=${encodeURIComponent(q)}` : ""}`}
         />
