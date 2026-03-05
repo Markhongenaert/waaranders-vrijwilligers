@@ -58,17 +58,22 @@ export default function VrijwilligersOverzichtPage() {
       setErr(null);
 
       try {
-        // Filter vóór order zodat de Supabase builder correct werkt
-        let baseQuery = supabase
-          .from("vrijwilligers")
-          .select("id, voornaam, achternaam, telefoon, adres, actief");
+        const select = "id, voornaam, achternaam, telefoon, adres, actief";
+        const order = { ascending: true, nullsFirst: false } as const;
 
-        // Doenkers zien alleen actieve vrijwilligers; admins zien iedereen
-        if (!adminUser) baseQuery = baseQuery.eq("actief", true);
-
-        const { data, error } = await baseQuery
-          .order("achternaam", { ascending: true, nullsFirst: false })
-          .order("voornaam", { ascending: true, nullsFirst: false });
+        // Twee aparte chains: TypeScript-safe, geen reassignment
+        const { data, error } = adminUser
+          ? await supabase
+              .from("vrijwilligers")
+              .select(select)
+              .order("achternaam", order)
+              .order("voornaam", order)
+          : await supabase
+              .from("vrijwilligers")
+              .select(select)
+              .eq("actief", true)
+              .order("achternaam", order)
+              .order("voornaam", order);
 
         if (error) throw error;
 

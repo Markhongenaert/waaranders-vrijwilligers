@@ -88,6 +88,11 @@ export default function VrijwilligerDetailPage() {
         if (error) throw error;
         if (!data) throw new Error("Vrijwilliger niet gevonden.");
 
+        // Doenkers mogen geen gearchiveerde vrijwilligers inzien
+        if (!adminUser && data.actief === false) {
+          throw new Error("Geen toegang.");
+        }
+
         if (!mounted) return;
         setVrijwilliger(data as VrijwilligerFull);
       } catch (e: any) {
@@ -102,7 +107,7 @@ export default function VrijwilligerDetailPage() {
     return () => {
       mounted = false;
     };
-  }, [allowed, id]);
+  }, [allowed, adminUser, id]);
 
   if (allowed === null) return <main className="p-6">Laden…</main>;
 
