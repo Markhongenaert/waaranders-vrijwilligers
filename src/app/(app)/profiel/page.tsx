@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 type Vrijwilliger = {
-  id: string; // = auth user id
+  id: string;
   user_id: string | null;
   naam: string | null;
   voornaam: string | null;
@@ -14,10 +14,10 @@ type Vrijwilliger = {
   profiel_afgewerkt?: boolean | null;
 };
 
-type Interesse = {
+type Werkgroep = {
   id: string;
   titel: string;
-  omschrijving: string | null;
+  opdracht: string | null;
 };
 
 function trimOrNull(s: string | null | undefined): string | null {
@@ -29,14 +29,12 @@ export default function ProfielPage() {
   const [loading, setLoading] = useState(true);
   const [vrijwilliger, setVrijwilliger] = useState<Vrijwilliger | null>(null);
 
-  const [interesses, setInteresses] = useState<Interesse[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [werkgroepen, setWerkgroepen] = useState<Werkgroep[]>([]);
+  const [selectedWerkgroepIds, setSelectedWerkgroepIds] = useState<Set<string>>(new Set());
 
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const selectedCount = useMemo(() => selectedIds.size, [selectedIds]);
 
   const isValid = useMemo(() => {
     const vn = (vrijwilliger?.voornaam ?? "").trim();
@@ -109,23 +107,23 @@ export default function ProfielPage() {
 
       setVrijwilliger(v);
 
-      // 2) Interesses lijst
-      const { data: ints, error: iErr } = await supabase
-        .from("interesses")
-        .select("id, titel, omschrijving")
+      // 2) Werkgroepen lijst
+      const { data: wgs, error: wErr } = await supabase
+        .from("werkgroepen")
+        .select("id, titel, opdracht")
         .order("titel", { ascending: true });
 
-      if (iErr) {
-        setErr(iErr.message);
+      if (wErr) {
+        setErr(wErr.message);
         setLoading(false);
         return;
       }
-      setInteresses((ints ?? []) as Interesse[]);
+      setWerkgroepen((wgs ?? []) as Werkgroep[]);
 
-      // 3) Mijn geselecteerde interesses
+      // 3) Mijn werkgroepen
       const { data: mine, error: mErr } = await supabase
-        .from("vrijwilliger_interesses")
-        .select("interesse_id")
+        .from("werkgroep_deelnemers")
+        .select("werkgroep_id")
         .eq("vrijwilliger_id", user.id);
 
       if (mErr) {
@@ -134,20 +132,37 @@ export default function ProfielPage() {
         return;
       }
 
-      setSelectedIds(new Set((mine ?? []).map((r: any) => String(r.interesse_id))));
+      setSelectedWerkgroepIds(new Set((mine ?? []).map((r: any) => String(r.werkgroep_id))));
       setLoading(false);
     };
 
     load();
   }, []);
 
-  function toggleInteresse(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  async function toggleWerkgroep(id: string) {
+    const { data: sessionRes } = await supabase.auth.getSession();
+    const user = sessionRes.session?.user;
+    if (!user) return;
+
+    if (selectedWerkgroepIds.has(id)) {
+      const { error } = await supabase
+        .from("werkgroep_deelnemers")
+        .delete()
+        .eq("vrijwilliger_id", user.id)
+        .eq("werkgroep_id", id);
+      if (error) { setErr(error.message); return; }
+      setSelectedWerkgroepIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } else {
+      const { error } = await supabase
+        .from("werkgroep_deelnemers")
+        .insert({ vrijwilliger_id: user.id, werkgroep_id: id });
+      if (error) { setErr(error.message); return; }
+      setSelectedWerkgroepIds((prev) => new Set([...prev, id]));
+    }
   }
 
   const save = async () => {
@@ -180,7 +195,6 @@ export default function ProfielPage() {
 
     setBusy(true);
 
-    // A) Update profiel + markeer onboarding als afgewerkt
     const { error: uErr } = await supabase
       .from("vrijwilligers")
       .update({
@@ -196,52 +210,6 @@ export default function ProfielPage() {
       setErr(uErr.message);
       setBusy(false);
       return;
-    }
-
-    // B) Interesses opslaan via diff
-    const current = new Set(selectedIds);
-
-    const { data: mine2, error: m2Err } = await supabase
-      .from("vrijwilliger_interesses")
-      .select("interesse_id")
-      .eq("vrijwilliger_id", user.id);
-
-    if (m2Err) {
-      setErr(m2Err.message);
-      setBusy(false);
-      return;
-    }
-
-    const existing = new Set((mine2 ?? []).map((r: any) => String(r.interesse_id)));
-    const toInsert = Array.from(current).filter((id) => !existing.has(id));
-    const toDelete = Array.from(existing).filter((id) => !current.has(id));
-
-    for (const interesse_id of toDelete) {
-      const { error: dErr } = await supabase
-        .from("vrijwilliger_interesses")
-        .delete()
-        .eq("vrijwilliger_id", user.id)
-        .eq("interesse_id", interesse_id);
-
-      if (dErr) {
-        setErr(dErr.message);
-        setBusy(false);
-        return;
-      }
-    }
-
-    if (toInsert.length > 0) {
-      const rows = toInsert.map((interesse_id) => ({
-        vrijwilliger_id: user.id,
-        interesse_id,
-      }));
-
-      const { error: insErr } = await supabase.from("vrijwilliger_interesses").insert(rows);
-      if (insErr) {
-        setErr(insErr.message);
-        setBusy(false);
-        return;
-      }
     }
 
     setMsg("Opgeslagen.");
@@ -342,34 +310,34 @@ export default function ProfielPage() {
 
         <div>
           <div className="flex items-baseline justify-between mb-2">
-            <label className="block font-medium">Interesses</label>
-            <span className="text-sm text-gray-600">{selectedCount} geselecteerd</span>
+            <label className="block font-medium">Werkgroepen</label>
+            <span className="text-sm text-gray-600">{selectedWerkgroepIds.size} geselecteerd</span>
           </div>
 
           <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
-            {interesses.map((i) => {
-              const id = String(i.id);
+            {werkgroepen.map((w) => {
+              const id = String(w.id);
               return (
-                <label key={id} className="flex items-start gap-3">
+                <label key={id} className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     className="mt-1 accent-emerald-800"
-                    checked={selectedIds.has(id)}
-                    onChange={() => toggleInteresse(id)}
+                    checked={selectedWerkgroepIds.has(id)}
+                    onChange={() => toggleWerkgroep(id)}
                     disabled={busy}
                   />
                   <div>
-                    <div className="font-medium">{i.titel}</div>
-                    {i.omschrijving && (
-                      <div className="text-sm text-gray-600">{i.omschrijving}</div>
+                    <div className="font-medium">{w.titel}</div>
+                    {w.opdracht && (
+                      <div className="text-sm text-gray-600">{w.opdracht}</div>
                     )}
                   </div>
                 </label>
               );
             })}
 
-            {interesses.length === 0 && (
-              <p className="text-sm text-gray-600">Geen interesses gevonden.</p>
+            {werkgroepen.length === 0 && (
+              <p className="text-sm text-gray-600">Geen werkgroepen gevonden.</p>
             )}
           </div>
         </div>

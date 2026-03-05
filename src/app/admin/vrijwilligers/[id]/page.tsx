@@ -6,8 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import VrijwilligerDetail from "../VrijwilligerDetail";
 
-type InteresseMini = { titel: string | null };
 type RolMini = { titel: string | null };
+type WerkgroepMini = { titel: string | null };
 
 type VrijwilligerFull = {
   id: string;
@@ -16,9 +16,9 @@ type VrijwilligerFull = {
   telefoon: string | null;
   adres: string | null;
 
-  vrijwilliger_interesses:
-    | { interesses: InteresseMini | InteresseMini[] | null }
-    | { interesses: InteresseMini | InteresseMini[] | null }[]
+  werkgroep_deelnemers:
+    | { werkgroepen: WerkgroepMini | WerkgroepMini[] | null }
+    | { werkgroepen: WerkgroepMini | WerkgroepMini[] | null }[]
     | null;
 
   vrijwilliger_roles:
@@ -70,8 +70,8 @@ export default function VrijwilligerDetailPage() {
             achternaam,
             telefoon,
             adres,
-            vrijwilliger_interesses(
-              interesses(titel)
+            werkgroep_deelnemers(
+              werkgroepen(titel)
             ),
             vrijwilliger_roles!vr_vrijwilliger_fkey(
               roles(titel)

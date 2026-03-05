@@ -11,9 +11,9 @@ type Props = {
     telefoon: string | null;
     adres: string | null;
 
-    vrijwilliger_interesses:
-      | { interesses: { titel: string | null } | { titel: string | null }[] | null }
-      | { interesses: { titel: string | null } | { titel: string | null }[] | null }[]
+    werkgroep_deelnemers:
+      | { werkgroepen: { titel: string | null } | { titel: string | null }[] | null }
+      | { werkgroepen: { titel: string | null } | { titel: string | null }[] | null }[]
       | null;
 
     vrijwilliger_roles:
@@ -46,14 +46,13 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
     return [vrijwilliger.voornaam ?? "", vrijwilliger.achternaam ?? ""].join(" ").trim() || "—";
   }, [vrijwilliger.voornaam, vrijwilliger.achternaam]);
 
-  const interests = useMemo(() => {
-    const vi = toList(vrijwilliger.vrijwilliger_interesses as any);
-    const titles = vi
-      .flatMap((row: any) => toList(row?.interesses))
-      .map((i: any) => (i?.titel ?? "").trim())
+  const werkgroepen = useMemo(() => {
+    const wd = toList(vrijwilliger.werkgroep_deelnemers as any);
+    const titles = wd
+      .map((row: any) => (row?.werkgroepen?.titel ?? "").trim())
       .filter(Boolean);
     return uniqSorted(titles);
-  }, [vrijwilliger.vrijwilliger_interesses]);
+  }, [vrijwilliger.werkgroep_deelnemers]);
 
   const roles = useMemo(() => {
     const vr = toList(vrijwilliger.vrijwilliger_roles as any);
@@ -157,15 +156,15 @@ export default function VrijwilligerDetail({ vrijwilliger, onSaved, returnHref }
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
-          <div className="font-semibold mb-2">Interesses</div>
-          {interests.length ? (
+          <div className="font-semibold mb-2">Werkgroepen</div>
+          {werkgroepen.length ? (
             <ul className="list-disc pl-5 space-y-1 text-sm text-gray-800">
-              {interests.map((t) => (
+              {werkgroepen.map((t) => (
                 <li key={t}>{t}</li>
               ))}
             </ul>
           ) : (
-            <div className="text-sm text-gray-600">Geen interesses.</div>
+            <div className="text-sm text-gray-600">Geen werkgroepen.</div>
           )}
         </div>
 
