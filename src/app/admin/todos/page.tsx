@@ -52,50 +52,49 @@ function TodoCard({
       {/* Titel – volle breedte */}
       <div className="font-medium text-base break-words leading-snug">{t.wat}</div>
 
-      {/* Badges */}
-      <div className="text-sm text-gray-600 mt-3 flex flex-wrap gap-2 items-center">
-        {t.streefdatum ? (
-          <span
-            className={`px-2 py-0.5 rounded-full border text-xs ${
-              overdue ? "text-red-700 font-bold" : ""
-            }`}
-          >
-            {formatTodoDatum(t.streefdatum)}
-          </span>
-        ) : (
-          <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">geen datum</span>
-        )}
-
+      {/* Onderste sectie */}
+      <div className="mt-4 border-t pt-3 space-y-2">
+        {/* Dringend-badge op aparte regel, alleen bij hoge prioriteit */}
         {t.prioriteit?.toLowerCase() === "hoog" && (
-          <span className="px-2 py-0.5 rounded-full text-xs font-semibold border border-red-500 text-red-700 bg-white">
-            Dringend
-          </span>
+          <div>
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold border border-red-500 text-red-700 bg-white">
+              Dringend
+            </span>
+          </div>
         )}
-      </div>
 
-      {/* Acties onderaan */}
-      <div className="mt-4 flex justify-between items-center border-t pt-3">
-        <a href={editHref} className="text-sm text-blue-900 font-medium hover:underline">
-          Bewerken
-        </a>
+        {/* Datum links — Bewerken midden — Vinkje rechts */}
+        <div className="flex items-center justify-between gap-2">
+          {t.streefdatum ? (
+            <span className={`px-2 py-0.5 rounded-full border text-xs ${overdue ? "text-red-700 font-bold" : ""}`}>
+              {formatTodoDatum(t.streefdatum)}
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">geen datum</span>
+          )}
 
-        {t.status !== "gedaan" ? (
-          <button
-            onClick={() => onSetStatus(t.id, "gedaan")}
-            className="px-2 py-0.5 rounded-full border border-green-500 text-green-700 text-xs font-semibold bg-white hover:bg-green-50 transition" 
-            title="Markeer als gedaan"
-          >
-            ✓
-          </button>
-        ) : (
-          <button
-            onClick={() => onSetStatus(t.id, "gepland")}
-            className="rounded-full w-9 h-9 flex items-center justify-center bg-gray-200 text-gray-800 text-lg hover:bg-gray-300 transition"
-            title="Terug naar gepland"
-          >
-            ↩
-          </button>
-        )}
+          <a href={editHref} className="text-sm text-blue-900 font-medium hover:underline">
+            Bewerken
+          </a>
+
+          {t.status !== "gedaan" ? (
+            <button
+              onClick={() => onSetStatus(t.id, "gedaan")}
+              className="px-2 py-0.5 rounded-full border border-green-500 text-green-700 text-xs font-semibold bg-white hover:bg-green-50 transition"
+              title="Markeer als gedaan"
+            >
+              ✓
+            </button>
+          ) : (
+            <button
+              onClick={() => onSetStatus(t.id, "gepland")}
+              className="rounded-full w-9 h-9 flex items-center justify-center bg-gray-200 text-gray-800 text-lg hover:bg-gray-300 transition"
+              title="Terug naar gepland"
+            >
+              ↩
+            </button>
+          )}
+        </div>
       </div>
     </li>
   );
