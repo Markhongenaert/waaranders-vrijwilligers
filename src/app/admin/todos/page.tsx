@@ -25,17 +25,6 @@ function formatTodoDatum(dateStr: string | null) {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function prioBadge(p: Todo["prioriteit"]) {
-  if (p === "hoog") return "bg-red-600 text-white";
-  if (p === "normaal") return "bg-amber-500 text-white";
-  return "bg-gray-200 text-gray-800";
-}
-
-function statusBadge(s: Todo["status"]) {
-  if (s === "gedaan") return "bg-green-600 text-white";
-  if (s === "bezig") return "bg-blue-900 text-white";
-  return "bg-gray-100 text-gray-800";
-}
 
 function isOverdue(dateStr: string | null, status: Todo["status"]) {
   if (!dateStr || status === "gedaan") return false;
@@ -77,13 +66,11 @@ function TodoCard({
           <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">geen datum</span>
         )}
 
-        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${prioBadge(t.prioriteit)}`}>
-          {t.prioriteit}
-        </span>
-
-        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(t.status)}`}>
-          {t.status}
-        </span>
+        {t.prioriteit === "hoog" && (
+          <span className="px-2 py-0.5 rounded-full text-xs font-semibold border border-red-500 text-red-700 bg-white">
+            Prioriteit
+          </span>
+        )}
       </div>
 
       {/* Acties onderaan */}
