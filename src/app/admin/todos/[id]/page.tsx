@@ -77,7 +77,7 @@ export default function TodoEditPage() {
     setWat(tt.wat ?? "");
     setWie(tt.wie_vrijwilliger_id ?? "");
     setStreefdatum(tt.streefdatum ?? "");
-    setPrioriteit(tt.prioriteit);
+    setPrioriteit((tt.prioriteit?.toLowerCase() ?? "normaal") as "laag" | "normaal" | "hoog");
     setStatus(tt.status);
 
     // 2) vrijwilligerslijst (voor dropdown). Als dit faalt: geen harde stop.

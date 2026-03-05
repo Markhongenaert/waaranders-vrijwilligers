@@ -66,9 +66,9 @@ function TodoCard({
           <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">geen datum</span>
         )}
 
-        {t.prioriteit === "hoog" && (
+        {t.prioriteit?.toLowerCase() === "hoog" && (
           <span className="px-2 py-0.5 rounded-full text-xs font-semibold border border-red-500 text-red-700 bg-white">
-            Prioriteit
+            Dringend
           </span>
         )}
       </div>
