@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { isDoenkerOrAdmin } from "@/lib/auth";
+import { isDoenkerOrAdmin, isAdmin as checkIsAdmin } from "@/lib/auth";
 
 type Klant = {
   id: string;
@@ -49,6 +49,7 @@ export default function KlantDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
+  const [adminUser, setAdminUser] = useState(false);
 
   const [orig, setOrig] = useState<Klant | null>(null);
 
@@ -78,8 +79,9 @@ export default function KlantDetailPage() {
       return;
     }
 
-    const ok = await isDoenkerOrAdmin();
+    const [ok, admin] = await Promise.all([isDoenkerOrAdmin(), checkIsAdmin()]);
     setAllowed(ok);
+    setAdminUser(admin);
     if (!ok) {
       setLoading(false);
       return;
@@ -196,6 +198,34 @@ export default function KlantDetailPage() {
     setBusy(false);
   };
 
+  const archive = async () => {
+    if (!orig) return;
+    if (!confirm(`Klant "${orig.naam}" archiveren?`)) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase
+      .from("klanten")
+      .update({ actief: false, gearchiveerd_op: new Date().toISOString() })
+      .eq("id", id);
+    if (error) { setError(error.message); setBusy(false); return; }
+    await load();
+    setBusy(false);
+  };
+
+  const activate = async () => {
+    if (!orig) return;
+    if (!confirm(`Klant "${orig.naam}" opnieuw activeren?`)) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase
+      .from("klanten")
+      .update({ actief: true, gearchiveerd_op: null })
+      .eq("id", id);
+    if (error) { setError(error.message); setBusy(false); return; }
+    await load();
+    setBusy(false);
+  };
+
   if (loading) return <main className="p-10">Laden…</main>;
   if (!allowed) return <main className="p-10">Geen rechten.</main>;
   if (!orig) return <main className="p-10">Klant niet gevonden.</main>;
@@ -286,10 +316,30 @@ export default function KlantDetailPage() {
           </select>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button className="border rounded-xl px-4 py-2" onClick={save} disabled={busy}>
             {busy ? "Bezig…" : "Opslaan"}
           </button>
+
+          {adminUser && orig.actief && !orig.gearchiveerd_op && (
+            <button
+              className="border border-red-400 rounded-xl px-4 py-2 text-red-700 bg-white hover:bg-red-50 transition"
+              onClick={archive}
+              disabled={busy}
+            >
+              Archiveren
+            </button>
+          )}
+
+          {adminUser && (!orig.actief || orig.gearchiveerd_op) && (
+            <button
+              className="border border-green-400 rounded-xl px-4 py-2 text-green-700 bg-white hover:bg-green-50 transition"
+              onClick={activate}
+              disabled={busy}
+            >
+              Activeren
+            </button>
+          )}
 
           <Link className="border rounded-xl px-4 py-2" href={backHref}>
             Terug
