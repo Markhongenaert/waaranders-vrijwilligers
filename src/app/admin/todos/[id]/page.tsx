@@ -130,13 +130,22 @@ export default function TodoEditPage() {
     };
     if (me) payload.bijgewerkt_door = me;
 
-    const { error } = await supabase.from("todos").update(payload).eq("id", todo.id);
+    const { data: updated, error } = await supabase
+      .from("todos")
+      .update(payload)
+      .eq("id", todo.id)
+      .select("id")
+      .maybeSingle();
 
-if (error) {
-     setError(error.message);
+    if (error) {
+      console.error("Todo update mislukt:", error);
+      setError(error.message);
+    } else if (!updated) {
+      console.error("Todo update: geen rij bijgewerkt (RLS blokkeert mogelijk de UPDATE)");
+      setError("Opslaan mislukt: geen rechten om deze todo bij te werken.");
     } else {
-     window.location.href = "/admin/todos";
-     return;
+      window.location.href = "/admin/todos";
+      return;
     }
 
     setBusy(false);
