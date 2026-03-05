@@ -17,9 +17,8 @@ export default function WerkgroepenBeheerPage() {
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // form state
+  // form state (alleen voor nieuw)
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Werkgroep | null>(null);
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
   const [busy, setBusy] = useState(false);
@@ -57,7 +56,6 @@ export default function WerkgroepenBeheerPage() {
   }, [allowed]);
 
   function openNew() {
-    setEditing(null);
     setTitel("");
     setOpdracht("");
     setErr(null);
@@ -65,34 +63,16 @@ export default function WerkgroepenBeheerPage() {
     setFormOpen(true);
   }
 
-  function openEdit(w: Werkgroep) {
-    setEditing(w);
-    setTitel(w.titel);
-    setOpdracht(w.opdracht ?? "");
-    setErr(null);
-    setMsg(null);
-    setFormOpen(true);
-  }
-
-  async function saveForm() {
+  async function saveNew() {
     if (!titel.trim()) { setErr("Titel is verplicht."); return; }
     setBusy(true);
     setErr(null);
     try {
-      if (editing) {
-        const { error } = await supabase
-          .from("werkgroepen")
-          .update({ titel: titel.trim(), opdracht: opdracht.trim() || null })
-          .eq("id", editing.id);
-        if (error) throw error;
-        setMsg("Werkgroep bijgewerkt.");
-      } else {
-        const { error } = await supabase
-          .from("werkgroepen")
-          .insert({ titel: titel.trim(), opdracht: opdracht.trim() || null });
-        if (error) throw error;
-        setMsg("Werkgroep aangemaakt.");
-      }
+      const { error } = await supabase
+        .from("werkgroepen")
+        .insert({ titel: titel.trim(), opdracht: opdracht.trim() || null });
+      if (error) throw error;
+      setMsg("Werkgroep aangemaakt.");
       setFormOpen(false);
       await load();
     } catch (e: any) {
@@ -161,7 +141,7 @@ export default function WerkgroepenBeheerPage() {
 
       {formOpen && (
         <div className="wa-card p-5 space-y-3">
-          <div className="font-semibold">{editing ? "Bewerken" : "Nieuwe werkgroep"}</div>
+          <div className="font-semibold">Nieuwe werkgroep</div>
 
           <div>
             <label className="block font-medium mb-1">
@@ -177,7 +157,7 @@ export default function WerkgroepenBeheerPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1">Opdracht</label>
+            <label className="block font-medium mb-1">Toelichting</label>
             <textarea
               className="w-full border rounded-xl p-3 bg-white min-h-[80px]"
               value={opdracht}
@@ -189,7 +169,7 @@ export default function WerkgroepenBeheerPage() {
           <div className="flex gap-2">
             <button
               className="wa-btn wa-btn-brand px-4 py-2 font-medium"
-              onClick={saveForm}
+              onClick={saveNew}
               disabled={busy}
             >
               {busy ? "Bezig…" : "Opslaan"}
@@ -218,13 +198,12 @@ export default function WerkgroepenBeheerPage() {
                 )}
               </div>
               <div className="flex gap-2">
-                <button
+                <a
+                  href={`/admin/werkgroepen/beheer/${w.id}`}
                   className="border rounded-xl px-3 py-1.5 text-sm bg-white hover:shadow-sm transition"
-                  onClick={() => openEdit(w)}
-                  disabled={busy}
                 >
                   Bewerken
-                </button>
+                </a>
                 <button
                   className="border border-red-200 rounded-xl px-3 py-1.5 text-sm text-red-700 bg-white hover:shadow-sm transition"
                   onClick={() => deleteWerkgroep(w)}

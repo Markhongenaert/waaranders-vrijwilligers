@@ -343,9 +343,9 @@ export default function ProfielPage() {
                             <button
                               type="button"
                               onClick={() => setOpdrachtPopup(w.opdracht)}
-                              className="text-gray-500 hover:text-gray-700 text-sm"
+                              className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm bg-white hover:shadow-sm transition"
                             >
-                              ℹ️
+                              Toelichting
                             </button>
                           )}
                         </div>
