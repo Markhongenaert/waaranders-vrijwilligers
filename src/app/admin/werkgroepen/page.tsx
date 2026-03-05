@@ -95,10 +95,7 @@ export default function WerkgroepenPage() {
               className="wa-card p-4 hover:shadow-md transition block"
             >
               <div className="font-semibold text-gray-900">{w.titel}</div>
-              {w.opdracht && (
-                <div className="text-sm text-gray-600 mt-1 line-clamp-2">{w.opdracht}</div>
-              )}
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-sm text-gray-500 mt-1">
                 {w.aantalDeelnemers} deelnemer{w.aantalDeelnemers !== 1 ? "s" : ""}
               </div>
             </a>
