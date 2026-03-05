@@ -62,13 +62,13 @@ export default function ToevoegenActiviteitPage() {
   const [startuur, setStartuur] = useState(""); // "HH:MM"
   const [einduur, setEinduur] = useState(""); // "HH:MM"
 
-  const [aantal, setAantal] = useState<number>(1);
+  const [aantal, setAantal] = useState<number>(0);
   const [klantId, setKlantId] = useState<string>("");
 
   // Herhaling state
   const [herhaling, setHerhaling] = useState(false);
   const [herhalingType, setHerhalingType] = useState<"wekelijks" | "maandelijks">("wekelijks");
-  const [herhalingInterval, setHerhalingInterval] = useState(1);
+  const [herhalingInterval, setHerhalingInterval] = useState("1");
   const [stopType, setStopType] = useState<"aantal" | "datum">("aantal");
   const [stopAantal, setStopAantal] = useState("4");
   const [stopDatum, setStopDatum] = useState("");
@@ -157,7 +157,8 @@ export default function ToevoegenActiviteitPage() {
     if (einduur <= startuur) return setError("Einduur moet later zijn dan startuur.");
 
     if (herhaling) {
-      if (herhalingInterval < 1) return setError("Interval moet minstens 1 zijn.");
+      const herhalingIntervalNum = parseInt(herhalingInterval, 10);
+      if (isNaN(herhalingIntervalNum) || herhalingIntervalNum < 1) return setError("Interval moet minstens 1 zijn.");
       if (stopType === "datum" && !stopDatum) return setError("Einddatum is verplicht bij 'Tot datum'.");
       if (stopType === "datum" && stopDatum <= wanneer) return setError("Einddatum moet na de startdatum liggen.");
       const stopAantalNum = parseInt(stopAantal, 10);
@@ -180,7 +181,7 @@ export default function ToevoegenActiviteitPage() {
       const datums = generateHerhalingsDatums(
         wanneer,
         herhalingType,
-        herhalingInterval,
+        parseInt(herhalingInterval, 10),
         stopType === "aantal"
           ? { type: "aantal", count: parseInt(stopAantal, 10) }
           : { type: "datum", until: stopDatum }
@@ -197,7 +198,7 @@ export default function ToevoegenActiviteitPage() {
         ...basePayload,
         wanneer: d,
         herhaling_type: herhalingType,
-        herhaling_interval: herhalingInterval,
+        herhaling_interval: parseInt(herhalingInterval, 10),
         herhaling_einde_datum: stopType === "datum" ? stopDatum : null,
         herhaling_einde_aantal: stopType === "aantal" ? parseInt(stopAantal, 10) : null,
         herhaling_reeks_id: reeksId,
@@ -228,14 +229,15 @@ export default function ToevoegenActiviteitPage() {
       setMsg(`Activiteit toegevoegd (id: ${data?.id}).`);
     }
 
+    setSaveAttempted(false);
     setTitel("");
     setToelichting("");
     setWanneer("");
     setStartuur("");
     setEinduur("");
-    setAantal(1);
+    setAantal(0);
     setHerhaling(false);
-    setHerhalingInterval(1);
+    setHerhalingInterval("1");
     setHerhalingType("wekelijks");
     setStopType("aantal");
     setStopAantal("4");
@@ -407,6 +409,7 @@ export default function ToevoegenActiviteitPage() {
             className="w-full border rounded-xl p-3 bg-white"
             value={aantal}
             onChange={(e) => setAantal(Number(e.target.value))}
+            onFocus={(e) => e.target.select()}
             disabled={busy}
           />
         </div>
@@ -450,7 +453,11 @@ export default function ToevoegenActiviteitPage() {
                     max={52}
                     className="w-full border rounded-xl p-3 bg-white"
                     value={herhalingInterval}
-                    onChange={(e) => setHerhalingInterval(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setHerhalingInterval(e.target.value)}
+                    onBlur={() => {
+                      const n = parseInt(herhalingInterval, 10);
+                      setHerhalingInterval(isNaN(n) || n < 1 ? "1" : String(n));
+                    }}
                     disabled={busy}
                   />
                 </div>
@@ -528,8 +535,6 @@ export default function ToevoegenActiviteitPage() {
               noKlanten ||
               !klantId ||
               !wanneer ||
-              !startuur ||
-              !einduur ||
               (herhaling && stopType === "datum" && !stopDatum)
             }
           >
