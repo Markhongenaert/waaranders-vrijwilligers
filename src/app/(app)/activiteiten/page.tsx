@@ -85,9 +85,11 @@ function isoDate(year: number, month: number, day: number) {
 // --- Kalender sub-component ---
 function Kalender({
   items,
+  meedoenByAct,
   onBadgeClick,
 }: {
   items: Activiteit[];
+  meedoenByAct: Map<string, { vrijwilligerIds: Set<string>; namen: string[] }>;
   onBadgeClick: (id: string) => void;
 }) {
   const now = new Date();
@@ -175,16 +177,23 @@ function Kalender({
                     {dayNum}
                   </div>
                   <div className="flex flex-col gap-0.5">
-                    {acts.map((a) => (
+                    {acts.map((a) => {
+                      const inschrijvingen = meedoenByAct.get(a.id)?.vrijwilligerIds.size ?? 0;
+                      const tekort = a.aantal_vrijwilligers != null && a.aantal_vrijwilligers - inschrijvingen > 0;
+                      return (
                       <button
                         key={a.id}
                         onClick={() => onBadgeClick(a.id)}
-                        className="text-left text-xs bg-blue-900 text-white rounded px-1 py-0.5 leading-tight truncate w-full hover:bg-blue-800 transition-colors"
+                        className={[
+                          "text-left text-xs text-white rounded px-1 py-0.5 leading-tight truncate w-full transition-colors",
+                          tekort ? "bg-red-600 hover:bg-red-700" : "bg-blue-900 hover:bg-blue-800",
+                        ].join(" ")}
                         title={a.titel}
                       >
                         {a.titel.split(/\s+/)[0]}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
@@ -449,7 +458,7 @@ export default function ActiviteitenPage() {
         items.length === 0 ? (
           <p className="text-gray-700">Geen toekomstige activiteiten.</p>
         ) : (
-          <Kalender items={items} onBadgeClick={handleBadgeClick} />
+          <Kalender items={items} meedoenByAct={meedoenByAct} onBadgeClick={handleBadgeClick} />
         )
       ) : items.length === 0 ? (
         <p className="text-gray-700">Geen toekomstige activiteiten.</p>
