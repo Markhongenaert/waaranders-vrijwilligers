@@ -35,6 +35,7 @@ export default function ProfielPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [opdrachtPopup, setOpdrachtPopup] = useState<string | null>(null);
 
   const isValid = useMemo(() => {
     const vn = (vrijwilliger?.voornaam ?? "").trim();
@@ -311,54 +312,85 @@ export default function ProfielPage() {
         <div>
           <label className="block font-medium mb-2">Werkgroepen</label>
 
-          <div className="border border-gray-200 rounded-xl bg-white divide-y">
+          <div className="space-y-3">
             {werkgroepen.map((w) => {
               const id = String(w.id);
               const lid = selectedWerkgroepIds.has(id);
               return (
-                <div key={id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-medium truncate">{w.titel}</span>
-                    {w.opdracht && (
+                <div
+                  key={id}
+                  className={`rounded-xl border p-4 ${lid ? "border-green-200 bg-green-50" : "border-gray-200 bg-white"}`}
+                >
+                  {lid ? (
+                    <>
+                      <div className="text-sm font-bold text-green-700 mb-1">Ik ben lid van</div>
+                      <div className="font-semibold text-gray-900 w-full mb-3">{w.titel}</div>
                       <button
                         type="button"
-                        title={w.opdracht}
-                        onClick={() => alert(w.opdracht)}
-                        className="text-gray-400 hover:text-gray-600 shrink-0"
+                        onClick={() => toggleWerkgroep(id)}
+                        disabled={busy}
+                        className="border border-gray-300 rounded-xl px-4 py-1.5 text-sm bg-white hover:shadow-sm transition disabled:opacity-60"
                       >
-                        ℹ️
+                        Uitschrijven
                       </button>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    {lid && (
-                      <span className="text-sm font-semibold text-green-700">
-                        Je bent lid van deze werkgroep
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => toggleWerkgroep(id)}
-                      disabled={busy}
-                      className={
-                        lid
-                          ? "border border-red-200 rounded-xl px-3 py-1.5 text-sm text-red-700 bg-white hover:shadow-sm transition disabled:opacity-60"
-                          : "wa-btn wa-btn-brand px-3 py-1.5 text-sm disabled:opacity-60"
-                      }
-                    >
-                      {lid ? "Uitschrijven" : "Inschrijven"}
-                    </button>
-                  </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-semibold text-gray-900 w-full mb-2">{w.titel}</div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          {w.opdracht && (
+                            <button
+                              type="button"
+                              onClick={() => setOpdrachtPopup(w.opdracht)}
+                              className="text-gray-500 hover:text-gray-700 text-sm"
+                            >
+                              ℹ️
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleWerkgroep(id)}
+                          disabled={busy}
+                          className="bg-sky-200 hover:bg-sky-300 rounded-xl px-4 py-1.5 text-sm font-medium transition disabled:opacity-60"
+                        >
+                          Inschrijven
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
 
             {werkgroepen.length === 0 && (
-              <p className="px-4 py-3 text-sm text-gray-600">Geen werkgroepen gevonden.</p>
+              <p className="text-sm text-gray-600">Geen werkgroepen gevonden.</p>
             )}
           </div>
         </div>
+
+        {/* Opdracht popup */}
+        {opdrachtPopup && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => setOpdrachtPopup(null)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-gray-800 leading-relaxed">{opdrachtPopup}</p>
+              <button
+                type="button"
+                onClick={() => setOpdrachtPopup(null)}
+                className="wa-btn wa-btn-brand w-full py-2 font-medium"
+              >
+                Sluiten
+              </button>
+            </div>
+          </div>
+        )}
 
         <button
           className="wa-btn wa-btn-brand w-full px-5 py-3 font-medium"

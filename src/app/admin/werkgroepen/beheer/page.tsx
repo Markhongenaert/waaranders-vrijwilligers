@@ -210,14 +210,14 @@ export default function WerkgroepenBeheerPage() {
       ) : (
         <div className="space-y-2">
           {werkgroepen.map((w) => (
-            <div key={w.id} className="wa-card p-4 flex items-start justify-between gap-3">
+            <div key={w.id} className="wa-card p-4 space-y-3">
               <div>
                 <div className="font-semibold">{w.titel}</div>
                 {w.opdracht && (
-                  <div className="text-sm text-gray-600 mt-0.5">{w.opdracht}</div>
+                  <div className="text-sm text-gray-600 mt-1">{w.opdracht}</div>
                 )}
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2">
                 <button
                   className="border rounded-xl px-3 py-1.5 text-sm bg-white hover:shadow-sm transition"
                   onClick={() => openEdit(w)}
