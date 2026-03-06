@@ -18,6 +18,13 @@ type Deelnemer = {
   achternaam: string | null;
 };
 
+type OpenTaak = {
+  id: string;
+  wat: string;
+  streefdatum: string | null;
+  vrijwilligerNaam: string | null;
+};
+
 export default function WerkgroepDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -26,6 +33,7 @@ export default function WerkgroepDetailPage() {
   const [loading, setLoading] = useState(true);
   const [werkgroep, setWerkgroep] = useState<Werkgroep | null>(null);
   const [deelnemers, setDeelnemers] = useState<Deelnemer[]>([]);
+  const [taken, setTaken] = useState<OpenTaak[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,8 +67,23 @@ export default function WerkgroepDetailPage() {
           .eq("werkgroep_id", id);
         if (dErr) throw dErr;
 
+        const { data: tt, error: tErr } = await supabase
+          .from("todos")
+          .select("id, wat, streefdatum, vrijwilligers!todos_wie_vrijwilliger_id_fkey(naam)")
+          .eq("werkgroep_id", id)
+          .neq("status", "gedaan");
+        if (tErr) throw tErr;
+
         if (!mounted) return;
         setWerkgroep(wg);
+        setTaken(
+          (tt ?? []).map((t: any) => ({
+            id: t.id,
+            wat: t.wat,
+            streefdatum: t.streefdatum ?? null,
+            vrijwilligerNaam: t.vrijwilligers?.naam ?? null,
+          }))
+        );
         setDeelnemers(
           (dd ?? [])
             .map((row: any) => row.vrijwilligers)
@@ -129,6 +152,32 @@ export default function WerkgroepDetailPage() {
               </ul>
             ) : (
               <p className="text-sm text-gray-600">Geen deelnemers.</p>
+            )}
+          </div>
+
+          <div className="wa-card p-4">
+            <div className="font-semibold mb-3">Openstaande taken</div>
+            {taken.length ? (
+              <ul className="space-y-2">
+                {taken.map((t) => (
+                  <li key={t.id} className="flex gap-2 text-sm text-gray-800">
+                    <span className="mt-0.5 text-gray-400">•</span>
+                    <span>
+                      {t.wat}
+                      {t.streefdatum && (
+                        <span className="text-gray-500">
+                          {" "}— {new Date(t.streefdatum).toLocaleDateString("nl-BE")}
+                        </span>
+                      )}
+                      {t.vrijwilligerNaam && (
+                        <span className="text-gray-500"> ({t.vrijwilligerNaam})</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-600">Geen openstaande taken.</p>
             )}
           </div>
         </>

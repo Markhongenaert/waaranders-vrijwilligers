@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Vrijwilliger = { id: string; naam: string | null };
+type Werkgroep = { id: string; titel: string };
 
 type Todo = {
   id: string;
@@ -13,6 +14,7 @@ type Todo = {
   streefdatum: string | null;
   status: "gepland" | "bezig" | "gedaan";
   prioriteit: "laag" | "normaal" | "hoog";
+  werkgroep_id: string | null;
 };
 
 export default function TodoEditPage() {
@@ -22,6 +24,7 @@ export default function TodoEditPage() {
   const [loading, setLoading] = useState(true);
 
   const [vrijwilligers, setVrijwilligers] = useState<Vrijwilliger[]>([]);
+  const [werkgroepen, setWerkgroepen] = useState<Werkgroep[]>([]);
   const [todo, setTodo] = useState<Todo | null>(null);
 
   const [wat, setWat] = useState("");
@@ -29,6 +32,7 @@ export default function TodoEditPage() {
   const [streefdatum, setStreefdatum] = useState("");
   const [prioriteit, setPrioriteit] = useState<"laag" | "normaal" | "hoog">("normaal");
   const [status, setStatus] = useState<"gepland" | "bezig" | "gedaan">("gepland");
+  const [werkgroepId, setWerkgroepId] = useState<string>("");
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +59,7 @@ export default function TodoEditPage() {
     // 1) TODO laden (RLS beslist)
     const { data: t, error: eTodo } = await supabase
       .from("todos")
-      .select("id,wat,wie_vrijwilliger_id,streefdatum,status,prioriteit")
+      .select("id,wat,wie_vrijwilliger_id,streefdatum,status,prioriteit,werkgroep_id")
       .eq("id", id)
       .maybeSingle();
 
@@ -79,6 +83,7 @@ export default function TodoEditPage() {
     setStreefdatum(tt.streefdatum ?? "");
     setPrioriteit((tt.prioriteit?.toLowerCase() ?? "normaal") as "laag" | "normaal" | "hoog");
     setStatus(tt.status);
+    setWerkgroepId(tt.werkgroep_id ?? "");
 
     // 2) vrijwilligerslijst (voor dropdown). Als dit faalt: geen harde stop.
     const { data: v, error: eV } = await supabase
@@ -92,6 +97,12 @@ export default function TodoEditPage() {
       console.warn("Vrijwilligerslijst niet leesbaar:", eV.message);
       setVrijwilligers([]);
     }
+
+    const { data: wg } = await supabase
+      .from("werkgroepen")
+      .select("id,titel")
+      .order("titel", { ascending: true });
+    setWerkgroepen((wg ?? []) as Werkgroep[]);
 
     setLoading(false);
   };
@@ -127,6 +138,7 @@ export default function TodoEditPage() {
       streefdatum: streefdatum ? streefdatum : null,
       prioriteit,
       status,
+      werkgroep_id: werkgroepId || null,
     };
     if (me) payload.bijgewerkt_door = me;
 
@@ -232,6 +244,16 @@ export default function TodoEditPage() {
         <div>
           <label className="text-sm font-medium block mb-1">Streefdatum</label>
           <input className="w-full border rounded-xl p-3" type="date" value={streefdatum} onChange={(e) => setStreefdatum(e.target.value)} />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">Werkgroep</label>
+          <select className="w-full border rounded-xl p-3" value={werkgroepId} onChange={(e) => setWerkgroepId(e.target.value)}>
+            <option value="">— Geen werkgroep —</option>
+            {werkgroepen.map((w) => (
+              <option key={w.id} value={w.id}>{w.titel}</option>
+            ))}
+          </select>
         </div>
 
         <div>

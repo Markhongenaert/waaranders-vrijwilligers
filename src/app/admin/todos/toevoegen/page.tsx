@@ -5,16 +5,19 @@ import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
 type Vrijwilliger = { id: string; naam: string | null };
+type Werkgroep = { id: string; titel: string };
 
 export default function TodoToevoegenPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
   const [vrijwilligers, setVrijwilligers] = useState<Vrijwilliger[]>([]);
+  const [werkgroepen, setWerkgroepen] = useState<Werkgroep[]>([]);
   const [wat, setWat] = useState("");
   const [wie, setWie] = useState<string>("");
   const [streefdatum, setStreefdatum] = useState<string>("");
   const [prioriteit, setPrioriteit] = useState<"laag" | "normaal" | "hoog">("normaal");
+  const [werkgroepId, setWerkgroepId] = useState<string>("");
 
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -53,6 +56,13 @@ export default function TodoToevoegenPage() {
 
       setVrijwilligers((v ?? []) as Vrijwilliger[]);
       if ((v ?? []).length > 0) setWie((v ?? [])[0].id);
+
+      const { data: wg } = await supabase
+        .from("werkgroepen")
+        .select("id,titel")
+        .order("titel", { ascending: true });
+      setWerkgroepen((wg ?? []) as Werkgroep[]);
+
       setLoading(false);
     };
 
@@ -85,6 +95,7 @@ export default function TodoToevoegenPage() {
       status: "gepland",
       prioriteit,
       streefdatum: streefdatum.trim() ? streefdatum : null,
+      werkgroep_id: werkgroepId || null,
       aangemaakt_door: me,
       bijgewerkt_door: me,
     };
@@ -96,6 +107,7 @@ export default function TodoToevoegenPage() {
       setWat("");
       setStreefdatum("");
       setPrioriteit("normaal");
+      setWerkgroepId("");
     }
 
     setBusy(false);
@@ -145,6 +157,16 @@ export default function TodoToevoegenPage() {
         <div>
           <label className="text-sm font-medium block mb-1">Streefdatum</label>
           <input className="w-full border rounded-xl p-3" type="date" value={streefdatum} onChange={(e) => setStreefdatum(e.target.value)} />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">Werkgroep</label>
+          <select className="w-full border rounded-xl p-3" value={werkgroepId} onChange={(e) => setWerkgroepId(e.target.value)}>
+            <option value="">— Geen werkgroep —</option>
+            {werkgroepen.map((w) => (
+              <option key={w.id} value={w.id}>{w.titel}</option>
+            ))}
+          </select>
         </div>
 
         <div>
