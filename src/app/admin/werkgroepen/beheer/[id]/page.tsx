@@ -16,6 +16,7 @@ export default function WerkgroepBewerkPage() {
 
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
+  const [trekker, setTrekker] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -36,7 +37,7 @@ export default function WerkgroepBewerkPage() {
       try {
         const { data, error } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht")
+          .select("id, titel, opdracht, trekker")
           .eq("id", id)
           .maybeSingle();
         if (error) throw error;
@@ -44,6 +45,7 @@ export default function WerkgroepBewerkPage() {
         if (!mounted) return;
         setTitel(data.titel ?? "");
         setOpdracht(data.opdracht ?? "");
+        setTrekker((data as any).trekker ?? "");
       } catch (e: any) {
         if (!mounted) return;
         setErr(e?.message ?? "Fout bij laden.");
@@ -62,7 +64,7 @@ export default function WerkgroepBewerkPage() {
     try {
       const { error } = await supabase
         .from("werkgroepen")
-        .update({ titel: titel.trim(), opdracht: opdracht.trim() || null })
+        .update({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null })
         .eq("id", id);
       if (error) throw error;
       window.location.href = "/admin/werkgroepen/beheer";
@@ -105,6 +107,16 @@ export default function WerkgroepBewerkPage() {
               value={titel}
               onChange={(e) => setTitel(e.target.value)}
               placeholder="bv. Communicatie"
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">Trekker</label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={trekker}
+              onChange={(e) => setTrekker(e.target.value)}
+              placeholder="Naam van de trekker (optioneel)"
             />
           </div>
 

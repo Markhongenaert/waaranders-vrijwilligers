@@ -8,6 +8,7 @@ type Werkgroep = {
   id: string;
   titel: string;
   opdracht: string | null;
+  trekker: string | null;
   aantalDeelnemers: number;
 };
 
@@ -36,7 +37,7 @@ export default function WerkgroepenPage() {
       try {
         const { data, error } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht, werkgroep_deelnemers(vrijwilliger_id)")
+          .select("id, titel, opdracht, trekker, werkgroep_deelnemers(vrijwilliger_id)")
           .order("titel", { ascending: true });
         if (error) throw error;
         if (!mounted) return;
@@ -45,6 +46,7 @@ export default function WerkgroepenPage() {
             id: w.id,
             titel: w.titel,
             opdracht: w.opdracht,
+            trekker: w.trekker ?? null,
             aantalDeelnemers: (w.werkgroep_deelnemers ?? []).length,
           }))
         );
@@ -95,6 +97,11 @@ export default function WerkgroepenPage() {
               className="wa-card p-4 hover:shadow-md transition block"
             >
               <div className="font-semibold text-gray-900">{w.titel}</div>
+              {w.trekker && (
+                <div className="text-sm text-gray-600 mt-0.5">
+                  Trekker: {w.trekker}
+                </div>
+              )}
               <div className="text-sm text-gray-500 mt-1">
                 {w.aantalDeelnemers} deelnemer{w.aantalDeelnemers !== 1 ? "s" : ""}
               </div>

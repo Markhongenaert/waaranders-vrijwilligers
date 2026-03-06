@@ -8,6 +8,7 @@ type Werkgroep = {
   id: string;
   titel: string;
   opdracht: string | null;
+  trekker: string | null;
 };
 
 export default function WerkgroepenBeheerPage() {
@@ -21,6 +22,7 @@ export default function WerkgroepenBeheerPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
+  const [trekker, setTrekker] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function WerkgroepenBeheerPage() {
     try {
       const { data, error } = await supabase
         .from("werkgroepen")
-        .select("id, titel, opdracht")
+        .select("id, titel, opdracht, trekker")
         .order("titel", { ascending: true });
       if (error) throw error;
       setWerkgroepen((data ?? []) as Werkgroep[]);
@@ -58,6 +60,7 @@ export default function WerkgroepenBeheerPage() {
   function openNew() {
     setTitel("");
     setOpdracht("");
+    setTrekker("");
     setErr(null);
     setMsg(null);
     setFormOpen(true);
@@ -70,7 +73,7 @@ export default function WerkgroepenBeheerPage() {
     try {
       const { error } = await supabase
         .from("werkgroepen")
-        .insert({ titel: titel.trim(), opdracht: opdracht.trim() || null });
+        .insert({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null });
       if (error) throw error;
       setMsg("Werkgroep aangemaakt.");
       setFormOpen(false);
@@ -153,6 +156,16 @@ export default function WerkgroepenBeheerPage() {
               onChange={(e) => setTitel(e.target.value)}
               placeholder="bv. Communicatie"
               autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">Trekker</label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={trekker}
+              onChange={(e) => setTrekker(e.target.value)}
+              placeholder="Naam van de trekker (optioneel)"
             />
           </div>
 
