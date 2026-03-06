@@ -69,10 +69,21 @@ export default function WerkgroepDetailPage() {
 
         const { data: tt, error: tErr } = await supabase
           .from("todos")
-          .select("id, wat, streefdatum, vrijwilligers!todos_wie_vrijwilliger_id_fkey(naam)")
+          .select("id, wat, streefdatum, wie_vrijwilliger_id")
           .eq("werkgroep_id", id)
           .neq("status", "gedaan");
         if (tErr) throw tErr;
+
+        // Vrijwilligersnamen ophalen voor de unieke wie_vrijwilliger_id's
+        const vIds = [...new Set((tt ?? []).map((t: any) => t.wie_vrijwilliger_id).filter(Boolean))];
+        const namenById = new Map<string, string>();
+        if (vIds.length > 0) {
+          const { data: vv } = await supabase
+            .from("vrijwilligers")
+            .select("id, naam")
+            .in("id", vIds);
+          for (const v of vv ?? []) namenById.set((v as any).id, (v as any).naam ?? "");
+        }
 
         if (!mounted) return;
         setWerkgroep(wg);
@@ -81,7 +92,7 @@ export default function WerkgroepDetailPage() {
             id: t.id,
             wat: t.wat,
             streefdatum: t.streefdatum ?? null,
-            vrijwilligerNaam: t.vrijwilligers?.naam ?? null,
+            vrijwilligerNaam: namenById.get(t.wie_vrijwilliger_id) ?? null,
           }))
         );
         setDeelnemers(
