@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
+import { formatDagMaand } from "@/lib/dateHelpers";
 
 type Werkgroep = {
   id: string;
@@ -177,7 +178,7 @@ export default function WerkgroepDetailPage() {
                       {t.wat}
                       {t.streefdatum && (
                         <span className="text-gray-500">
-                          {" "}— {new Date(t.streefdatum).toLocaleDateString("nl-BE")}
+                          {" "}— {formatDagMaand(t.streefdatum)}
                         </span>
                       )}
                       {t.vrijwilligerNaam && (

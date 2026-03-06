@@ -1,10 +1,17 @@
 const MONTH_HEADER_FMT = new Intl.DateTimeFormat("nl-BE", { month: "long", year: "numeric" });
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
 const DAY_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });
+const DAY_MONTH_LONG_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "long" });
 
 function capitalize(s: string) {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "3 maart", "14 november" — dag zonder voorloopnul, volledige maandnaam, nl-BE */
+export function formatDagMaand(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return DAY_MONTH_LONG_FMT.format(d);
 }
 
 function formatDatumKaart(dateStr: string) {

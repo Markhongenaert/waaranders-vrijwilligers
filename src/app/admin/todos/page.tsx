@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
+import { formatDagMaand } from "@/lib/dateHelpers";
 
 type Todo = {
   id: string;
@@ -18,12 +19,6 @@ type Vrijwilliger = {
   naam: string | null;
   actief?: boolean | null;
 };
-
-function formatTodoDatum(dateStr: string | null) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
 
 function isOverdue(dateStr: string | null, status: Todo["status"]) {
@@ -67,7 +62,7 @@ function TodoCard({
         <div className="flex items-center justify-between gap-2">
           {t.streefdatum ? (
             <span className={`px-2 py-0.5 rounded-full border text-xs ${overdue ? "text-red-700 font-bold" : ""}`}>
-              {formatTodoDatum(t.streefdatum)}
+              {formatDagMaand(t.streefdatum!)}
             </span>
           ) : (
             <span className="px-2 py-0.5 rounded-full border text-xs text-gray-500">geen datum</span>
