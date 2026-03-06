@@ -104,16 +104,15 @@ export default function WerkgroepDetailPage() {
         <div className="text-gray-600">Laden…</div>
       ) : (
         <>
-          <div className="wa-card p-4 space-y-2">
-            <div className="text-sm text-gray-700">
-              {werkgroep?.trekker
-                ? <><span className="font-medium">Trekker:</span> {werkgroep.trekker}</>
-                : <span className="text-gray-500">Trekker nog te bepalen</span>
-              }
-            </div>
-            {werkgroep?.opdracht && (
-              <div className="text-gray-700">{werkgroep.opdracht}</div>
-            )}
+          {werkgroep?.opdracht && (
+            <div className="wa-card p-4 text-gray-700">{werkgroep.opdracht}</div>
+          )}
+
+          <div className="wa-card p-4 text-gray-700">
+            {werkgroep?.trekker
+              ? <><span className="font-bold">Trekker:</span> {werkgroep.trekker}</>
+              : <span className="font-bold">Trekker nog te bepalen</span>
+            }
           </div>
 
           <div className="wa-card p-4">
