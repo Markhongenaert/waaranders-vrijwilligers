@@ -3,8 +3,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function supabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -64,6 +62,7 @@ export async function stuurMailNaarWerkgroep(
   if (emails.length === 0) return { verstuurd: 0 };
 
   // 5) Mails versturen via Resend
+  const resend = new Resend(process.env.RESEND_API_KEY);
   await Promise.all(
     emails.map((email) =>
       resend.emails.send({
