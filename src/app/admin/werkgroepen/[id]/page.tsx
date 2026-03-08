@@ -145,8 +145,12 @@ export default function WerkgroepDetailPage() {
     setMailFout(null);
     setMailResultaat(null);
     try {
-      const { verstuurd } = await stuurMailNaarWerkgroep(id, mailOnderwerp, mailBoodschap);
-      setMailResultaat(`Mail verstuurd naar ${verstuurd} vrijwilliger${verstuurd !== 1 ? "s" : ""}.`);
+      const result = await stuurMailNaarWerkgroep(id, mailOnderwerp, mailBoodschap);
+      if (result.error) {
+        setMailFout(result.error);
+      } else {
+        setMailResultaat(`Mail verstuurd naar ${result.verstuurd} vrijwilliger${result.verstuurd !== 1 ? "s" : ""}.`);
+      }
     } catch (e: unknown) {
       setMailFout(e instanceof Error ? e.message : "Fout bij versturen.");
     } finally {
