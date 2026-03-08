@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import { formatDagMaand } from "@/lib/dateHelpers";
+import Link from "next/link";
+import { stuurMailNaarWerkgroep } from "./actions";
 
 type Werkgroep = {
   id: string;
@@ -36,6 +38,14 @@ export default function WerkgroepDetailPage() {
   const [deelnemers, setDeelnemers] = useState<Deelnemer[]>([]);
   const [taken, setTaken] = useState<OpenTaak[]>([]);
   const [err, setErr] = useState<string | null>(null);
+
+  // Mail modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [mailOnderwerp, setMailOnderwerp] = useState("");
+  const [mailBoodschap, setMailBoodschap] = useState("");
+  const [mailBezig, setMailBezig] = useState(false);
+  const [mailResultaat, setMailResultaat] = useState<string | null>(null);
+  const [mailFout, setMailFout] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -76,37 +86,43 @@ export default function WerkgroepDetailPage() {
         if (tErr) throw tErr;
 
         // Vrijwilligersnamen ophalen voor de unieke wie_vrijwilliger_id's
-        const vIds = [...new Set((tt ?? []).map((t: any) => t.wie_vrijwilliger_id).filter(Boolean))];
+        type TodoRow = { id: string; wat: string; streefdatum: string | null; wie_vrijwilliger_id: string | null };
+        type VrijwRow = { id: string; naam: string | null };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rows = (tt ?? []) as any[];
+        const vIds = [...new Set(rows.map((t: TodoRow) => t.wie_vrijwilliger_id).filter((x): x is string => !!x))];
         const namenById = new Map<string, string>();
         if (vIds.length > 0) {
           const { data: vv } = await supabase
             .from("vrijwilligers")
             .select("id, naam")
             .in("id", vIds);
-          for (const v of vv ?? []) namenById.set((v as any).id, (v as any).naam ?? "");
+          for (const v of (vv ?? []) as VrijwRow[]) namenById.set(v.id, v.naam ?? "");
         }
 
         if (!mounted) return;
         setWerkgroep(wg);
+        setMailOnderwerp(wg.titel);
         setTaken(
-          (tt ?? []).map((t: any) => ({
+          rows.map((t: TodoRow) => ({
             id: t.id,
             wat: t.wat,
             streefdatum: t.streefdatum ?? null,
-            vrijwilligerNaam: namenById.get(t.wie_vrijwilliger_id) ?? null,
+            vrijwilligerNaam: namenById.get(t.wie_vrijwilliger_id ?? "") ?? null,
           }))
         );
         setDeelnemers(
-          (dd ?? [])
-            .map((row: any) => row.vrijwilligers)
-            .filter(Boolean)
-            .sort((a: Deelnemer, b: Deelnemer) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ((dd ?? []) as any[])
+            .map((row) => row.vrijwilligers as Deelnemer | null)
+            .filter((v): v is Deelnemer => !!v)
+            .sort((a, b) =>
               (a.achternaam ?? "").localeCompare(b.achternaam ?? "")
             )
         );
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!mounted) return;
-        setErr(e?.message ?? "Fout bij laden.");
+        setErr(e instanceof Error ? e.message : "Fout bij laden.");
       } finally {
         if (!mounted) return;
         setLoading(false);
@@ -114,6 +130,29 @@ export default function WerkgroepDetailPage() {
     })();
     return () => { mounted = false; };
   }, [allowed, id]);
+
+  function openModal() {
+    setMailOnderwerp(werkgroep?.titel ?? "");
+    setMailBoodschap("");
+    setMailResultaat(null);
+    setMailFout(null);
+    setModalOpen(true);
+  }
+
+  async function verstuurMail() {
+    if (!id || !mailOnderwerp.trim() || !mailBoodschap.trim()) return;
+    setMailBezig(true);
+    setMailFout(null);
+    setMailResultaat(null);
+    try {
+      const { verstuurd } = await stuurMailNaarWerkgroep(id, mailOnderwerp, mailBoodschap);
+      setMailResultaat(`Mail verstuurd naar ${verstuurd} vrijwilliger${verstuurd !== 1 ? "s" : ""}.`);
+    } catch (e: unknown) {
+      setMailFout(e instanceof Error ? e.message : "Fout bij versturen.");
+    } finally {
+      setMailBezig(false);
+    }
+  }
 
   if (allowed === null) return <main className="p-6">Laden…</main>;
   if (allowed === false) {
@@ -128,9 +167,16 @@ export default function WerkgroepDetailPage() {
     <main className="p-5 sm:p-6 space-y-4 max-w-2xl">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{werkgroep?.titel ?? "Werkgroep"}</h1>
-        <a href="/admin/werkgroepen" className="border rounded-xl px-4 py-2 text-sm">
-          Terug
-        </a>
+        <div className="flex gap-2">
+          {!loading && werkgroep && (
+            <button onClick={openModal} className="wa-btn wa-btn-brand text-sm">
+              Mail versturen
+            </button>
+          )}
+          <Link href="/admin/werkgroepen" className="border rounded-xl px-4 py-2 text-sm">
+            Terug
+          </Link>
+        </div>
       </div>
 
       {err && <div className="wa-alert-error">{err}</div>}
@@ -193,6 +239,69 @@ export default function WerkgroepDetailPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Mail modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="wa-card w-full max-w-lg p-6 space-y-4">
+            <h2 className="text-lg font-semibold">Mail versturen naar deelnemers</h2>
+
+            {mailResultaat ? (
+              <>
+                <div className="wa-alert-success">{mailResultaat}</div>
+                <div className="flex justify-end">
+                  <button onClick={() => setModalOpen(false)} className="wa-btn wa-btn-ghost">
+                    Sluiten
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {mailFout && <div className="wa-alert-error">{mailFout}</div>}
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Onderwerp</label>
+                  <input
+                    type="text"
+                    value={mailOnderwerp}
+                    onChange={(e) => setMailOnderwerp(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                    disabled={mailBezig}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Boodschap</label>
+                  <textarea
+                    value={mailBoodschap}
+                    onChange={(e) => setMailBoodschap(e.target.value)}
+                    rows={7}
+                    className="w-full border rounded-lg px-3 py-2 text-sm resize-y"
+                    disabled={mailBezig}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setModalOpen(false)}
+                    className="wa-btn wa-btn-ghost"
+                    disabled={mailBezig}
+                  >
+                    Annuleren
+                  </button>
+                  <button
+                    onClick={verstuurMail}
+                    className="wa-btn wa-btn-brand"
+                    disabled={mailBezig || !mailOnderwerp.trim() || !mailBoodschap.trim()}
+                  >
+                    {mailBezig ? "Versturen…" : "Versturen"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </main>
   );
