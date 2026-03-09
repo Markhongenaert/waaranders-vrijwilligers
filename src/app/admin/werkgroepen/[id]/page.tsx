@@ -453,16 +453,7 @@ export default function WerkgroepDetailPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-gray-700">Momenten</div>
-                    <button
-                      onClick={voegMomentToe}
-                      className="wa-btn wa-btn-ghost text-sm px-3 py-1.5"
-                      disabled={pbBezig}
-                    >
-                      + Moment toevoegen
-                    </button>
-                  </div>
+                  <div className="text-sm font-medium text-gray-700">Momenten</div>
                   {pbMomenten.map((m, i) => (
                     <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
                       <div className="flex items-center gap-2">
@@ -471,7 +462,7 @@ export default function WerkgroepDetailPage() {
                           type="date"
                           value={m.datum ?? ""}
                           onChange={(e) => updateMoment(i, "datum", e.target.value)}
-                          className="flex-1 border rounded px-2 py-1 text-sm"
+                          className="flex-1 border rounded px-3 py-2 text-sm"
                           disabled={pbBezig}
                         />
                         {pbMomenten.length > 1 && (
@@ -492,7 +483,7 @@ export default function WerkgroepDetailPage() {
                             updateMoment(i, "beginuur", e.target.value);
                             valideerTijdslot(i, e.target.value || null, m.einduur);
                           }}
-                          className="flex-1 border rounded px-2 py-1 text-sm"
+                          className="flex-1 border rounded px-3 py-2 text-sm"
                           disabled={pbBezig}
                         >
                           {UREN.map((u) => (
@@ -508,7 +499,7 @@ export default function WerkgroepDetailPage() {
                             updateMoment(i, "einduur", e.target.value);
                             valideerTijdslot(i, m.beginuur, e.target.value || null);
                           }}
-                          className="flex-1 border rounded px-2 py-1 text-sm"
+                          className="flex-1 border rounded px-3 py-2 text-sm"
                           disabled={pbBezig}
                         >
                           {UREN.map((u) => (
@@ -521,13 +512,16 @@ export default function WerkgroepDetailPage() {
                       )}
                     </div>
                   ))}
+                  <button
+                    onClick={voegMomentToe}
+                    className="wa-btn wa-btn-brand w-full"
+                    disabled={pbBezig}
+                  >
+                    + Nog een moment toevoegen
+                  </button>
                 </div>
 
-                <p className="text-xs text-gray-500">
-                  Voeg alle gewenste momenten toe voor je het prikbord aanmaakt.
-                </p>
-
-                <div className="flex justify-end gap-2 mt-2">
+                <div className="flex justify-end gap-2 pt-2 border-t">
                   <button onClick={() => setPbModalOpen(false)} className="wa-btn wa-btn-ghost" disabled={pbBezig}>
                     Annuleren
                   </button>
