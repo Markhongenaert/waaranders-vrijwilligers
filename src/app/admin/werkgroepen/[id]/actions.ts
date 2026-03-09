@@ -22,12 +22,13 @@ export async function stuurMailNaarWerkgroep(
     // 1) Werkgroeptitel ophalen voor het onderwerp
     const { data: wg, error: wgErr } = await supabase
       .from("werkgroepen")
-      .select("titel")
+      .select("titel, trekker")
       .eq("id", werkgroepId)
       .maybeSingle();
 
     if (wgErr) return { verstuurd: 0, error: wgErr.message };
     const onderwerp = `Waaranders - werkgroep ${wg?.titel ?? ""}`;
+    const trekker = wg?.trekker ?? "";
 
     // 3) Vrijwilliger-id's ophalen voor deze werkgroep
     const { data: wd, error: wdErr } = await supabase
@@ -75,7 +76,7 @@ export async function stuurMailNaarWerkgroep(
           from: "Waaranders <onboarding@resend.dev>",
           to: email,
           subject: onderwerp,
-          text: `Beste ${voornaam},\n\n${boodschap}`,
+          text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n\n${trekker}`,
         })
       )
     );
