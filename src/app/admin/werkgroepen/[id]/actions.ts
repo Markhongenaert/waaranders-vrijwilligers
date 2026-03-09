@@ -40,41 +40,47 @@ export async function stuurMailNaarWerkgroep(
 
     if (vrijwilligerIds.length === 0) return { verstuurd: 0 };
 
-    // 4) user_id's ophalen uit vrijwilligers tabel
+    // 4) user_id en voornaam ophalen uit vrijwilligers tabel
     const { data: vv, error: vErr } = await supabase
       .from("vrijwilligers")
-      .select("user_id")
+      .select("user_id, voornaam")
       .in("id", vrijwilligerIds);
 
     if (vErr) return { verstuurd: 0, error: vErr.message };
-    const userIds = (vv ?? []).map((r) => r.user_id as string).filter(Boolean);
 
-    if (userIds.length === 0) return { verstuurd: 0 };
+    type VrijwRow = { user_id: string; voornaam: string | null };
+    const vrijwilligers = (vv ?? [] as VrijwRow[]).filter((r) => !!r.user_id);
+
+    if (vrijwilligers.length === 0) return { verstuurd: 0 };
+
+    const voornaamByUserId = new Map(
+      vrijwilligers.map((r) => [r.user_id, r.voornaam ?? ""])
+    );
 
     // 5) E-mailadressen ophalen via auth.admin
     const { data: usersData, error: usersErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     if (usersErr) return { verstuurd: 0, error: usersErr.message };
 
-    const emails = usersData.users
-      .filter((u) => userIds.includes(u.id) && !!u.email)
-      .map((u) => u.email as string);
+    const ontvangers = usersData.users
+      .filter((u) => voornaamByUserId.has(u.id) && !!u.email)
+      .map((u) => ({ email: u.email as string, voornaam: voornaamByUserId.get(u.id) ?? "" }));
 
-    if (emails.length === 0) return { verstuurd: 0 };
+    if (ontvangers.length === 0) return { verstuurd: 0 };
 
-    // 6) Mails versturen via Resend
+    // 6) Gepersonaliseerde mails versturen via Resend
     const resend = new Resend(process.env.RESEND_API_KEY);
     await Promise.all(
-      emails.map((email) =>
+      ontvangers.map(({ email, voornaam }) =>
         resend.emails.send({
           from: "Waaranders <onboarding@resend.dev>",
           to: email,
           subject: onderwerp,
-          text: boodschap,
+          text: `Beste ${voornaam},\n\n${boodschap}`,
         })
       )
     );
 
-    return { verstuurd: emails.length };
+    return { verstuurd: ontvangers.length };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Onbekende fout bij het versturen.";
     return { verstuurd: 0, error: msg };
