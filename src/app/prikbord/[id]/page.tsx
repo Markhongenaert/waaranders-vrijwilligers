@@ -225,7 +225,7 @@ export default function PrikbordPage() {
               {opslaanResultaat && <div className="wa-alert-success">{opslaanResultaat}</div>}
               {opslaanFout && <div className="wa-alert-error">{opslaanFout}</div>}
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Naam</label>
                 <input
                   type="text"
@@ -237,25 +237,29 @@ export default function PrikbordPage() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {momenten.map((m) => (
-                  <div key={m.id} className="flex flex-wrap items-center gap-3">
-                    <span className="text-sm text-gray-700 min-w-[160px]">{formatMoment(m)}</span>
-                    {(["ja", "misschien", "nee"] as const).map((v) => (
-                      <label key={v} className="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`moment-${m.id}`}
-                          value={v}
-                          checked={keuzes[m.id] === v}
-                          onChange={() => setKeuze(m.id, v)}
-                          disabled={opslaaBezig}
-                        />
-                        <span className={`text-sm ${keuzes[m.id] === v ? KLEUR[v] : "text-gray-600"}`}>
-                          {ICOON[v]} {v.charAt(0).toUpperCase() + v.slice(1)}
-                        </span>
-                      </label>
-                    ))}
+                  <div key={m.id} className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                    <span className="text-sm font-semibold text-gray-700 sm:font-normal sm:min-w-[160px]">
+                      {formatMoment(m)}
+                    </span>
+                    <div className="flex gap-4 mt-1 sm:mt-0">
+                      {(["ja", "misschien", "nee"] as const).map((v) => (
+                        <label key={v} className="flex items-center gap-1 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`moment-${m.id}`}
+                            value={v}
+                            checked={keuzes[m.id] === v}
+                            onChange={() => setKeuze(m.id, v)}
+                            disabled={opslaaBezig}
+                          />
+                          <span className={`text-sm ${keuzes[m.id] === v ? KLEUR[v] : "text-gray-600"}`}>
+                            {ICOON[v]} {v.charAt(0).toUpperCase() + v.slice(1)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
