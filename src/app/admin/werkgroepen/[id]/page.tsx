@@ -73,7 +73,7 @@ export default function WerkgroepDetailPage() {
 
         const { data: dd, error: dErr } = await supabase
           .from("werkgroep_deelnemers")
-          .select("vrijwilligers(id, voornaam, achternaam)")
+          .select("vrijwilligers(id, voornaam, achternaam, actief)")
           .eq("werkgroep_id", id);
         if (dErr) throw dErr;
 
@@ -112,8 +112,8 @@ export default function WerkgroepDetailPage() {
         setDeelnemers(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ((dd ?? []) as any[])
-            .map((row) => row.vrijwilligers as Deelnemer | null)
-            .filter((v): v is Deelnemer => !!v)
+            .map((row) => row.vrijwilligers as (Deelnemer & { actief: boolean }) | null)
+            .filter((v): v is Deelnemer & { actief: boolean } => !!v && v.actief !== false)
             .sort((a, b) =>
               (a.achternaam ?? "").localeCompare(b.achternaam ?? "")
             )
