@@ -14,13 +14,22 @@ function supabaseAdmin() {
 
 export async function stuurMailNaarWerkgroep(
   werkgroepId: string,
-  onderwerp: string,
   boodschap: string
 ): Promise<{ verstuurd: number; error?: string }> {
   try {
     const supabase = supabaseAdmin();
 
-    // 1) Vrijwilliger-id's ophalen voor deze werkgroep
+    // 1) Werkgroeptitel ophalen voor het onderwerp
+    const { data: wg, error: wgErr } = await supabase
+      .from("werkgroepen")
+      .select("titel")
+      .eq("id", werkgroepId)
+      .maybeSingle();
+
+    if (wgErr) return { verstuurd: 0, error: wgErr.message };
+    const onderwerp = `Waaranders - werkgroep ${wg?.titel ?? ""}`;
+
+    // 3) Vrijwilliger-id's ophalen voor deze werkgroep
     const { data: wd, error: wdErr } = await supabase
       .from("werkgroep_deelnemers")
       .select("vrijwilliger_id")
@@ -31,7 +40,7 @@ export async function stuurMailNaarWerkgroep(
 
     if (vrijwilligerIds.length === 0) return { verstuurd: 0 };
 
-    // 2) user_id's ophalen uit vrijwilligers tabel
+    // 4) user_id's ophalen uit vrijwilligers tabel
     const { data: vv, error: vErr } = await supabase
       .from("vrijwilligers")
       .select("user_id")
@@ -42,7 +51,7 @@ export async function stuurMailNaarWerkgroep(
 
     if (userIds.length === 0) return { verstuurd: 0 };
 
-    // 3) E-mailadressen ophalen via auth.admin
+    // 5) E-mailadressen ophalen via auth.admin
     const { data: usersData, error: usersErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     if (usersErr) return { verstuurd: 0, error: usersErr.message };
 
@@ -52,7 +61,7 @@ export async function stuurMailNaarWerkgroep(
 
     if (emails.length === 0) return { verstuurd: 0 };
 
-    // 4) Mails versturen via Resend
+    // 6) Mails versturen via Resend
     const resend = new Resend(process.env.RESEND_API_KEY);
     await Promise.all(
       emails.map((email) =>

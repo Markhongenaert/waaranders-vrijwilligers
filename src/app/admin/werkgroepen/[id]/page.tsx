@@ -41,7 +41,6 @@ export default function WerkgroepDetailPage() {
 
   // Mail modal state
   const [modalOpen, setModalOpen] = useState(false);
-  const [mailOnderwerp, setMailOnderwerp] = useState("");
   const [mailBoodschap, setMailBoodschap] = useState("");
   const [mailBezig, setMailBezig] = useState(false);
   const [mailResultaat, setMailResultaat] = useState<string | null>(null);
@@ -102,7 +101,6 @@ export default function WerkgroepDetailPage() {
 
         if (!mounted) return;
         setWerkgroep(wg);
-        setMailOnderwerp(wg.titel);
         setTaken(
           rows.map((t: TodoRow) => ({
             id: t.id,
@@ -132,7 +130,6 @@ export default function WerkgroepDetailPage() {
   }, [allowed, id]);
 
   function openModal() {
-    setMailOnderwerp(werkgroep?.titel ?? "");
     setMailBoodschap("");
     setMailResultaat(null);
     setMailFout(null);
@@ -140,12 +137,12 @@ export default function WerkgroepDetailPage() {
   }
 
   async function verstuurMail() {
-    if (!id || !mailOnderwerp.trim() || !mailBoodschap.trim()) return;
+    if (!id || !mailBoodschap.trim()) return;
     setMailBezig(true);
     setMailFout(null);
     setMailResultaat(null);
     try {
-      const result = await stuurMailNaarWerkgroep(id, mailOnderwerp, mailBoodschap);
+      const result = await stuurMailNaarWerkgroep(id, mailBoodschap);
       if (result.error) {
         setMailFout(result.error);
       } else {
@@ -171,16 +168,9 @@ export default function WerkgroepDetailPage() {
     <main className="p-5 sm:p-6 space-y-4 max-w-2xl">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{werkgroep?.titel ?? "Werkgroep"}</h1>
-        <div className="flex gap-2">
-          {!loading && werkgroep && (
-            <button onClick={openModal} className="wa-btn wa-btn-brand text-sm">
-              Mail versturen
-            </button>
-          )}
-          <Link href="/admin/werkgroepen" className="border rounded-xl px-4 py-2 text-sm">
-            Terug
-          </Link>
-        </div>
+        <Link href="/admin/werkgroepen" className="border rounded-xl px-4 py-2 text-sm">
+          Terug
+        </Link>
       </div>
 
       {err && <div className="wa-alert-error">{err}</div>}
@@ -242,6 +232,14 @@ export default function WerkgroepDetailPage() {
               <p className="text-sm text-gray-600">Geen openstaande taken.</p>
             )}
           </div>
+
+          <button
+            onClick={openModal}
+            className="w-full rounded-2xl bg-blue-50 border border-blue-200 p-5 text-left hover:bg-blue-100 transition"
+          >
+            <div className="font-semibold text-blue-900 mb-1">Verstuur mail naar de leden van deze werkgroep</div>
+            <div className="text-sm text-blue-700">Klik hier om een bericht te sturen naar alle ingeschreven vrijwilligers.</div>
+          </button>
         </>
       )}
 
@@ -265,17 +263,6 @@ export default function WerkgroepDetailPage() {
                 {mailFout && <div className="wa-alert-error">{mailFout}</div>}
 
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Onderwerp</label>
-                  <input
-                    type="text"
-                    value={mailOnderwerp}
-                    onChange={(e) => setMailOnderwerp(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
-                    disabled={mailBezig}
-                  />
-                </div>
-
-                <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-700">Boodschap</label>
                   <textarea
                     value={mailBoodschap}
@@ -297,7 +284,7 @@ export default function WerkgroepDetailPage() {
                   <button
                     onClick={verstuurMail}
                     className="wa-btn wa-btn-brand"
-                    disabled={mailBezig || !mailOnderwerp.trim() || !mailBoodschap.trim()}
+                    disabled={mailBezig || !mailBoodschap.trim()}
                   >
                     {mailBezig ? "Versturen…" : "Versturen"}
                   </button>
