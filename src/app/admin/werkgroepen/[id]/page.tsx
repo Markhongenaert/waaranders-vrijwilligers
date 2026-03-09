@@ -64,6 +64,7 @@ export default function WerkgroepDetailPage() {
   const [pbBezig, setPbBezig] = useState(false);
   const [pbFout, setPbFout] = useState<string | null>(null);
   const [pbResultaat, setPbResultaat] = useState<string | null>(null);
+  const [pbTijdFouten, setPbTijdFouten] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -189,6 +190,7 @@ export default function WerkgroepDetailPage() {
     setPbMomenten([{ datum: "", beginuur: null, einduur: null }]);
     setPbFout(null);
     setPbResultaat(null);
+    setPbTijdFouten({});
     setPbModalOpen(true);
   }
 
@@ -196,6 +198,16 @@ export default function WerkgroepDetailPage() {
     setPbMomenten((prev) =>
       prev.map((m, i) => i === index ? { ...m, [veld]: waarde || null } : m)
     );
+    setPbTijdFouten((prev) => ({ ...prev, [index]: null }));
+  }
+
+  function valideerTijdslot(index: number, beginuur: string | null, einduur: string | null): boolean {
+    if (beginuur && einduur && einduur <= beginuur) {
+      setPbTijdFouten((prev) => ({ ...prev, [index]: "Einduur moet later zijn dan beginuur." }));
+      return false;
+    }
+    setPbTijdFouten((prev) => ({ ...prev, [index]: null }));
+    return true;
   }
 
   function voegMomentToe() {
@@ -441,7 +453,16 @@ export default function WerkgroepDetailPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="text-sm font-medium text-gray-700">Momenten</div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-gray-700">Momenten</div>
+                    <button
+                      onClick={voegMomentToe}
+                      className="wa-btn wa-btn-ghost text-sm px-3 py-1.5"
+                      disabled={pbBezig}
+                    >
+                      + Moment toevoegen
+                    </button>
+                  </div>
                   {pbMomenten.map((m, i) => (
                     <div key={i} className="border rounded-lg p-3 space-y-2 bg-gray-50">
                       <div className="flex items-center gap-2">
@@ -467,7 +488,10 @@ export default function WerkgroepDetailPage() {
                         <span className="text-xs text-gray-500 w-16 shrink-0">Beginuur</span>
                         <select
                           value={m.beginuur ?? ""}
-                          onChange={(e) => updateMoment(i, "beginuur", e.target.value)}
+                          onChange={(e) => {
+                            updateMoment(i, "beginuur", e.target.value);
+                            valideerTijdslot(i, e.target.value || null, m.einduur);
+                          }}
                           className="flex-1 border rounded px-2 py-1 text-sm"
                           disabled={pbBezig}
                         >
@@ -480,7 +504,10 @@ export default function WerkgroepDetailPage() {
                         <span className="text-xs text-gray-500 w-16 shrink-0">Einduur</span>
                         <select
                           value={m.einduur ?? ""}
-                          onChange={(e) => updateMoment(i, "einduur", e.target.value)}
+                          onChange={(e) => {
+                            updateMoment(i, "einduur", e.target.value);
+                            valideerTijdslot(i, m.beginuur, e.target.value || null);
+                          }}
                           className="flex-1 border rounded px-2 py-1 text-sm"
                           disabled={pbBezig}
                         >
@@ -489,25 +516,25 @@ export default function WerkgroepDetailPage() {
                           ))}
                         </select>
                       </div>
+                      {pbTijdFouten[i] && (
+                        <p className="text-xs text-red-600">{pbTijdFouten[i]}</p>
+                      )}
                     </div>
                   ))}
-                  <button
-                    onClick={voegMomentToe}
-                    className="text-sm text-blue-700 hover:text-blue-900"
-                    disabled={pbBezig}
-                  >
-                    + Moment toevoegen
-                  </button>
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <p className="text-xs text-gray-500">
+                  Voeg alle gewenste momenten toe voor je het prikbord aanmaakt.
+                </p>
+
+                <div className="flex justify-end gap-2 mt-2">
                   <button onClick={() => setPbModalOpen(false)} className="wa-btn wa-btn-ghost" disabled={pbBezig}>
                     Annuleren
                   </button>
                   <button
                     onClick={aanmakenEnVersturen}
                     className="wa-btn wa-btn-brand"
-                    disabled={pbBezig || !pbTitel.trim()}
+                    disabled={pbBezig || !pbTitel.trim() || Object.values(pbTijdFouten).some(Boolean)}
                   >
                     {pbBezig ? "Aanmaken…" : "Prikbord aanmaken en mail versturen"}
                   </button>

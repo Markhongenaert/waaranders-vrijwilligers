@@ -225,8 +225,8 @@ export default function PrikbordPage() {
               {opslaanResultaat && <div className="wa-alert-success">{opslaanResultaat}</div>}
               {opslaanFout && <div className="wa-alert-error">{opslaanFout}</div>}
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Naam</label>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Naam</label>
                 <input
                   type="text"
                   value={naam}
