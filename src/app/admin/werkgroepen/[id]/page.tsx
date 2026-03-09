@@ -271,6 +271,9 @@ export default function WerkgroepDetailPage() {
                     className="w-full border rounded-lg px-3 py-2 text-sm resize-y"
                     disabled={mailBezig}
                   />
+                  <p className="text-xs text-blue-900 mt-1">
+                    Geef enkel de tekst zelf. Gepersonaliseerde begroeting en afsluiting van de mail worden automatisch aangemaakt.
+                  </p>
                 </div>
 
                 <div className="flex justify-end gap-2">

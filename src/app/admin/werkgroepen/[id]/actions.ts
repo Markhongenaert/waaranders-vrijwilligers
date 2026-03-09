@@ -76,7 +76,7 @@ export async function stuurMailNaarWerkgroep(
           from: "Waaranders <onboarding@resend.dev>",
           to: email,
           subject: onderwerp,
-          text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n\n${trekker}`,
+          text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n${trekker}`,
         })
       )
     );
