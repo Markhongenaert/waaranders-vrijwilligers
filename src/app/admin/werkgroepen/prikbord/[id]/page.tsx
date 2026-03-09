@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
-import { sluitPrikbord, stuurDefinitieveMail } from "./actions";
+import { sluitPrikbord, stuurDefinitieveMail, verwijderPrikbord } from "./actions";
 
 type Prikbord = {
   id: string;
@@ -46,6 +46,7 @@ function formatMoment(m: Moment) {
 
 export default function PrikbordBeheerPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = params?.id;
 
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -58,6 +59,8 @@ export default function PrikbordBeheerPage() {
   // Sluiten state
   const [sluitBezig, setSluitBezig] = useState(false);
   const [sluitFout, setSluitFout] = useState<string | null>(null);
+  const [verwijderBezig, setVerwijderBezig] = useState(false);
+  const [verwijderFout, setVerwijderFout] = useState<string | null>(null);
 
   // Definitief moment mail modal
   const [mailModalOpen, setMailModalOpen] = useState(false);
@@ -124,6 +127,23 @@ export default function PrikbordBeheerPage() {
     if (allowed !== true) return;
     laadData();
   }, [allowed, id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function verwijder() {
+    if (!id) return;
+    const bevestigd = window.confirm(
+      "Ben je zeker dat je dit prikbord wil verwijderen? Alle antwoorden gaan verloren."
+    );
+    if (!bevestigd) return;
+    setVerwijderBezig(true);
+    setVerwijderFout(null);
+    const result = await verwijderPrikbord(id);
+    if (result.error) {
+      setVerwijderFout(result.error);
+      setVerwijderBezig(false);
+    } else {
+      router.push(result.werkgroepId ? `/admin/werkgroepen/${result.werkgroepId}` : "/admin/werkgroepen");
+    }
+  }
 
   async function sluit() {
     if (!id) return;
@@ -194,6 +214,7 @@ export default function PrikbordBeheerPage() {
 
       {err && <div className="wa-alert-error">{err}</div>}
       {sluitFout && <div className="wa-alert-error">{sluitFout}</div>}
+      {verwijderFout && <div className="wa-alert-error">{verwijderFout}</div>}
 
       {loading ? (
         <div className="text-gray-600">Laden…</div>
@@ -256,6 +277,13 @@ export default function PrikbordBeheerPage() {
                 {sluitBezig ? "Sluiten…" : "Prikbord sluiten"}
               </button>
             )}
+            <button
+              onClick={verwijder}
+              className="wa-btn wa-btn-ghost border-red-300 text-red-600 hover:bg-red-50"
+              disabled={verwijderBezig}
+            >
+              {verwijderBezig ? "Verwijderen…" : "Prikbord verwijderen"}
+            </button>
             {prikbord?.gesloten && (
               <button
                 onClick={() => { setMailBoodschap(""); setMailFout(null); setMailResultaat(null); setMailModalOpen(true); }}

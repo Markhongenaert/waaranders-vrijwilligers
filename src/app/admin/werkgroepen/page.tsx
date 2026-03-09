@@ -37,7 +37,7 @@ export default function WerkgroepenPage() {
       try {
         const { data, error } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht, trekker, werkgroep_deelnemers(vrijwilliger_id)")
+          .select("id, titel, opdracht, trekker, werkgroep_deelnemers(vrijwilliger_id, vrijwilligers(actief))")
           .order("titel", { ascending: true });
         if (error) throw error;
         if (!mounted) return;
@@ -47,7 +47,8 @@ export default function WerkgroepenPage() {
             titel: w.titel,
             opdracht: w.opdracht,
             trekker: w.trekker ?? null,
-            aantalDeelnemers: (w.werkgroep_deelnemers ?? []).length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            aantalDeelnemers: (w.werkgroep_deelnemers ?? []).filter((d: any) => d.vrijwilligers?.actief !== false).length,
           }))
         );
       } catch (e: any) {

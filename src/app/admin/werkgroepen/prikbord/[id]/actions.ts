@@ -12,6 +12,25 @@ function supabaseAdmin() {
   return createClient(url, serviceKey, { auth: { persistSession: false } });
 }
 
+export async function verwijderPrikbord(prikbordId: string): Promise<{ werkgroepId?: string; error?: string }> {
+  try {
+    const supabase = supabaseAdmin();
+    const { data: pb, error: fetchErr } = await supabase
+      .from("prikborden")
+      .select("werkgroep_id")
+      .eq("id", prikbordId)
+      .maybeSingle();
+    if (fetchErr) return { error: fetchErr.message };
+    const werkgroepId = pb?.werkgroep_id as string | undefined;
+
+    const { error } = await supabase.from("prikborden").delete().eq("id", prikbordId);
+    if (error) return { error: error.message };
+    return { werkgroepId };
+  } catch (e: unknown) {
+    return { error: e instanceof Error ? e.message : "Onbekende fout." };
+  }
+}
+
 export async function sluitPrikbord(prikbordId: string): Promise<{ error?: string }> {
   try {
     const supabase = supabaseAdmin();
