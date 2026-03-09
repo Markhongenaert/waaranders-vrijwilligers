@@ -128,7 +128,7 @@ export async function maakPrikbordAan(
     if (ontvErr) return { prikbordId: pb.id, verstuurd: 0, error: ontvErr };
 
     if (ontvangers.length > 0) {
-      const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+      const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
       const link = `${baseUrl}/prikbord/${pb.id}`;
       const onderwerp = `Waaranders - prikbord: ${titel}`;
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -138,7 +138,8 @@ export async function maakPrikbordAan(
             from: "Waaranders <onboarding@resend.dev>",
             to: email,
             subject: onderwerp,
-            text: `Beste ${voornaam},\n\nDe trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen. Klik op de link om je beschikbaarheid in te geven:\n\n${link}\n\nMet Waaranderse groeten,\n${trekker}`,
+            html: `<p>Beste ${voornaam},</p><p>De trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.</p><p><a href="${link}">Klik hier om je beschikbaarheid in te geven</a></p><p>Met Waaranderse groeten,<br>${trekker}</p>`,
+            text: `Beste ${voornaam},\n\nDe trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.\n\nKlik hier om je beschikbaarheid in te geven:\n${link}\n\nMet Waaranderse groeten,\n${trekker}`,
           })
         )
       );
