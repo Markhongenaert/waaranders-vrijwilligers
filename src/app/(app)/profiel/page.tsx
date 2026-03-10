@@ -353,7 +353,7 @@ export default function ProfielPage() {
                           type="button"
                           onClick={() => toggleWerkgroep(id)}
                           disabled={busy}
-                          className="bg-sky-200 hover:bg-sky-300 rounded-xl px-4 py-1.5 text-sm font-medium transition disabled:opacity-60"
+                          className="wa-btn-enroll px-4 py-1.5 text-sm"
                         >
                           Inschrijven
                         </button>

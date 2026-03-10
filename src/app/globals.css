@@ -78,6 +78,16 @@ body {
     @apply border border-green-400 text-green-700 bg-white hover:bg-green-50 rounded-xl font-medium transition;
   }
 
+  /* Info/hulp kaders */
+  .wa-info-box {
+    @apply bg-emerald-50 border border-emerald-200 rounded-2xl;
+  }
+
+  /* Inschrijfknop werkgroep */
+  .wa-btn-enroll {
+    @apply bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl font-medium transition disabled:opacity-60;
+  }
+
   /* Nav-tegels (beheer-overzicht) */
   .wa-nav-card {
     @apply bg-orange-50 border border-orange-100 rounded-xl;

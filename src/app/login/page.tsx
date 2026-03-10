@@ -69,7 +69,7 @@ export default function LoginPage() {
   return (
     <main className="mx-auto max-w-md p-6">
       {/* Header: kleiner + lichtblauw + gecentreerd + zonder koppelteken */}
-      <div className="rounded-2xl p-4 mb-5 bg-sky-100 text-slate-900 shadow-sm border border-sky-200 text-center">
+      <div className="wa-info-box p-4 mb-5 shadow-sm text-center">
         <div className="text-lg font-semibold leading-tight">Waaranders vrijwilligers</div>
       </div>
 
@@ -110,21 +110,21 @@ export default function LoginPage() {
         </button>
 
         {/* Links: in lichtblauw kadertje, opvallender */}
-        <div className="rounded-2xl bg-sky-50 border border-sky-200 p-4">
+        <div className="wa-info-box p-4">
           <div className="text-sm font-semibold text-slate-900 text-center mb-3">
             Eerste keer of probleem met je wachtwoord?
           </div>
 
           <div className="grid grid-cols-1 gap-2">
             <a
-              className="rounded-xl bg-white border border-sky-200 px-4 py-3 text-center font-medium hover:bg-sky-100 transition"
+              className="wa-btn wa-btn-ghost px-4 py-3 text-center w-full"
               href="/registreer"
             >
               Eerste keer account aanmaken
             </a>
 
             <a
-              className="rounded-xl bg-white border border-sky-200 px-4 py-3 text-center font-medium hover:bg-sky-100 transition"
+              className="wa-btn wa-btn-ghost px-4 py-3 text-center w-full"
               href="/wachtwoord-vergeten"
             >
               Wachtwoord vergeten
