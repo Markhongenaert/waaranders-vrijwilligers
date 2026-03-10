@@ -147,7 +147,6 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
       <div className="wa-card p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-sm text-gray-600">Vrijwilliger</div>
             <div className="text-lg font-semibold text-gray-900">{naam}</div>
           </div>
         </div>
