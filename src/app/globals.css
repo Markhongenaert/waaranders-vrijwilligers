@@ -106,12 +106,12 @@ body {
 
   /* Sectie-tussentitels (maand, persoon) */
   .wa-section-header {
-    @apply bg-yellow-100 text-black font-semibold border-b border-yellow-200;
+    @apply bg-orange-100 text-black font-semibold border-b border-yellow-200;
   }
 
   /* Herhaling-badge bij activiteiten */
   .wa-badge-herhaling {
-    @apply bg-yellow-100 text-yellow-800 font-medium rounded-full px-2 py-0.5 text-xs;
+    @apply bg-orange-100 text-yellow-800 font-medium rounded-full px-2 py-0.5 text-xs;
   }
 
   /* Alerts (BELANGRIJK: niet @apply wa-alert) */
