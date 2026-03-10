@@ -14,7 +14,7 @@
 @layer base {
   html,
   body {
-    @apply min-h-screen bg-stone-100 text-gray-900;
+    @apply min-h-screen bg-slate-200 text-gray-900;
   }
 }
 
@@ -29,10 +29,10 @@ body {
 @layer components {
   /* Brand (hoofdkleur) */
   .wa-brand {
-    @apply bg-orange-800 text-white;
+    @apply bg-blue-900 text-white;
   }
   .wa-brand-hover {
-    @apply hover:bg-orange-700 transition;
+    @apply hover:bg-blue-800 transition;
   }
 
   /* Cards / kaders */
@@ -41,7 +41,7 @@ body {
     box-shadow: 3px 3px 4px rgba(0, 0, 0, 0.12);
   }
   .wa-action-card {
-    @apply w-full rounded-2xl bg-orange-50 border border-orange-200 p-5 text-left hover:bg-orange-100 transition;
+    @apply w-full rounded-2xl bg-blue-50 border border-blue-200 p-5 text-left hover:bg-blue-100 transition;
   }
 
   /* States */
@@ -66,7 +66,7 @@ body {
     @apply rounded-xl font-medium transition disabled:opacity-60;
   }
   .wa-btn-brand {
-    @apply bg-orange-800 text-white hover:bg-orange-700;
+    @apply bg-blue-900 text-white hover:bg-blue-800;
   }
   .wa-btn-ghost {
     @apply bg-white border border-gray-300 hover:bg-gray-50;
@@ -89,6 +89,6 @@ body {
     @apply rounded-xl px-4 py-3 border text-sm bg-emerald-50 border-emerald-200 text-emerald-800;
   }
   .wa-alert-info {
-    @apply rounded-xl px-4 py-3 border text-sm bg-orange-50 border-orange-200 text-orange-800;
+    @apply rounded-xl px-4 py-3 border text-sm bg-blue-50 border-blue-200 text-blue-800;
   }
 }
