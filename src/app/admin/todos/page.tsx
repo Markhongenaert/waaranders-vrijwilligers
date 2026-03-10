@@ -40,7 +40,7 @@ function TodoCard({
 }) {
   return (
     <li
-      className={`wa-card p-4 flex flex-col ${overdue ? "bg-red-50" : ""}`}
+      className={`wa-card p-4 flex flex-col ${overdue ? "bg-white border-2 border-red-500" : ""}`}
     >
       {/* Titel – volle breedte */}
       <div className="font-medium text-base break-words leading-snug">{t.wat}</div>
