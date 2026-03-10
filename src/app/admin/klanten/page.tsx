@@ -132,7 +132,7 @@ export default function KlantenPage() {
         </div>
 
         <div className="flex gap-2">
-          <Link className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center" href={nieuwHref}>
+          <Link className="wa-btn-action px-3 py-2 text-sm text-center" href={nieuwHref}>
             Maak klant
           </Link>
         </div>

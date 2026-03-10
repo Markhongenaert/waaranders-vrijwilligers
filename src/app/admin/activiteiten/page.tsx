@@ -406,7 +406,7 @@ export default function AdminActiviteitenPage() {
           </div>
 
           <div className="flex gap-2">
-            <a className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center" href="/admin/toevoegen">
+            <a className="wa-btn-action px-3 py-2 text-sm text-center" href="/admin/toevoegen">
               Activiteit toevoegen
             </a>
           </div>

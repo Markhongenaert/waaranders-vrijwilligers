@@ -68,6 +68,9 @@ body {
   .wa-btn-brand {
     @apply bg-orange-800 text-white hover:bg-orange-700;
   }
+  .wa-btn-action {
+    @apply bg-emerald-700 text-white hover:bg-emerald-600 rounded-xl font-medium transition disabled:opacity-60;
+  }
   .wa-btn-ghost {
     @apply bg-white border border-gray-300 hover:bg-gray-50;
   }

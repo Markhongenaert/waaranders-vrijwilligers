@@ -76,7 +76,7 @@ export default function WerkgroepenPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Werkgroepen</h1>
         <div className="flex gap-2">
-          <a href="/admin/werkgroepen/beheer" className="wa-btn wa-btn-brand px-4 py-2 text-sm">
+          <a href="/admin/werkgroepen/beheer" className="wa-btn-action px-4 py-2 text-sm">
             Beheer
           </a>
         </div>
