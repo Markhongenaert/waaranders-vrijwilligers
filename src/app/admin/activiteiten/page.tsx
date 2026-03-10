@@ -409,9 +409,6 @@ export default function AdminActiviteitenPage() {
             <a className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center" href="/admin/toevoegen">
               Activiteit toevoegen
             </a>
-            <button className="wa-btn wa-btn-ghost px-3 py-2 text-sm" onClick={load} disabled={busy}>
-              Refresh
-            </button>
           </div>
         </div>
 

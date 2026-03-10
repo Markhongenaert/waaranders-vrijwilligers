@@ -135,9 +135,6 @@ export default function KlantenPage() {
           <Link className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center" href={nieuwHref}>
             Maak nieuwe klant
           </Link>
-          <button className="wa-btn wa-btn-ghost px-3 py-2 text-sm" onClick={load}>
-            Vernieuw
-          </button>
         </div>
       </div>
 
