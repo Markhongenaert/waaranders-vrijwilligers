@@ -186,7 +186,7 @@ function Kalender({
                         onClick={() => onBadgeClick(a.id)}
                         className={[
                           "text-left text-xs text-white rounded px-1 py-0.5 leading-tight truncate w-full transition-colors",
-                          tekort ? "bg-red-600 hover:bg-red-700" : "wa-btn-brand",
+                          tekort ? "bg-red-600 hover:bg-red-700" : "bg-lime-600 hover:bg-lime-700",
                         ].join(" ")}
                         title={a.titel}
                       >
