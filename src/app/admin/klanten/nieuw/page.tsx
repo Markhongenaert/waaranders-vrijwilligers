@@ -44,6 +44,7 @@ export default function NieuweKlantPage() {
   const [naam, setNaam] = useState("");
   const [contactpersoonNaam, setContactpersoonNaam] = useState("");
   const [contactpersoonTelefoon, setContactpersoonTelefoon] = useState("");
+  const [contactpersoonEmail, setContactpersoonEmail] = useState("");
   const [adres, setAdres] = useState("");
 
   const [doelgroepen, setDoelgroepen] = useState<Doelgroep[]>([]);
@@ -148,6 +149,7 @@ export default function NieuweKlantPage() {
       naam: naamNorm,
       contactpersoon_naam: contactpersoonNaam || null,
       contactpersoon_telefoon: contactpersoonTelefoon || null,
+      contactpersoon_email: contactpersoonEmail || null,
       adres: adres || null,
       doelgroep_id: doelgroepId || null,
       aanspreekpunt_vrijwilliger_id: aanspreekpuntId || null,
@@ -228,6 +230,17 @@ export default function NieuweKlantPage() {
             className="w-full border rounded-xl p-3"
             value={contactpersoonTelefoon}
             onChange={(e) => setContactpersoonTelefoon(e.target.value)}
+            disabled={busy}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">E-mail contactpersoon</label>
+          <input
+            type="email"
+            className="w-full border rounded-xl p-3"
+            value={contactpersoonEmail}
+            onChange={(e) => setContactpersoonEmail(e.target.value)}
             disabled={busy}
           />
         </div>

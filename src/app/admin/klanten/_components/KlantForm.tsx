@@ -10,6 +10,7 @@ type Props = {
     naam: string;
     contactpersoon_naam: string;
     contactpersoon_telefoon: string;
+    contactpersoon_email: string;
     adres: string;
     doelgroep_id: string | null;
     actief: boolean;
@@ -27,6 +28,7 @@ export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArch
   const [naam, setNaam] = useState(initial.naam);
   const [contactpersoon_naam, setCpNaam] = useState(initial.contactpersoon_naam);
   const [contactpersoon_telefoon, setCpTel] = useState(initial.contactpersoon_telefoon);
+  const [contactpersoon_email, setCpEmail] = useState(initial.contactpersoon_email);
   const [adres, setAdres] = useState(initial.adres);
   const [doelgroep_id, setDoelgroepId] = useState<string | "">(initial.doelgroep_id ?? "");
   const [actief, setActief] = useState(initial.actief);
@@ -50,6 +52,7 @@ export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArch
         naam: trimmed,
         contactpersoon_naam: contactpersoon_naam.trim() || null,
         contactpersoon_telefoon: contactpersoon_telefoon.trim() || null,
+        contactpersoon_email: contactpersoon_email.trim() || null,
         adres: adres.trim() || null,
         doelgroep_id: doelgroep_id || null,
         actief,
@@ -110,6 +113,11 @@ export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArch
           <label className="block font-medium mb-1">Telefoon</label>
           <input className="w-full border rounded-xl p-3" value={contactpersoon_telefoon} onChange={(e) => setCpTel(e.target.value)} />
         </div>
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">E-mail contactpersoon</label>
+        <input type="email" className="w-full border rounded-xl p-3" value={contactpersoon_email} onChange={(e) => setCpEmail(e.target.value)} />
       </div>
 
       <div>
