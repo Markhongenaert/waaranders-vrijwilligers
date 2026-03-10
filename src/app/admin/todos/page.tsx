@@ -229,7 +229,12 @@ export default function AdminTodosPage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
-      <div className="bg-blue-900 text-white font-bold px-4 py-2 rounded-xl mb-4">TODO’s (beheer)</div>
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <h1 className="text-3xl font-semibold tracking-tight mb-1">Todo’s</h1>
+        <a href="/admin/todos/toevoegen" className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center">
+          Todo toevoegen
+        </a>
+      </div>
 
       <div className="flex gap-3 flex-wrap mb-4 items-center">
         <select
@@ -249,14 +254,6 @@ export default function AdminTodosPage() {
           <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
           Toon ook gedaan
         </label>
-
-        <a href="/admin/todos/toevoegen" className="wa-btn wa-btn-ghost px-3 py-2 text-sm">
-          + Toevoegen
-        </a>
-
-        <button className="wa-btn wa-btn-ghost px-3 py-2 text-sm" onClick={load}>
-          Refresh
-        </button>
       </div>
 
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}

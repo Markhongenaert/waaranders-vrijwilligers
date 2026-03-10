@@ -118,9 +118,6 @@ export default function VrijwilligersOverzichtPage() {
     <main className="p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Vrijwilligers</h1>
-        <a className="wa-btn wa-btn-ghost px-4 py-2" href="/admin">
-          Terug naar Beheer
-        </a>
       </div>
 
       {err && (
