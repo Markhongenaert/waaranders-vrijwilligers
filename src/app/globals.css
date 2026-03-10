@@ -46,9 +46,11 @@ body {
   /* States */
   .wa-active-card {
     @apply border-2 border-emerald-700;
+    box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.12);
   }
   .wa-neutral-card {
     @apply border border-gray-600;
+    box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.12);
   }
   .wa-active-badge {
     @apply bg-emerald-800 text-white border border-emerald-900;
