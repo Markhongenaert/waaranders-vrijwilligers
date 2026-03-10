@@ -132,8 +132,8 @@ export default function KlantenPage() {
         </div>
 
         <div className="flex gap-2">
-          <Link className="wa-btn wa-btn-brand px-3 py-2 text-sm" href={nieuwHref}>
-            + Nieuwe klant
+          <Link className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center" href={nieuwHref}>
+            Maak nieuwe klant
           </Link>
           <button className="wa-btn wa-btn-ghost px-3 py-2 text-sm" onClick={load}>
             Vernieuw
