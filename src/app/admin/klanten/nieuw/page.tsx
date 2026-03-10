@@ -4,17 +4,21 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { isDoenkerOrAdmin } from "@/lib/auth";
+import { isDoenkerOrAdmin, isAdmin as checkIsAdmin } from "@/lib/auth";
 
-type Doelgroep = {
+type Klant = {
   id: string;
-  titel: string;
+  naam: string;
+  contactpersoon_naam: string | null;
+  contactpersoon_telefoon: string | null;
+  adres: string | null;
+  actief: boolean;
+  gearchiveerd_op: string | null;
 };
 
-type Vrijwilliger = {
-  id: string;
-  naam: string | null;
-};
+function normalize(s: string) {
+  return (s ?? "").trim().toLowerCase();
+}
 
 function safeReturnTo(raw: string | null): string | null {
   if (!raw) return null;
@@ -23,285 +27,162 @@ function safeReturnTo(raw: string | null): string | null {
   return raw;
 }
 
-function normalizeNaam(s: string) {
-  return s.trim().replace(/\s+/g, " ");
-}
-
-// Voeg 1 queryparameter toe (of vervang hem) op een pad zoals "/admin/toevoegen?x=1"
-function setQueryParam(urlPath: string, key: string, value: string) {
-  const base = new URL(urlPath, "http://dummy.local");
-  base.searchParams.set(key, value);
-  return base.pathname + "?" + base.searchParams.toString();
-}
-
-export default function NieuweKlantPage() {
+export default function KlantenPage() {
   const sp = useSearchParams();
   const returnTo = safeReturnTo(sp.get("returnTo"));
 
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
+  const [adminUser, setAdminUser] = useState(false);
 
-  const [naam, setNaam] = useState("");
-  const [contactpersoonNaam, setContactpersoonNaam] = useState("");
-  const [contactpersoonTelefoon, setContactpersoonTelefoon] = useState("");
-  const [contactpersoonEmail, setContactpersoonEmail] = useState("");
-  const [adres, setAdres] = useState("");
+  const [items, setItems] = useState<Klant[]>([]);
+  const [q, setQ] = useState("");
 
-  const [doelgroepen, setDoelgroepen] = useState<Doelgroep[]>([]);
-  const [vrijwilligers, setVrijwilligers] = useState<Vrijwilliger[]>([]);
-
-  const [doelgroepId, setDoelgroepId] = useState<string>(""); // optioneel
-  const [aanspreekpuntId, setAanspreekpuntId] = useState<string>(""); // optioneel
-
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
 
-  const backHref = useMemo(() => {
-    // Als je van “Toevoegen activiteit” komt, is returnTo handig als terugknop.
-    // Anders gewoon terug naar klantenlijst.
-    return returnTo || "/admin/klanten";
-  }, [returnTo]);
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user ?? null;
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const [ok, admin] = await Promise.all([isDoenkerOrAdmin(), checkIsAdmin()]);
+    setAllowed(ok);
+    setAdminUser(admin);
+    if (!ok) {
+      setLoading(false);
+      return;
+    }
+
+    // Admins zien alle klanten; doenkers alleen actieve
+    const { data: rows, error: e } = admin
+      ? await supabase
+          .from("klanten")
+          .select("id,naam,contactpersoon_naam,contactpersoon_telefoon,adres,actief,gearchiveerd_op")
+          .order("naam", { ascending: true })
+      : await supabase
+          .from("klanten")
+          .select("id,naam,contactpersoon_naam,contactpersoon_telefoon,adres,actief,gearchiveerd_op")
+          .eq("actief", true)
+          .is("gearchiveerd_op", null)
+          .order("naam", { ascending: true });
+
+    if (e) {
+      setError(e.message);
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    setItems((rows ?? []) as Klant[]);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      setError(null);
-
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user ?? null;
-      if (!user) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const ok = await isDoenkerOrAdmin();
-      setAllowed(ok);
-      if (!ok) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: dg, error: eDg } = await supabase
-        .from("doelgroepen")
-        .select("id,titel")
-        .order("titel", { ascending: true });
-
-      if (eDg) {
-        setError(eDg.message);
-        setLoading(false);
-        return;
-      }
-      setDoelgroepen((dg ?? []) as Doelgroep[]);
-
-      const { data: vw, error: eVw } = await supabase
-        .from("vrijwilligers")
-        .select("id,naam")
-        .eq("actief", true)
-        .order("naam", { ascending: true });
-
-      if (eVw) {
-        setError(eVw.message);
-        setLoading(false);
-        return;
-      }
-      setVrijwilligers((vw ?? []) as Vrijwilliger[]);
-
-      setLoading(false);
-    };
-
-    init();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Best-effort client check (echte garantie blijft: unique index/constraint in Supabase)
-  const checkUniqNaam = async (naamNorm: string): Promise<boolean> => {
-    const target = naamNorm.toLowerCase();
+  const filtered = useMemo(() => {
+    const needle = normalize(q);
+    if (!needle) return items;
 
-    const { data, error } = await supabase.from("klanten").select("id,naam");
-    if (error) return true; // niet blokkeren als check faalt
+    return items.filter((k) => {
+      const hay = [
+        k.naam,
+        k.contactpersoon_naam ?? "",
+        k.contactpersoon_telefoon ?? "",
+        k.adres ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
 
-    const rows = (data ?? []) as { id: string; naam: string }[];
-    const hit = rows.find((r) => normalizeNaam(r.naam).toLowerCase() === target);
+      return hay.includes(needle);
+    });
+  }, [items, q]);
 
-    return !hit;
-  };
-
-  const save = async () => {
-    setError(null);
-    setMsg(null);
-
-    const naamNorm = normalizeNaam(naam);
-    if (!naamNorm) {
-      setError("Naam is verplicht.");
-      return;
-    }
-
-    setBusy(true);
-
-    const okUniq = await checkUniqNaam(naamNorm);
-    if (!okUniq) {
-      setError("Deze klantnaam bestaat al (hoofdletters/spaties tellen niet).");
-      setBusy(false);
-      return;
-    }
-
-    const payload: any = {
-      naam: naamNorm,
-      contactpersoon_naam: contactpersoonNaam || null,
-      contactpersoon_telefoon: contactpersoonTelefoon || null,
-      contactpersoon_email: contactpersoonEmail || null,
-      adres: adres || null,
-      doelgroep_id: doelgroepId || null,
-      aanspreekpunt_vrijwilliger_id: aanspreekpuntId || null,
-      actief: true,
-      gearchiveerd_op: null,
-    };
-
-    const { data: inserted, error } = await supabase
-      .from("klanten")
-      .insert(payload)
-      .select("id")
-      .single();
-
-    if (error) {
-      setError(error.message);
-      setBusy(false);
-      return;
-    }
-
-    setMsg("Klant toegevoegd.");
-    const newId = inserted?.id as string | undefined;
-
-    // returnTo flow: terug naar vorige pagina + klant_id doorgeven
-    if (returnTo && newId) {
-      // we zetten beide keys: klant_id (nieuw) en klantId (oude compat)
-      let target = setQueryParam(returnTo, "klant_id", newId);
-      target = setQueryParam(target, "klantId", newId);
-      window.location.href = target;
-      return;
-    }
-
-    window.location.href = "/admin/klanten";
-  };
+  const nieuwHref = useMemo(() => {
+    if (!returnTo) return "/admin/klanten/nieuw";
+    const u = new URL("/admin/klanten/nieuw", "http://dummy.local");
+    u.searchParams.set("returnTo", returnTo);
+    return u.pathname + "?" + u.searchParams.toString();
+  }, [returnTo]);
 
   if (loading) return <main className="mx-auto max-w-3xl p-6 md:p-10">Laden…</main>;
-  if (!allowed) return <main className="mx-auto max-w-3xl p-6 md:p-10">Geen rechten.</main>;
+
+  if (!allowed) {
+    return (
+      <main className="mx-auto max-w-3xl p-6 md:p-10">
+        <h1 className="text-3xl font-semibold tracking-tight mb-2">Klanten</h1>
+        <p>Je hebt geen rechten om deze pagina te bekijken.</p>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-3xl p-6 md:p-10">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">Nieuwe klant</h1>
-          <p className="text-sm text-gray-600">Maak een klant aan (met doelgroep en aanspreekpunt indien gewenst).</p>
-        </div>
-
-        <Link className="wa-btn wa-btn-ghost px-3 py-2 text-sm" href={backHref}>
-          Terug
-        </Link>
-      </div>
-
-      {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
-      {msg && <p className="text-green-700 mb-4">{msg}</p>}
-
-      <div className="wa-card space-y-4 p-4">
-        <div>
-          <label className="text-sm font-medium block mb-1">Naam (verplicht)</label>
-          <input
-            className="w-full border rounded-xl p-3"
-            value={naam}
-            onChange={(e) => setNaam(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Contactpersoon naam</label>
-          <input
-            className="w-full border rounded-xl p-3"
-            value={contactpersoonNaam}
-            onChange={(e) => setContactpersoonNaam(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Contactpersoon telefoon</label>
-          <input
-            className="w-full border rounded-xl p-3"
-            value={contactpersoonTelefoon}
-            onChange={(e) => setContactpersoonTelefoon(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">E-mail contactpersoon</label>
-          <input
-            type="email"
-            className="w-full border rounded-xl p-3"
-            value={contactpersoonEmail}
-            onChange={(e) => setContactpersoonEmail(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Adres</label>
-          <textarea
-            className="w-full border rounded-xl p-3"
-            rows={3}
-            value={adres}
-            onChange={(e) => setAdres(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Doelgroep</label>
-          <select
-            className="w-full border rounded-xl p-3"
-            value={doelgroepId}
-            onChange={(e) => setDoelgroepId(e.target.value)}
-            disabled={busy}
-          >
-            <option value="">— Geen —</option>
-            {doelgroepen.map((dg) => (
-              <option key={dg.id} value={dg.id}>
-                {dg.titel}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">Optioneel.</p>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Aanspreekpunt (vrijwilliger)</label>
-          <select
-            className="w-full border rounded-xl p-3"
-            value={aanspreekpuntId}
-            onChange={(e) => setAanspreekpuntId(e.target.value)}
-            disabled={busy}
-          >
-            <option value="">— Geen —</option>
-            {vrijwilligers.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.naam ?? "(zonder naam)"}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">Optioneel.</p>
+          <h1 className="text-3xl font-semibold tracking-tight mb-1">Klanten</h1>
         </div>
 
         <div className="flex gap-2">
-          <button className="wa-btn wa-btn-ghost px-4 py-2" onClick={save} disabled={busy}>
-            {busy ? "Bezig…" : "Opslaan"}
-          </button>
-
-          <Link className="wa-btn wa-btn-ghost px-4 py-2" href={backHref}>
-            Annuleren
+          <Link className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center" href={nieuwHref}>
+            Maak klant
           </Link>
         </div>
       </div>
+
+      {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
+
+      <div className="mb-4">
+        <input
+          className="w-full border-2 border-blue-900 rounded-xl p-3"
+          placeholder="Zoek klant (naam, contactpersoon, telefoon, adres)…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="wa-card p-4">
+          <div className="font-medium">Nog geen klanten</div>
+          <p className="text-sm text-gray-700 mt-1">
+            Maak je eerste klant aan via de knop <span className="font-medium">+ Nieuwe klant</span>.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
+          {filtered.map((k) => {
+            const detailHref = returnTo
+              ? `/admin/klanten/${k.id}?returnTo=${encodeURIComponent(returnTo)}`
+              : `/admin/klanten/${k.id}`;
+            const gearchiveerd = !k.actief || k.gearchiveerd_op !== null;
+
+            return (
+              <div
+                key={k.id}
+                className="wa-card wa-muted-card h-28 sm:h-24 flex flex-col justify-center hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition duration-150 px-4"
+              >
+                <Link href={detailHref} className="flex-1 flex flex-col justify-center">
+                  <div className={`text-base sm:text-sm font-semibold leading-snug ${gearchiveerd ? "text-gray-400" : "text-gray-800"}`}>
+                    {k.naam}
+                  </div>
+                  {gearchiveerd && (
+                    <div className="text-xs font-medium text-gray-400 mt-0.5">Gearchiveerd</div>
+                  )}
+                </Link>
+
+              </div>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }
