@@ -160,7 +160,7 @@ export default function KlantenPage() {
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
           {filtered.map((k) => {
             const detailHref = returnTo
               ? `/admin/klanten/${k.id}?returnTo=${encodeURIComponent(returnTo)}`
@@ -168,35 +168,24 @@ export default function KlantenPage() {
             const gearchiveerd = !k.actief || k.gearchiveerd_op !== null;
 
             return (
-              <li
+              <div
                 key={k.id}
-                className={`wa-card p-4 ${gearchiveerd ? "bg-gray-100 border-gray-300" : ""}`}
+                className="wa-card wa-muted-card h-28 sm:h-24 flex flex-col justify-center hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition duration-150 px-4"
               >
-                <Link href={detailHref} className="block">
-                  <div className={`font-medium whitespace-pre-line break-words ${gearchiveerd ? "text-gray-500" : ""}`}>
+                <Link href={detailHref} className="flex-1 flex flex-col justify-center">
+                  <div className={`text-base sm:text-sm font-semibold leading-snug ${gearchiveerd ? "text-gray-400" : "text-gray-800"}`}>
                     {k.naam}
-                    {gearchiveerd && (
-                      <span className="ml-2 text-xs font-normal text-gray-400">Gearchiveerd</span>
-                    )}
                   </div>
-
-                  <div className="text-sm text-gray-700 mt-2">
-                    {k.contactpersoon_naam ? (
-                      <span>Contact: {k.contactpersoon_naam}</span>
-                    ) : (
-                      <span className="text-gray-500">Geen contactpersoon</span>
-                    )}
-                    {k.contactpersoon_telefoon ? ` • ${k.contactpersoon_telefoon}` : ""}
-                  </div>
-
-                  {k.adres && <div className="text-sm text-gray-600 mt-1 whitespace-pre-line">{k.adres}</div>}
+                  {gearchiveerd && (
+                    <div className="text-xs font-medium text-gray-400 mt-0.5">Gearchiveerd</div>
+                  )}
                 </Link>
 
                 {adminUser && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="pb-2">
                     {gearchiveerd ? (
                       <button
-                        className="wa-btn-success px-3 py-1 text-xs"
+                        className="wa-btn-success px-2 py-0.5 text-xs"
                         onClick={async () => {
                           const { error } = await supabase
                             .from("klanten")
@@ -210,7 +199,7 @@ export default function KlantenPage() {
                       </button>
                     ) : (
                       <button
-                        className="wa-btn-danger px-3 py-1 text-xs"
+                        className="wa-btn-danger px-2 py-0.5 text-xs"
                         onClick={async () => {
                           if (!confirm(`Klant "${k.naam}" archiveren?`)) return;
                           const { error } = await supabase
@@ -226,10 +215,10 @@ export default function KlantenPage() {
                     )}
                   </div>
                 )}
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
     </main>
   );
