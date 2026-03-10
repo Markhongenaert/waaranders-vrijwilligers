@@ -61,19 +61,12 @@ export default function VrijwilligersOverzichtPage() {
         const select = "id, voornaam, achternaam, telefoon, adres, actief";
         const order = { ascending: true, nullsFirst: false } as const;
 
-        // Twee aparte chains: TypeScript-safe, geen reassignment
-        const { data, error } = adminUser
-          ? await supabase
-              .from("vrijwilligers")
-              .select(select)
-              .order("achternaam", order)
-              .order("voornaam", order)
-          : await supabase
-              .from("vrijwilligers")
-              .select(select)
-              .eq("actief", true)
-              .order("achternaam", order)
-              .order("voornaam", order);
+        const { data, error } = await supabase
+          .from("vrijwilligers")
+          .select(select)
+          .eq("actief", true)
+          .order("achternaam", order)
+          .order("voornaam", order);
 
         if (error) throw error;
 
