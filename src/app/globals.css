@@ -81,6 +81,14 @@ body {
     @apply border border-green-400 text-green-700 bg-white hover:bg-green-50 rounded-xl font-medium transition;
   }
 
+  /* Werkgroep-kaders (profiel) */
+  .wa-werkgroep-lid {
+    @apply rounded-xl border p-4 border-green-200 bg-green-50;
+  }
+  .wa-werkgroep-geen-lid {
+    @apply rounded-xl border p-4 border-orange-200 bg-orange-50;
+  }
+
   /* Info/hulp kaders */
   .wa-info-box {
     @apply bg-emerald-50 border border-emerald-200 rounded-2xl;

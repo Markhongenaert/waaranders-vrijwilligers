@@ -319,7 +319,7 @@ export default function ProfielPage() {
               return (
                 <div
                   key={id}
-                  className={`rounded-xl border p-4 ${lid ? "border-green-200 bg-green-50" : "border-gray-200 bg-white"}`}
+                  className={lid ? "wa-werkgroep-lid" : "wa-werkgroep-geen-lid"}
                 >
                   {lid ? (
                     <>
