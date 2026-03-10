@@ -79,9 +79,6 @@ export default function WerkgroepenPage() {
           <a href="/admin/werkgroepen/beheer" className="wa-btn wa-btn-brand px-4 py-2 text-sm">
             Beheer
           </a>
-          <a href="/admin" className="border rounded-xl px-4 py-2 text-sm">
-            Terug
-          </a>
         </div>
       </div>
 
