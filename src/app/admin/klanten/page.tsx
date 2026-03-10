@@ -181,40 +181,6 @@ export default function KlantenPage() {
                   )}
                 </Link>
 
-                {adminUser && (
-                  <div className="pb-2">
-                    {gearchiveerd ? (
-                      <button
-                        className="wa-btn-success px-2 py-0.5 text-xs"
-                        onClick={async () => {
-                          const { error } = await supabase
-                            .from("klanten")
-                            .update({ actief: true, gearchiveerd_op: null })
-                            .eq("id", k.id);
-                          if (error) setError(error.message);
-                          else await load();
-                        }}
-                      >
-                        Activeren
-                      </button>
-                    ) : (
-                      <button
-                        className="wa-btn-danger px-2 py-0.5 text-xs"
-                        onClick={async () => {
-                          if (!confirm(`Klant "${k.naam}" archiveren?`)) return;
-                          const { error } = await supabase
-                            .from("klanten")
-                            .update({ actief: false, gearchiveerd_op: new Date().toISOString() })
-                            .eq("id", k.id);
-                          if (error) setError(error.message);
-                          else await load();
-                        }}
-                      >
-                        Archiveren
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}

@@ -167,11 +167,6 @@ export default function VrijwilligersOverzichtPage() {
                 {gearchiveerd && (
                   <div className="text-xs font-medium text-gray-400 mt-0.5">Gearchiveerd</div>
                 )}
-
-                <div className={`text-xs mt-1 truncate ${gearchiveerd ? "text-gray-400" : "text-gray-600"}`}>
-                  {v.telefoon ? v.telefoon : "—"}
-                  {v.adres ? ` • ${v.adres}` : ""}
-                </div>
               </a>
             );
           })}
