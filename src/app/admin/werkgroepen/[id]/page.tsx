@@ -360,7 +360,7 @@ export default function WerkgroepDetailPage() {
           {/* Actieknoppen */}
           <button
             onClick={openModal}
-            className="w-full rounded-2xl bg-blue-50 border border-blue-200 p-5 text-left hover:bg-blue-100 transition"
+            className="wa-action-card"
           >
             <div className="font-semibold text-blue-900 mb-1">Verstuur mail naar de leden van deze werkgroep</div>
             <div className="text-sm text-blue-700">Klik hier om een bericht te sturen naar alle ingeschreven vrijwilligers.</div>
@@ -368,7 +368,7 @@ export default function WerkgroepDetailPage() {
 
           <button
             onClick={openPbModal}
-            className="w-full rounded-2xl bg-blue-50 border border-blue-200 p-5 text-left hover:bg-blue-100 transition"
+            className="wa-action-card"
           >
             <div className="font-semibold text-blue-900 mb-1">Nieuw prikbord aanmaken</div>
             <div className="text-sm text-blue-700">Klik hier om een Doodle-achtig prikbord aan te maken en de leden uit te nodigen.</div>

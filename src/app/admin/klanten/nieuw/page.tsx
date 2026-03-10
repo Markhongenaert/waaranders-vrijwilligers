@@ -195,7 +195,7 @@ export default function NieuweKlantPage() {
           <p className="text-sm text-gray-600">Maak een klant aan (met doelgroep en aanspreekpunt indien gewenst).</p>
         </div>
 
-        <Link className="border rounded-xl px-3 py-2 text-sm" href={backHref}>
+        <Link className="wa-btn wa-btn-ghost px-3 py-2 text-sm" href={backHref}>
           Terug
         </Link>
       </div>
@@ -203,7 +203,7 @@ export default function NieuweKlantPage() {
       {error && <p className="text-red-600 mb-4">Fout: {error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}
 
-      <div className="space-y-4 border rounded-2xl p-4 bg-white/80 shadow-sm">
+      <div className="wa-card space-y-4 p-4">
         <div>
           <label className="text-sm font-medium block mb-1">Naam (verplicht)</label>
           <input
@@ -293,11 +293,11 @@ export default function NieuweKlantPage() {
         </div>
 
         <div className="flex gap-2">
-          <button className="border rounded-xl px-4 py-2" onClick={save} disabled={busy}>
+          <button className="wa-btn wa-btn-ghost px-4 py-2" onClick={save} disabled={busy}>
             {busy ? "Bezig…" : "Opslaan"}
           </button>
 
-          <Link className="border rounded-xl px-4 py-2" href={backHref}>
+          <Link className="wa-btn wa-btn-ghost px-4 py-2" href={backHref}>
             Annuleren
           </Link>
         </div>

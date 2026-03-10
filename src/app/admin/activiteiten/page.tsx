@@ -406,24 +406,20 @@ export default function AdminActiviteitenPage() {
           </div>
 
           <div className="flex gap-2">
-            <a className="border rounded-xl px-3 py-2 text-sm bg-white" href="/admin/toevoegen">
+            <a className="wa-btn wa-btn-ghost px-3 py-2 text-sm" href="/admin/toevoegen">
               + Toevoegen
             </a>
-            <button className="border rounded-xl px-3 py-2 text-sm bg-white" onClick={load} disabled={busy}>
+            <button className="wa-btn wa-btn-ghost px-3 py-2 text-sm" onClick={load} disabled={busy}>
               Refresh
             </button>
           </div>
         </div>
 
         {error && (
-          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
-            Fout: {error}
-          </p>
+          <div className="wa-alert-error mb-4">Fout: {error}</div>
         )}
         {msg && (
-          <p className="text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-4">
-            {msg}
-          </p>
+          <div className="wa-alert-success mb-4">{msg}</div>
         )}
 
         {items.length === 0 ? (
@@ -446,7 +442,7 @@ export default function AdminActiviteitenPage() {
                     const e = hhmm(a.einduur);
 
                     return (
-                      <li key={a.id} className="rounded-2xl p-4 shadow-sm bg-white border border-gray-200">
+                      <li key={a.id} className="wa-card p-4">
                         {!isEditing ? (
                           <div className="space-y-3">
                             <div className="flex items-start justify-between gap-2">
@@ -475,14 +471,14 @@ export default function AdminActiviteitenPage() {
 
                             <div className="pt-2 flex gap-2">
                               <button
-                                className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
+                                className="wa-btn wa-btn-ghost flex-1 px-4 py-2 text-sm"
                                 onClick={() => startEdit(a)}
                                 disabled={busy}
                               >
                                 Bewerken
                               </button>
                               <button
-                                className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
+                                className="wa-btn-danger flex-1 px-4 py-2 text-sm"
                                 onClick={() => deleteActiviteit(a)}
                                 disabled={busy}
                               >
@@ -493,7 +489,7 @@ export default function AdminActiviteitenPage() {
                         ) : (
                           <div className="space-y-4">
                             {editReeksId && (
-                              <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                              <p className="wa-alert-info text-xs">
                                 Dit is een herhalende activiteit. Bij opslaan wordt gevraagd of je enkel deze activiteit of de hele reeks wil aanpassen.
                               </p>
                             )}

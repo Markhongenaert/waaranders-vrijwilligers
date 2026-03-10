@@ -40,9 +40,7 @@ function TodoCard({
 }) {
   return (
     <li
-      className={`border rounded-2xl p-4 bg-white/80 shadow-sm flex flex-col ${
-        overdue ? "border-red-500" : ""
-      }`}
+      className={`wa-card p-4 flex flex-col ${overdue ? "border-red-500" : ""}`}
     >
       {/* Titel – volle breedte */}
       <div className="font-medium text-base break-words leading-snug">{t.wat}</div>
@@ -252,11 +250,11 @@ export default function AdminTodosPage() {
           Toon ook gedaan
         </label>
 
-        <a href="/admin/todos/toevoegen" className="border rounded-xl px-3 py-2 text-sm">
+        <a href="/admin/todos/toevoegen" className="wa-btn wa-btn-ghost px-3 py-2 text-sm">
           + Toevoegen
         </a>
 
-        <button className="border rounded-xl px-3 py-2 text-sm" onClick={load}>
+        <button className="wa-btn wa-btn-ghost px-3 py-2 text-sm" onClick={load}>
           Refresh
         </button>
       </div>

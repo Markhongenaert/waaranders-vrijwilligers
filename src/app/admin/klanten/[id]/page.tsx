@@ -241,7 +241,7 @@ export default function KlantDetailPage() {
           <h1 className="text-3xl font-semibold mb-1">Klant bewerken</h1>
         </div>
 
-        <Link className="border rounded-xl px-3 py-2 text-sm" href={backHref}>
+        <Link className="wa-btn wa-btn-ghost px-3 py-2 text-sm" href={backHref}>
           Terug
         </Link>
       </div>
@@ -249,7 +249,7 @@ export default function KlantDetailPage() {
       {error && <p className="text-red-600 mb-4">{error}</p>}
       {msg && <p className="text-green-700 mb-4">{msg}</p>}
 
-      <div className="space-y-4 border rounded-2xl p-4 bg-white/80 shadow-sm">
+      <div className="wa-card space-y-4 p-4">
         <div>
           <label className="text-sm font-medium block mb-1">Naam</label>
           <input className="w-full border rounded-xl p-3" value={naam} onChange={(e) => setNaam(e.target.value)} disabled={busy} />
@@ -332,13 +332,13 @@ export default function KlantDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button className="border rounded-xl px-4 py-2" onClick={save} disabled={busy}>
+          <button className="wa-btn wa-btn-ghost px-4 py-2" onClick={save} disabled={busy}>
             {busy ? "Bezig…" : "Opslaan"}
           </button>
 
           {adminUser && orig.actief && !orig.gearchiveerd_op && (
             <button
-              className="border border-red-400 rounded-xl px-4 py-2 text-red-700 bg-white hover:bg-red-50 transition"
+              className="wa-btn-danger px-4 py-2"
               onClick={archive}
               disabled={busy}
             >
@@ -348,7 +348,7 @@ export default function KlantDetailPage() {
 
           {adminUser && (!orig.actief || orig.gearchiveerd_op) && (
             <button
-              className="border border-green-400 rounded-xl px-4 py-2 text-green-700 bg-white hover:bg-green-50 transition"
+              className="wa-btn-success px-4 py-2"
               onClick={activate}
               disabled={busy}
             >
@@ -356,7 +356,7 @@ export default function KlantDetailPage() {
             </button>
           )}
 
-          <Link className="border rounded-xl px-4 py-2" href={backHref}>
+          <Link className="wa-btn wa-btn-ghost px-4 py-2" href={backHref}>
             Terug
           </Link>
         </div>

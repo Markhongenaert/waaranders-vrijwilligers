@@ -114,7 +114,7 @@ export default function VrijwilligerDetailPage() {
   if (allowed === false) {
     return (
       <main className="p-6">
-        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">
+        <div className="wa-alert-error">
           Geen toegang.
         </div>
       </main>
@@ -126,7 +126,7 @@ export default function VrijwilligerDetailPage() {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Vrijwilliger</h1>
         <a
-          className="border rounded-xl px-4 py-2"
+          className="wa-btn wa-btn-ghost px-4 py-2"
           href={`/admin/vrijwilligers${q ? `?q=${encodeURIComponent(q)}` : ""}`}
         >
           Terug
@@ -134,7 +134,7 @@ export default function VrijwilligerDetailPage() {
       </div>
 
       {err && (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-red-700">
+        <div className="wa-alert-error">
           {err}
         </div>
       )}

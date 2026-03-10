@@ -132,10 +132,10 @@ export default function KlantenPage() {
         </div>
 
         <div className="flex gap-2">
-          <Link className="rounded-xl px-3 py-2 text-sm bg-blue-800 text-white hover:bg-blue-900 transition font-medium" href={nieuwHref}>
+          <Link className="wa-btn wa-btn-brand px-3 py-2 text-sm" href={nieuwHref}>
             + Nieuwe klant
           </Link>
-          <button className="border rounded-xl px-3 py-2 text-sm" onClick={load}>
+          <button className="wa-btn wa-btn-ghost px-3 py-2 text-sm" onClick={load}>
             Vernieuw
           </button>
         </div>
@@ -153,7 +153,7 @@ export default function KlantenPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="border rounded-2xl p-4 bg-white/80 shadow-sm">
+        <div className="wa-card p-4">
           <div className="font-medium">Nog geen klanten</div>
           <p className="text-sm text-gray-700 mt-1">
             Maak je eerste klant aan via de knop <span className="font-medium">+ Nieuwe klant</span>.
@@ -170,7 +170,7 @@ export default function KlantenPage() {
             return (
               <li
                 key={k.id}
-                className={`border rounded-2xl p-4 shadow-sm ${gearchiveerd ? "bg-gray-100 border-gray-300" : "bg-white/80"}`}
+                className={`wa-card p-4 ${gearchiveerd ? "bg-gray-100 border-gray-300" : ""}`}
               >
                 <Link href={detailHref} className="block">
                   <div className={`font-medium whitespace-pre-line break-words ${gearchiveerd ? "text-gray-500" : ""}`}>
@@ -196,7 +196,7 @@ export default function KlantenPage() {
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     {gearchiveerd ? (
                       <button
-                        className="text-xs font-medium text-green-700 border border-green-400 rounded-lg px-3 py-1 bg-white hover:bg-green-50 transition"
+                        className="wa-btn-success px-3 py-1 text-xs"
                         onClick={async () => {
                           const { error } = await supabase
                             .from("klanten")
@@ -210,7 +210,7 @@ export default function KlantenPage() {
                       </button>
                     ) : (
                       <button
-                        className="text-xs font-medium text-red-700 border border-red-400 rounded-lg px-3 py-1 bg-white hover:bg-red-50 transition"
+                        className="wa-btn-danger px-3 py-1 text-xs"
                         onClick={async () => {
                           if (!confirm(`Klant "${k.naam}" archiveren?`)) return;
                           const { error } = await supabase
