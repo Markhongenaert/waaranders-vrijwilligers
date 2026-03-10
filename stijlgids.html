@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waaranders Stijlgids</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #e2e8f0; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: #1e3a5f; color: white; text-align: left; padding: 10px 14px; font-size: 13px; }
+    td { padding: 12px 14px; vertical-align: middle; border: 1px solid #d0d7e3; font-size: 13px; }
+    tr:nth-child(even) td { background: #f0f4fa; }
+    tr:nth-child(odd) td { background: #ffffff; }
+    td:first-child { font-family: 'Courier New', monospace; font-size: 12px; color: #1e3a5f; font-weight: bold; white-space: nowrap; }
+    td:nth-child(2) { font-family: 'Courier New', monospace; font-size: 11px; color: #555; max-width: 280px; word-break: break-word; }
+    td:last-child { font-size: 12px; color: #444; }
+    td:last-child ul { margin: 0; padding-left: 16px; }
+    td:last-child li { margin-bottom: 2px; }
+    h1 { color: #1e3a5f; }
+    h2 { color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 4px; margin-top: 36px; margin-bottom: 10px; font-size: 16px; }
+    .section { margin-bottom: 40px; }
+  </style>
+</head>
+<body class="p-8 max-w-7xl mx-auto">
+
+  <h1 class="text-3xl font-bold mb-1">Waaranders Stijlgids</h1>
+  <p class="text-gray-500 text-sm mb-8">Overzicht van alle <code>wa-*</code> klassen gedefinieerd in <code>src/app/globals.css</code></p>
+
+  <!-- BRAND -->
+  <div class="section">
+    <h2>Brand (hoofdkleur)</h2>
+    <table>
+      <tr>
+        <th style="width:160px">Klassenaam</th>
+        <th style="width:280px">Tailwind code</th>
+        <th style="width:220px">Visueel voorbeeld</th>
+        <th>Gebruikt in</th>
+      </tr>
+      <tr>
+        <td>.wa-brand</td>
+        <td>bg-blue-900 text-white</td>
+        <td><div class="bg-blue-900 text-white px-3 py-2 rounded text-sm inline-block">Waaranders tekst</div></td>
+        <td><ul><li>AppHeader.tsx (navigatiebalk achtergrond)</li></ul></td>
+      </tr>
+      <tr>
+        <td>.wa-brand-hover</td>
+        <td>hover:bg-blue-800 transition</td>
+        <td><div class="bg-blue-900 text-white px-3 py-2 rounded text-sm inline-block hover:bg-blue-800 transition cursor-pointer">Hover over mij</div></td>
+        <td><ul><li>Combineren met .wa-brand voor hover-effect</li></ul></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- CARDS -->
+  <div class="section">
+    <h2>Cards / Kaders</h2>
+    <table>
+      <tr>
+        <th style="width:160px">Klassenaam</th>
+        <th style="width:280px">Tailwind code</th>
+        <th style="width:220px">Visueel voorbeeld</th>
+        <th>Gebruikt in</th>
+      </tr>
+      <tr>
+        <td>.wa-card</td>
+        <td>bg-white border border-gray-200 rounded-2xl shadow-sm</td>
+        <td>
+          <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-3 text-sm text-gray-700 w-40">
+            Inhoud van kaart
+          </div>
+        </td>
+        <td><ul>
+          <li>admin/werkgroepen/page.tsx</li>
+          <li>admin/werkgroepen/[id]/page.tsx</li>
+          <li>admin/klanten/page.tsx</li>
+          <li>admin/klanten/[id]/page.tsx</li>
+          <li>admin/klanten/nieuw/page.tsx</li>
+          <li>admin/todos/page.tsx</li>
+          <li>admin/activiteiten/page.tsx</li>
+          <li>prikbord/[id]/page.tsx</li>
+        </ul></td>
+      </tr>
+      <tr>
+        <td>.wa-action-card</td>
+        <td>w-full rounded-2xl bg-blue-50 border border-blue-200 p-5 text-left hover:bg-blue-100 transition</td>
+        <td>
+          <button class="w-full rounded-2xl bg-blue-50 border border-blue-200 p-3 text-left hover:bg-blue-100 transition text-sm">
+            <div class="font-semibold text-blue-900 mb-0.5">Actietitel</div>
+            <div class="text-blue-700 text-xs">Beschrijving van de actie.</div>
+          </button>
+        </td>
+        <td><ul>
+          <li>admin/werkgroepen/[id]/page.tsx<br><em>(mail versturen, prikbord aanmaken)</em></li>
+        </ul></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- STATES -->
+  <div class="section">
+    <h2>States / Status-kaders</h2>
+    <table>
+      <tr>
+        <th style="width:160px">Klassenaam</th>
+        <th style="width:280px">Tailwind code</th>
+        <th style="width:220px">Visueel voorbeeld</th>
+        <th>Gebruikt in</th>
+      </tr>
+      <tr>
+        <td>.wa-active-card</td>
+        <td>border-2 border-emerald-700</td>
+        <td>
+          <div class="bg-white border-2 border-emerald-700 rounded-2xl shadow-sm p-3 text-sm text-gray-700 w-40">
+            Actief item
+          </div>
+        </td>
+        <td><ul><li>app/(app)/activiteiten/page.tsx<br><em>(ingeschreven activiteit)</em></li></ul></td>
+      </tr>
+      <tr>
+        <td>.wa-neutral-card</td>
+        <td>border border-gray-600</td>
+        <td>
+          <div class="bg-white border border-gray-600 rounded-2xl shadow-sm p-3 text-sm text-gray-700 w-40">
+            Neutraal item
+          </div>
+        </td>
+        <td><ul><li>app/(app)/activiteiten/page.tsx<br><em>(niet-ingeschreven activiteit)</em></li></ul></td>
+      </tr>
+      <tr>
+        <td>.wa-active-badge</td>
+        <td>bg-emerald-800 text-white border border-emerald-900</td>
+        <td>
+          <span class="bg-emerald-800 text-white border border-emerald-900 px-2 py-0.5 rounded-full text-xs font-medium">Ingeschreven</span>
+        </td>
+        <td><ul><li>app/(app)/activiteiten/page.tsx<br><em>(badge ingeschreven status)</em></li></ul></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- BUTTONS -->
+  <div class="section">
+    <h2>Knoppen</h2>
+    <table>
+      <tr>
+        <th style="width:160px">Klassenaam</th>
+        <th style="width:280px">Tailwind code</th>
+        <th style="width:220px">Visueel voorbeeld</th>
+        <th>Gebruikt in</th>
+      </tr>
+      <tr>
+        <td>.wa-btn</td>
+        <td>rounded-xl font-medium transition disabled:opacity-60</td>
+        <td><span class="text-xs text-gray-500 italic">Basisklasse — altijd combineren met een variant</span></td>
+        <td><ul><li>Overal als basisklasse voor knoppen</li></ul></td>
+      </tr>
+      <tr>
+        <td>.wa-btn-brand</td>
+        <td>bg-blue-900 text-white hover:bg-blue-800<br><em>(gebruik met wa-btn)</em></td>
+        <td>
+          <button class="rounded-xl font-medium transition bg-blue-900 text-white hover:bg-blue-800 px-4 py-2 text-sm">Opslaan</button>
+        </td>
+        <td><ul>
+          <li>admin/werkgroepen/page.tsx</li>
+          <li>admin/werkgroepen/[id]/page.tsx</li>
+          <li>admin/klanten/page.tsx <em>(+ Nieuwe klant)</em></li>
+          <li>prikbord/[id]/page.tsx</li>
+          <li>app/(app)/profiel/page.tsx</li>
+        </ul></td>
+      </tr>
+      <tr>
+        <td>.wa-btn-ghost</td>
+        <td>bg-white border border-gray-300 hover:bg-gray-50<br><em>(gebruik met wa-btn)</em></td>
+        <td>
+          <button class="rounded-xl font-medium transition bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2 text-sm">Annuleren</button>
+        </td>
+        <td><ul>
+          <li>Terug/Annuleren-knoppen overal</li>
+          <li>admin/klanten/[id]/page.tsx</li>
+          <li>admin/vrijwilligers/page.tsx</li>
+          <li>admin/activiteiten/page.tsx</li>
+          <li>admin/todos/page.tsx</li>
+        </ul></td>
+      </tr>
+      <tr>
+        <td>.wa-btn-danger</td>
+        <td>border border-red-400 text-red-700 bg-white hover:bg-red-50 rounded-xl font-medium transition</td>
+        <td>
+          <button class="border border-red-400 text-red-700 bg-white hover:bg-red-50 rounded-xl font-medium transition px-4 py-2 text-sm">Archiveren</button>
+        </td>
+        <td><ul>
+          <li>admin/klanten/page.tsx <em>(archiveren)</em></li>
+          <li>admin/klanten/[id]/page.tsx <em>(archiveren)</em></li>
+          <li>admin/activiteiten/page.tsx <em>(verwijderen)</em></li>
+          <li>admin/werkgroepen/prikbord/[id]/page.tsx <em>(sluiten/verwijderen)</em></li>
+        </ul></td>
+      </tr>
+      <tr>
+        <td>.wa-btn-success</td>
+        <td>border border-green-400 text-green-700 bg-white hover:bg-green-50 rounded-xl font-medium transition</td>
+        <td>
+          <button class="border border-green-400 text-green-700 bg-white hover:bg-green-50 rounded-xl font-medium transition px-4 py-2 text-sm">Activeren</button>
+        </td>
+        <td><ul>
+          <li>admin/klanten/page.tsx <em>(activeren)</em></li>
+          <li>admin/klanten/[id]/page.tsx <em>(activeren)</em></li>
+        </ul></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="section">
+    <h2>Alerts / Meldingen</h2>
+    <table>
+      <tr>
+        <th style="width:160px">Klassenaam</th>
+        <th style="width:280px">Tailwind code</th>
+        <th style="width:220px">Visueel voorbeeld</th>
+        <th>Gebruikt in</th>
+      </tr>
+      <tr>
+        <td>.wa-alert</td>
+        <td>rounded-xl px-4 py-3 border text-sm</td>
+        <td><span class="text-xs text-gray-500 italic">Basisklasse — niet standalone gebruiken</span></td>
+        <td><ul><li>Basisklasse, niet rechtstreeks gebruiken</li></ul></td>
+      </tr>
+      <tr>
+        <td>.wa-alert-error</td>
+        <td>rounded-xl px-4 py-3 border text-sm bg-red-50 border-red-200 text-red-800</td>
+        <td>
+          <div class="rounded-xl px-4 py-3 border text-sm bg-red-50 border-red-200 text-red-800">
+            Er is een fout opgetreden.
+          </div>
+        </td>
+        <td><ul>
+          <li>Overal — foutmeldingen</li>
+          <li>admin/vrijwilligers/page.tsx</li>
+          <li>admin/vrijwilligers/[id]/page.tsx</li>
+          <li>admin/activiteiten/page.tsx</li>
+          <li>admin/werkgroepen/page.tsx</li>
+        </ul></td>
+      </tr>
+      <tr>
+        <td>.wa-alert-success</td>
+        <td>rounded-xl px-4 py-3 border text-sm bg-emerald-50 border-emerald-200 text-emerald-800</td>
+        <td>
+          <div class="rounded-xl px-4 py-3 border text-sm bg-emerald-50 border-emerald-200 text-emerald-800">
+            Opgeslagen!
+          </div>
+        </td>
+        <td><ul>
+          <li>admin/activiteiten/page.tsx</li>
+          <li>admin/werkgroepen/[id]/page.tsx</li>
+          <li>admin/werkgroepen/prikbord/[id]/page.tsx</li>
+          <li>prikbord/[id]/page.tsx</li>
+        </ul></td>
+      </tr>
+      <tr>
+        <td>.wa-alert-info</td>
+        <td>rounded-xl px-4 py-3 border text-sm bg-blue-50 border-blue-200 text-blue-800</td>
+        <td>
+          <div class="rounded-xl px-4 py-3 border text-sm bg-blue-50 border-blue-200 text-blue-800">
+            Info: dit is een melding.
+          </div>
+        </td>
+        <td><ul>
+          <li>admin/activiteiten/page.tsx</li>
+          <li>admin/werkgroepen/prikbord/[id]/page.tsx</li>
+          <li>prikbord/[id]/page.tsx</li>
+        </ul></td>
+      </tr>
+    </table>
+  </div>
+
+  <p class="text-xs text-gray-400 mt-8">Gegenereerd op basis van src/app/globals.css — waaranders-vrijwilligers</p>
+
+</body>
+</html>
