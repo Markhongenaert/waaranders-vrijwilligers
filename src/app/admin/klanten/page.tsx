@@ -136,7 +136,7 @@ export default function KlantenPage() {
             + Nieuwe klant
           </Link>
           <button className="border rounded-xl px-3 py-2 text-sm" onClick={load}>
-            Refresh
+            Vernieuw
           </button>
         </div>
       </div>
