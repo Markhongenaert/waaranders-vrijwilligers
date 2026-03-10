@@ -83,7 +83,7 @@ body {
 
   /* Werkgroep-kaders (profiel) */
   .wa-werkgroep-lid {
-    @apply rounded-xl border p-4 border-green-200 bg-green-50;
+    @apply rounded-xl border p-4 border-lime-200 bg-green-50;
   }
   .wa-werkgroep-geen-lid {
     @apply rounded-xl border p-4 border-yellow-200 bg-yellow-50;
