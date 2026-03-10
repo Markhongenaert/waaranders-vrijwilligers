@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projectoverzicht – waaranders-vrijwilligers</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      margin: 30px;
+      color: #1a1a1a;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 6px;
+      color: #1e3a5f;
+    }
+    h2 {
+      font-size: 14px;
+      margin-top: 30px;
+      margin-bottom: 6px;
+      color: #1e3a5f;
+      border-bottom: 2px solid #1e3a5f;
+      padding-bottom: 3px;
+    }
+    p.subtitle {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+    th {
+      background-color: #1e3a5f;
+      color: white;
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+    td {
+      padding: 7px 12px;
+      vertical-align: top;
+      border: 1px solid #d0d7e3;
+    }
+    td:first-child {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: nowrap;
+      color: #1a3a5c;
+      width: 38%;
+    }
+    tr:nth-child(even) td {
+      background-color: #f0f4fa;
+    }
+    tr:nth-child(odd) td {
+      background-color: #ffffff;
+    }
+    tr:hover td {
+      background-color: #dce8f8;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Projectoverzicht — waaranders-vrijwilligers</h1>
+<p class="subtitle">Overzicht van alle bestanden in src/app, src/lib en src/components</p>
+
+<h2>src/app — Authenticatie</h2>
+<table>
+  <tr><th>Bestandspad</th><th>Functionaliteit</th></tr>
+  <tr><td>app/layout.tsx</td><td>Root layout met AppHeader en basisopmaak; stelt nl-locale en globale Tailwind-stijlen in</td></tr>
+  <tr><td>app/page.tsx</td><td>Server Component: controleert sessie en vrijwilligersstatus, stuurt door naar /profiel of /activiteiten</td></tr>
+  <tr><td>app/globals.css</td><td>Definieert alle wa-* utility-klassen (wa-card, wa-btn, wa-alert-*, enz.)</td></tr>
+  <tr><td>app/login/page.tsx</td><td>Inlogformulier met e-mail/wachtwoord; toont foutmelding bij geblokkeerde gebruikers</td></tr>
+  <tr><td>app/registreer/page.tsx</td><td>Registratieformulier; verstuurt bevestigingsmail via magic link</td></tr>
+  <tr><td>app/wachtwoord-vergeten/page.tsx</td><td>Formulier om een wachtwoord-reset e-mail aan te vragen</td></tr>
+  <tr><td>app/auth/reset/page.tsx</td><td>Formulier om nieuw wachtwoord in te stellen na het klikken op de resetlink</td></tr>
+  <tr><td>app/auth/callback/route.ts</td><td>Server route: wisselt OAuth/magic-link code in voor sessie en stuurt door naar /</td></tr>
+</table>
+
+<h2>src/app — Vrijwilligersruimte (beschermd)</h2>
+<table>
+  <tr><th>Bestandspad</th><th>Functionaliteit</th></tr>
+  <tr><td>app/(app)/layout.tsx</td><td>Layout voor de beschermde vrijwilligersruimte; wraps routes in AuthBootstrap</td></tr>
+  <tr><td>app/(app)/activiteiten/page.tsx</td><td>Kalender- en lijstweergave van activiteiten; vrijwilligers kunnen in- en uitschrijven</td></tr>
+  <tr><td>app/(app)/profiel/page.tsx</td><td>Profielpagina: naam/telefoon/adres invullen en werkgroepkeuze instellen</td></tr>
+</table>
+
+<h2>src/app — Beheer (admin/doenker)</h2>
+<table>
+  <tr><th>Bestandspad</th><th>Functionaliteit</th></tr>
+  <tr><td>app/admin/layout.tsx</td><td>Layout voor het admin/doenker-gebied; blokkeert gebruikers zonder doenker- of adminrol</td></tr>
+  <tr><td>app/admin/page.tsx</td><td>Admin-dashboard met tegels naar alle beheersecties</td></tr>
+  <tr><td>app/admin/activiteiten/page.tsx</td><td>Beheer van activiteiten: aanmaken, bewerken, verwijderen; ondersteunt reeksen</td></tr>
+  <tr><td>app/admin/klanten/page.tsx</td><td>Klantenlijst met zoekfunctie; admins kunnen archiveren/activeren</td></tr>
+  <tr><td>app/admin/klanten/nieuw/page.tsx</td><td>Formulier voor aanmaken nieuwe klant; ondersteunt returnTo-flow</td></tr>
+  <tr><td>app/admin/klanten/[id]/page.tsx</td><td>Klant bewerken: contactgegevens, doelgroep, aanspreekpunt, archiveren/activeren</td></tr>
+  <tr><td>app/admin/klanten/_components/KlantForm.tsx</td><td>Herbruikbaar formuliercomponent voor klant aanmaken/bewerken</td></tr>
+  <tr><td>app/admin/vrijwilligers/page.tsx</td><td>Vrijwilligersoverzicht in rasterweergave met zoekfunctie</td></tr>
+  <tr><td>app/admin/vrijwilligers/[id]/page.tsx</td><td>Vrijwilligersdetailpagina met contactinfo, rollen en werkgroepen</td></tr>
+  <tr><td>app/admin/vrijwilligers/VrijwilligerDetail.tsx</td><td>Bewerkbare contactvelden, rollen- en werkgroepenweergave, archiveren/activeren</td></tr>
+  <tr><td>app/admin/werkgroepen/page.tsx</td><td>Overzicht van werkgroepen in kaartweergave met ledenaantal en trekker</td></tr>
+  <tr><td>app/admin/werkgroepen/beheer/page.tsx</td><td>Beheerpagina voor aanmaken en bewerken van werkgroepen</td></tr>
+  <tr><td>app/admin/werkgroepen/beheer/[id]/page.tsx</td><td>Bewerkingsformulier voor een bestaande werkgroep</td></tr>
+  <tr><td>app/admin/werkgroepen/[id]/page.tsx</td><td>Werkgroepdetail: deelnemers, open taken, prikborden; modals voor mail en prikbord aanmaken</td></tr>
+  <tr><td>app/admin/werkgroepen/[id]/actions.ts</td><td>Server actions: mail sturen naar werkgroepleden, prikbord aanmaken met uitnodigingsmail</td></tr>
+  <tr><td>app/admin/werkgroepen/prikbord/[id]/page.tsx</td><td>Admin prikbordbeheer: antwoordentabel, sluiten/verwijderen, definitief moment mailen</td></tr>
+  <tr><td>app/admin/werkgroepen/prikbord/[id]/actions.ts</td><td>Server actions: prikbord verwijderen, sluiten, definitieve mail versturen</td></tr>
+  <tr><td>app/admin/todos/page.tsx</td><td>Takenbeheer: filteren op persoon/status, markeren als gedaan/heropenen</td></tr>
+  <tr><td>app/admin/todos/toevoegen/page.tsx</td><td>Formulier voor aanmaken nieuwe taak met werkgroep- en vrijwilligerskoppeling</td></tr>
+  <tr><td>app/admin/todos/[id]/page.tsx</td><td>Taak bewerken: omschrijving, streefdatum, status en koppeling aanpassen</td></tr>
+  <tr><td>app/admin/rollen/page.tsx</td><td>Rolbeheer (admin only): tabel van vrijwilligers met rolkeuze per persoon</td></tr>
+</table>
+
+<h2>src/app — Publieke pagina's</h2>
+<table>
+  <tr><th>Bestandspad</th><th>Functionaliteit</th></tr>
+  <tr><td>app/prikbord/[id]/page.tsx</td><td>Publieke prikbordpagina: antwoordentabel en formulier om beschikbaarheid in te geven</td></tr>
+  <tr><td>app/testenv/page.tsx</td><td>Debug-pagina: toont of Supabase-omgevingsvariabelen correct zijn ingesteld</td></tr>
+</table>
+
+<h2>src/lib</h2>
+<table>
+  <tr><th>Bestandspad</th><th>Functionaliteit</th></tr>
+  <tr><td>lib/supabaseClient.ts</td><td>Browser Supabase-client via createBrowserClient; gebruikt in "use client"-componenten</td></tr>
+  <tr><td>lib/supabase/server.ts</td><td>Server Supabase-client via createServerClient met cookie-handling; gebruikt in Server Components en server actions</td></tr>
+  <tr><td>lib/auth.ts</td><td>Rolhelpers: getMyRoleCodes(), isDoenkerOrAdmin(), isAdmin(), hasRole(); gebruiken browser-client</td></tr>
+  <tr><td>lib/dateHelpers.ts</td><td>formatDagMaand(): formatteert een datum als "3 maart" (nl-BE locale)</td></tr>
+</table>
+
+<h2>src/components</h2>
+<table>
+  <tr><th>Bestandspad</th><th>Functionaliteit</th></tr>
+  <tr><td>components/AppHeader.tsx</td><td>Sticky navigatiebalk; toont conditioneel "Doenkers"-link op basis van rol; meldt inactieve gebruikers af</td></tr>
+  <tr><td>components/AuthBootstrap.tsx</td><td>Client-wrapper: zorgt dat ingelogde gebruikers een vrijwilligers-rij hebben (upsert); stuurt niet-ingelogden door naar /login</td></tr>
+  <tr><td>components/DoenkerGuard.tsx</td><td>Guard-component: stuurt niet-doenker/admin gebruikers door naar een opgegeven URL</td></tr>
+  <tr><td>components/KlantPicker.tsx</td><td>Doorzoekbare dropdown voor klantselectie; ondersteunt aanmaken van nieuwe klant via modal met returnTo-flow</td></tr>
+</table>
+
+</body>
+</html>

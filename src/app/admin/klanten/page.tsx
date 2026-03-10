@@ -132,7 +132,7 @@ export default function KlantenPage() {
         </div>
 
         <div className="flex gap-2">
-          <Link className="rounded-xl px-3 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 transition font-medium" href={nieuwHref}>
+          <Link className="rounded-xl px-3 py-2 text-sm bg-blue-800 text-white hover:bg-blue-900 transition font-medium" href={nieuwHref}>
             + Nieuwe klant
           </Link>
           <button className="border rounded-xl px-3 py-2 text-sm" onClick={load}>
