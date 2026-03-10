@@ -40,7 +40,7 @@ function TodoCard({
 }) {
   return (
     <li
-      className={`wa-card p-4 flex flex-col ${overdue ? "border-red-500" : ""}`}
+      className={`wa-card p-4 flex flex-col ${overdue ? "bg-red-50" : ""}`}
     >
       {/* Titel – volle breedte */}
       <div className="font-medium text-base break-words leading-snug">{t.wat}</div>
@@ -59,7 +59,7 @@ function TodoCard({
         {/* Datum links — Bewerken midden — Vinkje rechts */}
         <div className="flex items-center justify-between gap-2">
           {t.streefdatum ? (
-            <span className={`px-2 py-0.5 rounded-full border text-xs ${overdue ? "text-red-700 font-bold" : ""}`}>
+            <span className={`px-2 py-0.5 rounded-full border text-xs ${overdue ? "bg-white text-red-700 font-bold border-red-300" : ""}`}>
               {formatDagMaand(t.streefdatum!)}
             </span>
           ) : (
