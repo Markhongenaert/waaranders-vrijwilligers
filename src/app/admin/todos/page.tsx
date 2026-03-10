@@ -231,7 +231,7 @@ export default function AdminTodosPage() {
     <main className="mx-auto max-w-3xl p-6 md:p-10">
       <div className="flex items-start justify-between gap-4 mb-4">
         <h1 className="text-3xl font-semibold tracking-tight mb-1">Todo’s</h1>
-        <a href="/admin/todos/toevoegen" className="wa-btn wa-btn-brand px-3 py-2 text-sm text-center">
+        <a href="/admin/todos/toevoegen" className="wa-btn-action px-3 py-2 text-sm text-center">
           Todo toevoegen
         </a>
       </div>
