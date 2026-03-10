@@ -132,7 +132,7 @@ export default function KlantenPage() {
         </div>
 
         <div className="flex gap-2">
-          <Link className="border rounded-xl px-3 py-2 text-sm" href={nieuwHref}>
+          <Link className="rounded-xl px-3 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 transition font-medium" href={nieuwHref}>
             + Nieuwe klant
           </Link>
           <button className="border rounded-xl px-3 py-2 text-sm" onClick={load}>
@@ -145,7 +145,7 @@ export default function KlantenPage() {
 
       <div className="mb-4">
         <input
-          className="w-full border rounded-xl p-3"
+          className="w-full border-2 border-blue-900 rounded-xl p-3"
           placeholder="Zoek klant (naam, contactpersoon, telefoon, adres)…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -156,19 +156,11 @@ export default function KlantenPage() {
         <div className="border rounded-2xl p-4 bg-white/80 shadow-sm">
           <div className="font-medium">Nog geen klanten</div>
           <p className="text-sm text-gray-700 mt-1">
-            Maak je eerste klant aan via <span className="font-medium">“+ Nieuwe klant”</span>.
+            Maak je eerste klant aan via de knop <span className="font-medium">+ Nieuwe klant</span>.
           </p>
         </div>
       ) : (
         <ul className="space-y-3">
-          {/* Tegel “Nieuwe klant” bovenaan (extra groot klikdoel) */}
-          <li className="border rounded-2xl p-4 bg-white/80 shadow-sm">
-            <Link href={nieuwHref} className="block">
-              <div className="font-medium">+ Nieuwe klant</div>
-              <div className="text-sm text-gray-600 mt-1">Klant toevoegen</div>
-            </Link>
-          </li>
-
           {filtered.map((k) => {
             const detailHref = returnTo
               ? `/admin/klanten/${k.id}?returnTo=${encodeURIComponent(returnTo)}`
