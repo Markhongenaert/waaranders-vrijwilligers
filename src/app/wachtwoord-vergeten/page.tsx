@@ -54,7 +54,7 @@ export default function WachtwoordVergetenPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
-      <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
+      <div className="wa-brand rounded-2xl p-5 mb-6 shadow-sm">
         <div className="text-xl font-semibold">Wachtwoord vergeten</div>
       </div>
 
@@ -75,7 +75,7 @@ export default function WachtwoordVergetenPage() {
         </div>
 
         <button
-          className="rounded-xl px-5 py-3 font-medium w-full bg-blue-900 text-white hover:bg-blue-800 transition disabled:opacity-60"
+          className="wa-btn wa-btn-brand px-5 py-3 w-full"
           disabled={busy}
           onClick={send}
         >
@@ -89,12 +89,12 @@ export default function WachtwoordVergetenPage() {
         </div>
 
         {msg && (
-          <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">
+          <p className="wa-alert-info">
             {msg}
           </p>
         )}
         {err && (
-          <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">
+          <p className="wa-alert-error">
             {err}
           </p>
         )}

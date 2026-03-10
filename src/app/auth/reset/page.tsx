@@ -53,7 +53,7 @@ export default function ResetPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
-      <div className="rounded-2xl p-5 mb-6 bg-blue-900 text-white shadow-sm">
+      <div className="wa-brand rounded-2xl p-5 mb-6 shadow-sm">
         <div className="text-xl font-semibold">Nieuw wachtwoord</div>
       </div>
 
@@ -70,14 +70,14 @@ export default function ResetPage() {
               <label className="block font-medium mb-1">Herhaal</label>
               <input className="w-full border rounded-xl p-3" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
             </div>
-            <button className="rounded-xl px-5 py-3 font-medium w-full bg-blue-900 text-white disabled:opacity-60" disabled={busy} onClick={save}>
+            <button className="wa-btn wa-btn-brand px-5 py-3 w-full" disabled={busy} onClick={save}>
               {busy ? "Bezig…" : "Opslaan"}
             </button>
           </>
         )}
 
-        {msg && <p className="text-blue-800 bg-blue-50 border border-blue-100 rounded-xl p-3">{msg}</p>}
-        {err && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3">{err}</p>}
+        {msg && <p className="wa-alert-info">{msg}</p>}
+        {err && <p className="wa-alert-error">{err}</p>}
       </div>
     </main>
   );

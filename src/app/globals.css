@@ -78,6 +78,21 @@ body {
     @apply border border-green-400 text-green-700 bg-white hover:bg-green-50 rounded-xl font-medium transition;
   }
 
+  /* Nav-tegels (beheer-overzicht) */
+  .wa-nav-card {
+    @apply bg-orange-50 border border-orange-100 rounded-xl;
+  }
+
+  /* Sectie-tussentitels (maand, persoon) */
+  .wa-section-header {
+    @apply bg-orange-100 text-black font-semibold border-b border-orange-200;
+  }
+
+  /* Herhaling-badge bij activiteiten */
+  .wa-badge-herhaling {
+    @apply bg-orange-100 text-orange-800 font-medium rounded-full px-2 py-0.5 text-xs;
+  }
+
   /* Alerts (BELANGRIJK: niet @apply wa-alert) */
   .wa-alert {
     @apply rounded-xl px-4 py-3 border text-sm;

@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         {/* Client-side auth bootstrap: maakt/controleert vrijwilligers-profiel na login */}
 
-        <div className="min-h-screen bg-slate-200 text-gray-900">
+        <div className="min-h-screen bg-stone-100 text-gray-900">
           <AppHeader />
 
           {/* Page container */}

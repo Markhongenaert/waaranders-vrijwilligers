@@ -171,7 +171,7 @@ function Kalender({
                   <div
                     className={[
                       "text-xs font-medium mb-1 w-5 h-5 flex items-center justify-center rounded-full mx-auto",
-                      isToday ? "bg-blue-900 text-white" : "text-gray-700",
+                      isToday ? "wa-brand rounded-full" : "text-gray-700",
                     ].join(" ")}
                   >
                     {dayNum}
@@ -186,7 +186,7 @@ function Kalender({
                         onClick={() => onBadgeClick(a.id)}
                         className={[
                           "text-left text-xs text-white rounded px-1 py-0.5 leading-tight truncate w-full transition-colors",
-                          tekort ? "bg-red-600 hover:bg-red-700" : "bg-blue-900 hover:bg-blue-800",
+                          tekort ? "bg-red-600 hover:bg-red-700" : "wa-btn-brand",
                         ].join(" ")}
                         title={a.titel}
                       >
@@ -467,7 +467,7 @@ export default function ActiviteitenPage() {
           {grouped.map((g) => (
             <section key={g.key}>
               <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 md:-mx-10">
-                <div className="bg-blue-100 text-black font-semibold px-4 sm:px-6 md:px-10 py-2 border-b border-blue-200">
+                <div className="wa-section-header px-4 sm:px-6 md:px-10 py-2">
                   {g.title}
                 </div>
               </div>

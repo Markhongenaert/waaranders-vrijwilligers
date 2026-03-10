@@ -29,7 +29,7 @@ function prioBadge(p: Todo["prioriteit"]) {
 
 function statusBadge(s: Todo["status"]) {
   if (s === "gedaan") return "bg-green-600 text-white";
-  if (s === "bezig") return "bg-blue-900 text-white";
+  if (s === "bezig") return "wa-brand";
   return "bg-gray-100 text-gray-800";
 }
 
@@ -126,7 +126,7 @@ export default function TodosPage() {
     <main className="mx-auto max-w-3xl p-6 md:p-10">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <h1 className="text-2xl bg-blue-900 text-white font-bold px-4 py-2 rounded-xl">
+          <h1 className="text-2xl wa-brand font-bold px-4 py-2 rounded-xl">
             Mijn TODO’s
           </h1>
           <p className="text-gray-600 mt-2">

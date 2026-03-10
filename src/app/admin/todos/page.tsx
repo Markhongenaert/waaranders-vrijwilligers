@@ -265,7 +265,7 @@ export default function AdminTodosPage() {
           <div className="space-y-8">
             {groupedByPerson.map((g) => (
               <section key={g.uid}>
-                <h2 className="text-lg bg-blue-100 text-black font-semibold px-3 py-2 -mx-2 sticky top-0 z-10">
+                <h2 className="text-lg wa-section-header px-3 py-2 -mx-2 sticky top-0 z-10">
                   {g.naam}
                 </h2>
 

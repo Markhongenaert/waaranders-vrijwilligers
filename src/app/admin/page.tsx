@@ -19,18 +19,7 @@ export default function AdminPage() {
           <a
             key={t.href}
             href={t.href}
-            className="
-              h-28 sm:h-24
-              flex items-center justify-center
-              rounded-xl
-              bg-blue-50
-              border border-blue-100
-              shadow-sm
-              hover:shadow-md
-              active:scale-95
-              transition
-              duration-150
-            "
+            className="wa-nav-card h-28 sm:h-24 flex items-center justify-center shadow-sm hover:shadow-md active:scale-95 transition duration-150"
           >
             <span className="text-base sm:text-sm font-semibold text-gray-800 text-center px-2">
               {t.title}

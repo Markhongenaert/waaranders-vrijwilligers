@@ -426,7 +426,7 @@ export default function AdminActiviteitenPage() {
             {grouped.map((g) => (
               <section key={g.key}>
                 <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 md:-mx-10">
-                  <div className="bg-blue-100 text-black font-semibold px-4 sm:px-6 md:px-10 py-2 border-b border-blue-200">
+                  <div className="wa-section-header px-4 sm:px-6 md:px-10 py-2">
                     {g.title}
                   </div>
                 </div>
@@ -447,7 +447,7 @@ export default function AdminActiviteitenPage() {
                                 {a.titel}
                               </div>
                               {a.herhaling_reeks_id && (
-                                <span className="shrink-0 text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">
+                                <span className="shrink-0 wa-badge-herhaling">
                                   ↻ Reeks
                                 </span>
                               )}
