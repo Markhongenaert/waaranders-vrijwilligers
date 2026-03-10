@@ -144,7 +144,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
   return (
     // key zorgt dat local state (telefoon/adres) reset bij wisselen van record
     <div key={vrijwilliger.id} className="space-y-4">
-      <div className="rounded-2xl border border-blue-100 bg-blue-50 shadow-sm p-5">
+      <div className="wa-card p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-sm text-gray-600">Vrijwilliger</div>
@@ -153,7 +153,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
         </div>
 
         {err && (
-          <div className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-red-700">
+          <div className="wa-alert-error mt-4">
             {err}
           </div>
         )}
@@ -181,7 +181,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+        <div className="wa-card p-4">
           <div className="font-semibold mb-2">Werkgroepen</div>
           {werkgroepen.length ? (
             <ul className="list-disc pl-5 space-y-1 text-sm text-gray-800">
@@ -194,7 +194,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
           )}
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4">
+        <div className="wa-card p-4">
           <div className="font-semibold mb-2">Rol(len)</div>
           {roles.length ? (
             <ul className="list-disc pl-5 space-y-1 text-sm text-gray-800">
@@ -210,7 +210,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
 
       <div className="flex flex-wrap gap-3">
         <button
-          className="border rounded-xl px-5 py-3 font-semibold bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
+          className="wa-btn wa-btn-ghost px-5 py-3"
           onClick={save}
           disabled={busy}
         >
@@ -219,7 +219,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
 
         {isAdmin && vrijwilliger.actief !== false && (
           <button
-            className="border rounded-xl px-5 py-3 font-semibold text-red-700 bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
+            className="wa-btn-danger px-5 py-3"
             onClick={archive}
             disabled={busy}
           >
@@ -229,7 +229,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
 
         {isAdmin && vrijwilliger.actief === false && (
           <button
-            className="border rounded-xl px-5 py-3 font-semibold text-green-700 bg-white shadow-sm hover:shadow-md transition disabled:opacity-60"
+            className="wa-btn-success px-5 py-3"
             onClick={activate}
             disabled={busy}
           >
@@ -238,7 +238,7 @@ export default function VrijwilligerDetail({ vrijwilliger, isAdmin = false, onSa
         )}
 
         <a
-          className="border rounded-xl px-5 py-3 font-semibold bg-white shadow-sm hover:shadow-md transition"
+          className="wa-btn wa-btn-ghost px-5 py-3"
           href={returnHref ?? "/admin/vrijwilligers"}
         >
           Terug

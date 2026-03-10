@@ -158,22 +158,7 @@ export default function VrijwilligersOverzichtPage() {
               <a
                 key={v.id}
                 href={href}
-                className={`
-                  h-28 sm:h-24
-                  flex flex-col justify-center
-                  rounded-xl
-                  border
-                  shadow-sm
-                  hover:shadow-md
-                  hover:-translate-y-0.5
-                  active:scale-95
-                  transition
-                  duration-150
-                  px-4
-                  ${gearchiveerd
-                    ? "bg-gray-100 border-gray-300"
-                    : "bg-blue-50 border-blue-100"}
-                `}
+                className={`wa-card h-28 sm:h-24 flex flex-col justify-center hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition duration-150 px-4 ${gearchiveerd ? "wa-neutral-card" : "wa-active-card"}`}
               >
                 <div className={`text-base sm:text-sm font-semibold leading-snug ${gearchiveerd ? "text-gray-500" : "text-gray-800"}`}>
                   {name}
