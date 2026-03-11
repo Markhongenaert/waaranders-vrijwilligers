@@ -230,7 +230,7 @@ export default function ProfielPage() {
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6 md:p-10">
-      <div className="rounded-2xl p-3 mb-4 bg-Sky-600 text-white shadow-sm">
+      <div className="rounded-2xl p-3 mb-4 bg-sky-600 text-white shadow-sm">
         <div className="text-xl font-semibold">Jouw profiel</div>
       </div>
 
