@@ -109,39 +109,30 @@ export default function LoginPage() {
           {busy ? "Bezig…" : "Inloggen"}
         </button>
 
-        {/* Links: in lichtblauw kadertje, opvallender */}
+        {/* Nog geen account */}
         <div className="wa-info-box p-4">
-          <div className="text-sm font-semibold text-slate-900 text-center mb-3">
-            Eerste keer of probleem met je wachtwoord?
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <a
-              className="wa-btn wa-btn-ghost px-4 py-3 text-center w-full"
-              href="/registreer"
-            >
-              Eerste keer account aanmaken
-            </a>
-
-            <a
-              className="wa-btn wa-btn-ghost px-4 py-3 text-center w-full"
-              href="/wachtwoord-vergeten"
-            >
-              Wachtwoord vergeten
-            </a>
-          </div>
+          <div className="text-sm font-semibold text-slate-900 mb-2">Nog geen account?</div>
+          <p className="text-sm text-slate-600 mb-3">Eerste keer? Maak jouw account aan.</p>
+          <a
+            className="wa-btn wa-btn-action px-4 py-3 text-center w-full block"
+            href="/registreer"
+          >
+            Account aanmaken
+          </a>
         </div>
+      </div>
 
-        {msg && (
-          <p className="wa-alert-info">
-            {msg}
-          </p>
-        )}
-        {err && (
-          <p className="wa-alert-error">
-            {err}
-          </p>
-        )}
+      {msg && <p className="wa-alert-info mt-2">{msg}</p>}
+      {err && <p className="wa-alert-error mt-2">{err}</p>}
+
+      {/* Wachtwoord vergeten: apart, onderaan */}
+      <div className="mt-4 text-center">
+        <a
+          className="wa-btn wa-btn-ghost px-4 py-2 text-sm"
+          href="/wachtwoord-vergeten"
+        >
+          Wachtwoord vergeten?
+        </a>
       </div>
     </main>
   );
