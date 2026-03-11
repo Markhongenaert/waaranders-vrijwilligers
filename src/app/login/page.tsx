@@ -52,20 +52,24 @@ export default function LoginPage() {
         return;
       }
 
-      // Login mislukt — controleer of e-mail gekend is via RPC.
-      // Vereiste SQL in Supabase:
+      // Login mislukt — controleer via RPC of het e-mailadres gekend is.
+      // Vereiste SQL (SECURITY DEFINER zodat auth.users leesbaar is):
       //   CREATE OR REPLACE FUNCTION check_email_registered(email_input text)
-      //   RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
-      //     SELECT EXISTS (SELECT 1 FROM auth.users WHERE email = lower(email_input));
+      //   RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+      //     SELECT EXISTS (SELECT 1 FROM auth.users WHERE email = lower(trim(email_input)));
       //   $$;
       const { data: known, error: rpcErr } = await supabase.rpc("check_email_registered", {
         email_input: normalizedEmail,
       });
 
-      if (!rpcErr && known === false) {
+      if (rpcErr) {
+        setErr("Technische fout, probeer opnieuw.");
+      } else if (!known) {
+        // known is false of null → e-mailadres niet gevonden
         setErr("Dit e-mailadres is nog niet gekend bij Waaranders.");
         setShowRegister(true);
       } else {
+        // known is true → e-mailadres bestaat, maar wachtwoord fout
         setErr("Ongeldig wachtwoord. Probeer opnieuw of klik op 'Wachtwoord vergeten'.");
       }
     } catch (ex: any) {
