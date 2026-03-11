@@ -7,12 +7,15 @@ function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
+type Step = "email" | "password";
+
 export default function LoginPage() {
+  const [step, setStep] = useState<Step>("email");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
 
@@ -25,13 +28,40 @@ export default function LoginPage() {
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
-  const login = async () => {
+  const checkEmail = async () => {
     setErr(null);
-    setMsg(null);
     setShowRegister(false);
 
     if (!normalizedEmail) return setErr("Vul een e-mailadres in.");
     if (!isValidEmail(normalizedEmail)) return setErr("Dit e-mailadres lijkt niet correct.");
+
+    setBusy(true);
+    try {
+      const { data: known, error: rpcErr } = await supabase.rpc("check_email_registered", {
+        email_input: normalizedEmail,
+      });
+
+      if (rpcErr) {
+        setErr("Technische fout, probeer opnieuw.");
+        return;
+      }
+
+      if (!known) {
+        setErr("Dit e-mailadres is nog niet gekend bij Waaranders.");
+        setShowRegister(true);
+      } else {
+        setStep("password");
+      }
+    } catch (ex: any) {
+      setErr(ex?.message ?? "Onbekende fout.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const login = async () => {
+    setErr(null);
+
     if (!password) return setErr("Vul je wachtwoord in.");
 
     setBusy(true);
@@ -46,30 +76,9 @@ export default function LoginPage() {
         return;
       }
 
-      // Rate limit is altijd een harde fout
       if (error.message.toLowerCase().includes("rate limit")) {
         setErr("Te veel pogingen. Wacht even en probeer opnieuw.");
-        return;
-      }
-
-      // Login mislukt — controleer via RPC of het e-mailadres gekend is.
-      // Vereiste SQL (SECURITY DEFINER zodat auth.users leesbaar is):
-      //   CREATE OR REPLACE FUNCTION check_email_registered(email_input text)
-      //   RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
-      //     SELECT EXISTS (SELECT 1 FROM auth.users WHERE email = lower(trim(email_input)));
-      //   $$;
-      const { data: known, error: rpcErr } = await supabase.rpc("check_email_registered", {
-        email_input: normalizedEmail,
-      });
-
-      if (rpcErr) {
-        setErr("Technische fout, probeer opnieuw.");
-      } else if (!known) {
-        // known is false of null → e-mailadres niet gevonden
-        setErr("Dit e-mailadres is nog niet gekend bij Waaranders.");
-        setShowRegister(true);
       } else {
-        // known is true → e-mailadres bestaat, maar wachtwoord fout
         setErr("Ongeldig wachtwoord. Probeer opnieuw of klik op 'Wachtwoord vergeten'.");
       }
     } catch (ex: any) {
@@ -91,35 +100,54 @@ export default function LoginPage() {
           <input
             className="w-full border rounded-xl p-3 bg-white"
             value={email}
-            onChange={(e) => { setEmail(e.target.value); setShowRegister(false); setErr(null); }}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setErr(null);
+              setShowRegister(false);
+              if (step === "password") setStep("email");
+            }}
             autoComplete="email"
             inputMode="email"
             disabled={busy}
+            onKeyDown={(e) => { if (e.key === "Enter" && step === "email") checkEmail(); }}
           />
         </div>
 
-        <div>
-          <label className="block font-medium mb-1">Wachtwoord</label>
-          <input
-            className="w-full border rounded-xl p-3 bg-white"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            autoComplete="current-password"
+        {step === "email" && (
+          <button
+            className="wa-btn wa-btn-brand px-5 py-3 w-full"
             disabled={busy}
-            onKeyDown={(e) => { if (e.key === "Enter") login(); }}
-          />
-        </div>
+            onClick={checkEmail}
+          >
+            {busy ? "Bezig…" : "Verder"}
+          </button>
+        )}
 
-        <button
-          className="wa-btn wa-btn-brand px-5 py-3 w-full"
-          disabled={busy}
-          onClick={login}
-        >
-          {busy ? "Bezig…" : "Inloggen"}
-        </button>
+        {step === "password" && (
+          <>
+            <div>
+              <label className="block font-medium mb-1">Wachtwoord</label>
+              <input
+                className="w-full border rounded-xl p-3 bg-white"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                autoComplete="current-password"
+                disabled={busy}
+                autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter") login(); }}
+              />
+            </div>
 
-        {msg && <p className="wa-alert-info">{msg}</p>}
+            <button
+              className="wa-btn wa-btn-brand px-5 py-3 w-full"
+              disabled={busy}
+              onClick={login}
+            >
+              {busy ? "Bezig…" : "Inloggen"}
+            </button>
+          </>
+        )}
 
         {err && (
           <div className="space-y-3">
@@ -136,15 +164,16 @@ export default function LoginPage() {
         )}
       </div>
 
-      {/* Wachtwoord vergeten: apart, onderaan, klein */}
-      <div className="mt-4 text-center">
-        <a
-          className="wa-btn wa-btn-ghost px-4 py-2 text-sm"
-          href="/wachtwoord-vergeten"
-        >
-          Wachtwoord vergeten?
-        </a>
-      </div>
+      {step === "password" && (
+        <div className="mt-4 text-center">
+          <a
+            className="wa-btn wa-btn-ghost px-4 py-2 text-sm"
+            href="/wachtwoord-vergeten"
+          >
+            Wachtwoord vergeten?
+          </a>
+        </div>
+      )}
     </main>
   );
 }
