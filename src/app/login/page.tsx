@@ -7,14 +7,6 @@ function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
-function humanize(raw?: string) {
-  const msg = (raw || "").toLowerCase();
-  if (msg.includes("invalid login credentials")) return "E-mail of wachtwoord klopt niet.";
-  if (msg.includes("email not confirmed")) return "Je e-mailadres is nog niet bevestigd.";
-  if (msg.includes("rate limit")) return "Te veel pogingen. Wacht even en probeer opnieuw.";
-  return raw || "Onbekende fout.";
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,45 +14,62 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [showRegister, setShowRegister] = useState(false);
 
-  // ✅ Geen useSearchParams → geen Suspense-probleem
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
-    const blocked = qs.get("blocked");
-    if (blocked === "1") {
+    if (qs.get("blocked") === "1") {
       setErr("Je staat niet meer in de lijst vrijwilligers. Contacteer iemand van het kernteam.");
-      setMsg(null);
     }
   }, []);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
-  const guardEmail = () => {
+  const login = async () => {
     setErr(null);
     setMsg(null);
-    const e = normalizedEmail;
-    if (!e) return setErr("Vul een e-mailadres in."), null;
-    if (!isValidEmail(e)) return setErr("Dit e-mailadres lijkt niet correct."), null;
-    return e;
-  };
+    setShowRegister(false);
 
-  const login = async () => {
-    const e = guardEmail();
-    if (!e) return;
-    if (!password) return setErr("Vul je wachtwoord in."), undefined;
+    if (!normalizedEmail) return setErr("Vul een e-mailadres in.");
+    if (!isValidEmail(normalizedEmail)) return setErr("Dit e-mailadres lijkt niet correct.");
+    if (!password) return setErr("Vul je wachtwoord in.");
 
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: e, password });
-      if (error) {
-        setErr(humanize(error.message));
+      const { error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (!error) {
+        window.location.href = "/";
         return;
       }
 
-      // ✅ root beslist: /profiel (eerste keer) of /activiteiten
-      window.location.href = "/";
+      // Rate limit is altijd een harde fout
+      if (error.message.toLowerCase().includes("rate limit")) {
+        setErr("Te veel pogingen. Wacht even en probeer opnieuw.");
+        return;
+      }
+
+      // Login mislukt — controleer of e-mail gekend is via RPC.
+      // Vereiste SQL in Supabase:
+      //   CREATE OR REPLACE FUNCTION check_email_registered(email_input text)
+      //   RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$
+      //     SELECT EXISTS (SELECT 1 FROM auth.users WHERE email = lower(email_input));
+      //   $$;
+      const { data: known, error: rpcErr } = await supabase.rpc("check_email_registered", {
+        email_input: normalizedEmail,
+      });
+
+      if (!rpcErr && known === false) {
+        setErr("Dit e-mailadres is nog niet gekend bij Waaranders.");
+        setShowRegister(true);
+      } else {
+        setErr("Ongeldig wachtwoord. Probeer opnieuw of klik op 'Wachtwoord vergeten'.");
+      }
     } catch (ex: any) {
-      setErr(humanize(ex?.message ?? String(ex)));
+      setErr(ex?.message ?? "Onbekende fout.");
     } finally {
       setBusy(false);
     }
@@ -68,7 +77,6 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
-      {/* Header: kleiner + lichtblauw + gecentreerd + zonder koppelteken */}
       <div className="wa-info-box p-4 mb-5 shadow-sm text-center">
         <div className="text-lg font-semibold leading-tight">Waaranders vrijwilligers</div>
       </div>
@@ -79,7 +87,7 @@ export default function LoginPage() {
           <input
             className="w-full border rounded-xl p-3 bg-white"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setShowRegister(false); setErr(null); }}
             autoComplete="email"
             inputMode="email"
             disabled={busy}
@@ -95,9 +103,7 @@ export default function LoginPage() {
             type="password"
             autoComplete="current-password"
             disabled={busy}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") login();
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") login(); }}
           />
         </div>
 
@@ -109,23 +115,24 @@ export default function LoginPage() {
           {busy ? "Bezig…" : "Inloggen"}
         </button>
 
-        {/* Nog geen account */}
-        <div className="wa-info-box p-4">
-          <div className="text-sm font-semibold text-slate-900 mb-2">Nog geen account?</div>
-          <p className="text-sm text-slate-600 mb-3">Eerste keer? Maak jouw account aan.</p>
-          <a
-            className="wa-btn wa-btn-action px-4 py-3 text-center w-full block"
-            href="/registreer"
-          >
-            Account aanmaken
-          </a>
-        </div>
+        {msg && <p className="wa-alert-info">{msg}</p>}
+
+        {err && (
+          <div className="space-y-3">
+            <p className="wa-alert-error">{err}</p>
+            {showRegister && (
+              <a
+                className="wa-btn wa-btn-action px-4 py-3 text-center w-full block"
+                href="/registreer"
+              >
+                Account aanmaken
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
-      {msg && <p className="wa-alert-info mt-2">{msg}</p>}
-      {err && <p className="wa-alert-error mt-2">{err}</p>}
-
-      {/* Wachtwoord vergeten: apart, onderaan */}
+      {/* Wachtwoord vergeten: apart, onderaan, klein */}
       <div className="mt-4 text-center">
         <a
           className="wa-btn wa-btn-ghost px-4 py-2 text-sm"
