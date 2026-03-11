@@ -76,7 +76,7 @@ export async function stuurMailNaarWerkgroep(
       ontvangers.map(({ email, voornaam }) =>
         resend.emails.send({
           from: "Waaranders <noreply@waaranders.be>",
-          reply_to: "info@waaranders.be",
+          replyTo: "info@waaranders.be",
           to: email,
           subject: onderwerp,
           text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n${trekker}`,
@@ -137,7 +137,7 @@ export async function maakPrikbordAan(
         ontvangers.map(({ email, voornaam }) =>
           resend.emails.send({
             from: "Waaranders <noreply@waaranders.be>",
-          reply_to: "info@waaranders.be",
+          replyTo: "info@waaranders.be",
             to: email,
             subject: onderwerp,
             html: `<p>Beste ${voornaam},</p><p>De trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.</p><p><a href="${link}">Klik hier om je beschikbaarheid in te geven</a></p><p>Met Waaranderse groeten,<br>${trekker}</p>`,

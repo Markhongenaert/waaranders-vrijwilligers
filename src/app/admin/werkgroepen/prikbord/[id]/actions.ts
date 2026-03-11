@@ -103,7 +103,7 @@ export async function stuurDefinitieveMail(
       ontvangers.map(({ email, voornaam }) =>
         resend.emails.send({
           from: "Waaranders <noreply@waaranders.be>",
-          reply_to: "info@waaranders.be",
+          replyTo: "info@waaranders.be",
           to: email,
           subject: onderwerp,
           text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n${trekker}`,
