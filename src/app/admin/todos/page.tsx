@@ -236,19 +236,25 @@ export default function AdminTodosPage() {
         </a>
       </div>
 
-      <div className="flex gap-3 flex-wrap mb-4 items-center">
-        <select
-          className="border rounded-xl px-3 py-2 text-sm"
-          value={selectedUserId}
-          onChange={(e) => setSelectedUserId(e.target.value)}
-        >
-          <option value="alle">Iedereen</option>
-          {vrijwilligers.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.naam ?? "(naam ontbreekt)"}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium" htmlFor="persoon-select">
+            Van wie wil je todo&apos;s zien?
+          </label>
+          <select
+            id="persoon-select"
+            className="border rounded-xl px-3 py-2 text-sm"
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+          >
+            <option value="alle">Iedereen</option>
+            {vrijwilligers.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.naam ?? "(naam ontbreekt)"}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
