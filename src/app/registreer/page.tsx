@@ -18,6 +18,8 @@ function humanize(raw?: string) {
 }
 
 export default function RegistreerPage() {
+  const [voornaam, setVoornaam] = useState("");
+  const [achternaam, setAchternaam] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
@@ -25,14 +27,19 @@ export default function RegistreerPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [nameConflict, setNameConflict] = useState<string | null>(null);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const trimmedVoornaam = useMemo(() => voornaam.trim(), [voornaam]);
+  const trimmedAchternaam = useMemo(() => achternaam.trim(), [achternaam]);
 
-  const register = async () => {
+  const doRegister = async () => {
     setErr(null);
     setMsg(null);
 
     const e = normalizedEmail;
+    if (!trimmedVoornaam) return setErr("Vul je voornaam in."), undefined;
+    if (!trimmedAchternaam) return setErr("Vul je achternaam in."), undefined;
     if (!e) return setErr("Vul een e-mailadres in."), undefined;
     if (!isValidEmail(e)) return setErr("Dit e-mailadres lijkt niet correct."), undefined;
     if (!password) return setErr("Kies een wachtwoord."), undefined;
@@ -41,22 +48,61 @@ export default function RegistreerPage() {
 
     setBusy(true);
     try {
-      const emailRedirectTo = `${window.location.origin}/auth/callback`;
+      const { data: matches, error: queryErr } = await supabase
+        .from("vrijwilligers")
+        .select("id")
+        .ilike("voornaam", trimmedVoornaam)
+        .ilike("achternaam", trimmedAchternaam)
+        .limit(1);
 
-      const { error } = await supabase.auth.signUp({
-        email: e,
-        password,
-        options: { emailRedirectTo },
-      });
-
-      if (error) {
-        setErr(humanize(error.message));
+      if (queryErr) {
+        setErr("Technische fout, probeer opnieuw.");
         return;
       }
 
-      setMsg(
-        "Gelukt. Check je mailbox en klik op de bevestigingslink. Daarna kom je automatisch in je profiel terecht."
-      );
+      if (matches && matches.length > 0) {
+        setNameConflict(`${trimmedVoornaam} ${trimmedAchternaam}`);
+        return;
+      }
+
+      await submitRegistration(e);
+    } catch (ex: any) {
+      setErr(humanize(ex?.message ?? String(ex)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitRegistration = async (e: string) => {
+    const emailRedirectTo = `${window.location.origin}/auth/callback`;
+
+    const { error } = await supabase.auth.signUp({
+      email: e,
+      password,
+      options: { emailRedirectTo },
+    });
+
+    if (error) {
+      setErr(humanize(error.message));
+      return;
+    }
+
+    setMsg(
+      "Gelukt. Check je mailbox en klik op de bevestigingslink. Daarna kom je automatisch in je profiel terecht."
+    );
+  };
+
+  const handleSubmit = async () => {
+    setNameConflict(null);
+    await doRegister();
+  };
+
+  const handleBypass = async () => {
+    setNameConflict(null);
+    setErr(null);
+    setBusy(true);
+    try {
+      await submitRegistration(normalizedEmail);
     } catch (ex: any) {
       setErr(humanize(ex?.message ?? String(ex)));
     } finally {
@@ -66,13 +112,35 @@ export default function RegistreerPage() {
 
   return (
     <main className="mx-auto max-w-md p-6">
-      {/* Header: zoals login (kleiner + lichtblauw + gecentreerd) */}
       <div className="rounded-2xl p-4 mb-5 bg-sky-100 text-slate-900 shadow-sm border border-sky-200 text-center">
         <div className="text-lg font-semibold leading-tight">Waaranders vrijwilligers</div>
         <div className="text-sm text-slate-700 mt-0.5">Account aanmaken</div>
       </div>
 
       <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block font-medium mb-1">Voornaam</label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={voornaam}
+              onChange={(e) => { setVoornaam(e.target.value); setErr(null); setNameConflict(null); }}
+              autoComplete="given-name"
+              disabled={busy}
+            />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Achternaam</label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={achternaam}
+              onChange={(e) => { setAchternaam(e.target.value); setErr(null); setNameConflict(null); }}
+              autoComplete="family-name"
+              disabled={busy}
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block font-medium mb-1">E-mail</label>
           <input
@@ -107,26 +175,22 @@ export default function RegistreerPage() {
             type="password"
             autoComplete="new-password"
             disabled={busy}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") register();
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           />
         </div>
 
         <button
           className="wa-btn wa-btn-brand px-5 py-3 w-full"
           disabled={busy}
-          onClick={register}
+          onClick={handleSubmit}
         >
           {busy ? "Bezig…" : "Account aanmaken"}
         </button>
 
-        {/* Link naar login: prominenter in lichtblauw kadertje */}
         <div className="rounded-2xl bg-sky-50 border border-sky-200 p-4">
           <div className="text-sm font-semibold text-slate-900 text-center mb-3">
             Heb je al een account?
           </div>
-
           <a
             className="block rounded-xl bg-white border border-sky-200 px-4 py-3 text-center font-medium hover:bg-sky-100 transition"
             href="/login"
@@ -135,16 +199,31 @@ export default function RegistreerPage() {
           </a>
         </div>
 
-        {msg && (
-          <p className="wa-alert-info">
-            {msg}
-          </p>
+        {nameConflict && (
+          <div className="space-y-3">
+            <p className="wa-alert-error">
+              Er bestaat al een account met de naam <strong>{nameConflict}</strong> in Waaranders. Ben je je wachtwoord vergeten?
+            </p>
+            <a
+              className="wa-btn wa-btn-brand px-4 py-3 text-center w-full block"
+              href="/wachtwoord-vergeten"
+            >
+              Wachtwoord vergeten
+            </a>
+            <div className="text-center">
+              <button
+                className="text-sm text-gray-500 underline hover:text-gray-700"
+                onClick={handleBypass}
+                disabled={busy}
+              >
+                Toch verder gaan
+              </button>
+            </div>
+          </div>
         )}
-        {err && (
-          <p className="wa-alert-error">
-            {err}
-          </p>
-        )}
+
+        {msg && <p className="wa-alert-info">{msg}</p>}
+        {err && <p className="wa-alert-error">{err}</p>}
       </div>
     </main>
   );
