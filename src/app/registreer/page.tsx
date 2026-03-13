@@ -97,19 +97,6 @@ export default function RegistreerPage() {
     await doRegister();
   };
 
-  const handleBypass = async () => {
-    setNameConflict(null);
-    setErr(null);
-    setBusy(true);
-    try {
-      await submitRegistration(normalizedEmail);
-    } catch (ex: any) {
-      setErr(humanize(ex?.message ?? String(ex)));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <main className="mx-auto max-w-md p-6">
       <div className="rounded-2xl p-4 mb-5 bg-sky-100 text-slate-900 shadow-sm border border-sky-200 text-center">
@@ -200,25 +187,15 @@ export default function RegistreerPage() {
         </div>
 
         {nameConflict && (
-          <div className="space-y-3">
-            <p className="wa-alert-error">
-              Er bestaat al een account met de naam <strong>{nameConflict}</strong> in Waaranders. Ben je je wachtwoord vergeten?
-            </p>
+          <div className="wa-alert-error">
+            Er bestaat al een account met de naam <strong>{nameConflict}</strong> in Waaranders. Neem contact op met Mark om je mailadres te laten aanpassen (
             <a
-              className="wa-btn wa-btn-brand px-4 py-3 text-center w-full block"
-              href="/wachtwoord-vergeten"
+              className="underline"
+              href="mailto:markhongenaert.x@gmail.com"
             >
-              Wachtwoord vergeten
+              markhongenaert.x@gmail.com
             </a>
-            <div className="text-center">
-              <button
-                className="text-sm text-gray-500 underline hover:text-gray-700"
-                onClick={handleBypass}
-                disabled={busy}
-              >
-                Toch verder gaan
-              </button>
-            </div>
+            ).
           </div>
         )}
 
