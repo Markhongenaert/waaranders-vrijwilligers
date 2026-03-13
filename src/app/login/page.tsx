@@ -7,11 +7,7 @@ function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
-type Step = "email" | "password";
-
 export default function LoginPage() {
-  const [step, setStep] = useState<Step>("email");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -28,12 +24,13 @@ export default function LoginPage() {
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
-  const checkEmail = async () => {
+  const handleLogin = async () => {
     setErr(null);
     setShowRegister(false);
 
     if (!normalizedEmail) return setErr("Vul een e-mailadres in.");
     if (!isValidEmail(normalizedEmail)) return setErr("Dit e-mailadres lijkt niet correct.");
+    if (!password) return setErr("Vul je wachtwoord in.");
 
     setBusy(true);
     try {
@@ -49,23 +46,9 @@ export default function LoginPage() {
       if (!known) {
         setErr("Dit e-mailadres is nog niet gekend bij Waaranders.");
         setShowRegister(true);
-      } else {
-        setStep("password");
+        return;
       }
-    } catch (ex: any) {
-      setErr(ex?.message ?? "Onbekende fout.");
-    } finally {
-      setBusy(false);
-    }
-  };
 
-  const login = async () => {
-    setErr(null);
-
-    if (!password) return setErr("Vul je wachtwoord in.");
-
-    setBusy(true);
-    try {
       const { error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
@@ -104,50 +87,38 @@ export default function LoginPage() {
               setEmail(e.target.value);
               setErr(null);
               setShowRegister(false);
-              if (step === "password") setStep("email");
             }}
             autoComplete="email"
             inputMode="email"
             disabled={busy}
-            onKeyDown={(e) => { if (e.key === "Enter" && step === "email") checkEmail(); }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleLogin(); }}
           />
         </div>
 
-        {step === "email" && (
-          <button
-            className="wa-btn wa-btn-brand px-5 py-3 w-full"
+        <div>
+          <label className="block font-medium mb-1">Wachtwoord</label>
+          <input
+            className="w-full border rounded-xl p-3 bg-white"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setErr(null);
+              setShowRegister(false);
+            }}
+            type="password"
+            autoComplete="current-password"
             disabled={busy}
-            onClick={checkEmail}
-          >
-            {busy ? "Bezig…" : "Verder"}
-          </button>
-        )}
+            onKeyDown={(e) => { if (e.key === "Enter") handleLogin(); }}
+          />
+        </div>
 
-        {step === "password" && (
-          <>
-            <div>
-              <label className="block font-medium mb-1">Wachtwoord</label>
-              <input
-                className="w-full border rounded-xl p-3 bg-white"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                autoComplete="current-password"
-                disabled={busy}
-                autoFocus
-                onKeyDown={(e) => { if (e.key === "Enter") login(); }}
-              />
-            </div>
-
-            <button
-              className="wa-btn wa-btn-brand px-5 py-3 w-full"
-              disabled={busy}
-              onClick={login}
-            >
-              {busy ? "Bezig…" : "Inloggen"}
-            </button>
-          </>
-        )}
+        <button
+          className="wa-btn wa-btn-brand px-5 py-3 w-full"
+          disabled={busy}
+          onClick={handleLogin}
+        >
+          {busy ? "Bezig…" : "Inloggen"}
+        </button>
 
         {err && (
           <div className="space-y-3">
@@ -164,16 +135,14 @@ export default function LoginPage() {
         )}
       </div>
 
-      {step === "password" && (
-        <div className="mt-4 text-center">
-          <a
-            className="wa-btn wa-btn-ghost px-4 py-2 text-sm"
-            href="/wachtwoord-vergeten"
-          >
-            Wachtwoord vergeten?
-          </a>
-        </div>
-      )}
+      <div className="mt-4 text-center">
+        <a
+          className="wa-btn wa-btn-ghost px-4 py-2 text-sm"
+          href="/wachtwoord-vergeten"
+        >
+          Wachtwoord vergeten?
+        </a>
+      </div>
     </main>
   );
 }
