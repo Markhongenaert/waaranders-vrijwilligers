@@ -9,6 +9,7 @@ type Werkgroep = {
   titel: string;
   opdracht: string | null;
   trekker: string | null;
+  meer_info_url: string | null;
 };
 
 export default function WerkgroepenBeheerPage() {
@@ -23,6 +24,7 @@ export default function WerkgroepenBeheerPage() {
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
   const [trekker, setTrekker] = useState("");
+  const [meerInfoUrl, setMeerInfoUrl] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function WerkgroepenBeheerPage() {
     try {
       const { data, error } = await supabase
         .from("werkgroepen")
-        .select("id, titel, opdracht, trekker")
+        .select("id, titel, opdracht, trekker, meer_info_url")
         .order("titel", { ascending: true });
       if (error) throw error;
       setWerkgroepen((data ?? []) as Werkgroep[]);
@@ -61,6 +63,7 @@ export default function WerkgroepenBeheerPage() {
     setTitel("");
     setOpdracht("");
     setTrekker("");
+    setMeerInfoUrl("");
     setErr(null);
     setMsg(null);
     setFormOpen(true);
@@ -73,7 +76,7 @@ export default function WerkgroepenBeheerPage() {
     try {
       const { error } = await supabase
         .from("werkgroepen")
-        .insert({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null });
+        .insert({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null, meer_info_url: meerInfoUrl.trim() || null });
       if (error) throw error;
       setMsg("Werkgroep aangemaakt.");
       setFormOpen(false);
@@ -177,6 +180,18 @@ export default function WerkgroepenBeheerPage() {
               onChange={(e) => setOpdracht(e.target.value)}
               placeholder="Korte omschrijving van de werkgroep…"
             />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">Link voor meer info (optioneel)</label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={meerInfoUrl}
+              onChange={(e) => setMeerInfoUrl(e.target.value)}
+              placeholder="https://…"
+              type="url"
+            />
+            <p className="text-xs text-gray-500 mt-1">Plak hier de link naar een Google Doc of andere pagina</p>
           </div>
 
           <div className="flex gap-2">

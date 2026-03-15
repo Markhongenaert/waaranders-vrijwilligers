@@ -17,6 +17,7 @@ export default function WerkgroepBewerkPage() {
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
   const [trekker, setTrekker] = useState("");
+  const [meerInfoUrl, setMeerInfoUrl] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -37,7 +38,7 @@ export default function WerkgroepBewerkPage() {
       try {
         const { data, error } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht, trekker")
+          .select("id, titel, opdracht, trekker, meer_info_url")
           .eq("id", id)
           .maybeSingle();
         if (error) throw error;
@@ -46,6 +47,7 @@ export default function WerkgroepBewerkPage() {
         setTitel(data.titel ?? "");
         setOpdracht(data.opdracht ?? "");
         setTrekker((data as any).trekker ?? "");
+        setMeerInfoUrl((data as any).meer_info_url ?? "");
       } catch (e: any) {
         if (!mounted) return;
         setErr(e?.message ?? "Fout bij laden.");
@@ -64,7 +66,7 @@ export default function WerkgroepBewerkPage() {
     try {
       const { error } = await supabase
         .from("werkgroepen")
-        .update({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null })
+        .update({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null, meer_info_url: meerInfoUrl.trim() || null })
         .eq("id", id);
       if (error) throw error;
       window.location.href = "/admin/werkgroepen/beheer";
@@ -128,6 +130,18 @@ export default function WerkgroepBewerkPage() {
               onChange={(e) => setOpdracht(e.target.value)}
               placeholder="Omschrijving van de werkgroep…"
             />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">Link voor meer info (optioneel)</label>
+            <input
+              className="w-full border rounded-xl p-3 bg-white"
+              value={meerInfoUrl}
+              onChange={(e) => setMeerInfoUrl(e.target.value)}
+              placeholder="https://…"
+              type="url"
+            />
+            <p className="text-xs text-gray-500 mt-1">Plak hier de link naar een Google Doc of andere pagina</p>
           </div>
 
           <div className="flex gap-2 pt-1">

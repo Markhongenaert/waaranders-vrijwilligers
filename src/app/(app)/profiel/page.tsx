@@ -18,6 +18,7 @@ type Werkgroep = {
   id: string;
   titel: string;
   opdracht: string | null;
+  meer_info_url: string | null;
 };
 
 function trimOrNull(s: string | null | undefined): string | null {
@@ -111,7 +112,7 @@ export default function ProfielPage() {
       // 2) Werkgroepen lijst
       const { data: wgs, error: wErr } = await supabase
         .from("werkgroepen")
-        .select("id, titel, opdracht")
+        .select("id, titel, opdracht, meer_info_url")
         .order("titel", { ascending: true });
 
       if (wErr) {
@@ -338,7 +339,7 @@ export default function ProfielPage() {
                     <>
                       <div className="font-semibold text-gray-900 w-full mb-2">{w.titel}</div>
                       <div className="flex items-center justify-between gap-2">
-                        <div>
+                        <div className="flex gap-2">
                           {w.opdracht && (
                             <button
                               type="button"
@@ -347,6 +348,16 @@ export default function ProfielPage() {
                             >
                               Toelichting
                             </button>
+                          )}
+                          {w.meer_info_url && (
+                            <a
+                              href={w.meer_info_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="wa-btn wa-btn-ghost px-3 py-1.5 text-sm"
+                            >
+                              Meer lezen
+                            </a>
                           )}
                         </div>
                         <button
