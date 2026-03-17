@@ -16,6 +16,7 @@ type Werkgroep = {
   titel: string;
   opdracht: string | null;
   trekker: string | null;
+  meer_info_url: string | null;
 };
 
 type Deelnemer = {
@@ -85,7 +86,7 @@ export default function WerkgroepDetailPage() {
       try {
         const { data: wg, error: wErr } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht, trekker")
+          .select("id, titel, opdracht, trekker, meer_info_url")
           .eq("id", id)
           .maybeSingle();
         if (wErr) throw wErr;
@@ -273,7 +274,19 @@ export default function WerkgroepDetailPage() {
       ) : (
         <>
           {werkgroep?.opdracht && (
-            <div className="wa-card p-4 text-gray-700">{werkgroep.opdracht}</div>
+            <div className="wa-card p-4 text-gray-700">
+              {werkgroep.opdracht}
+              {werkgroep.meer_info_url && (
+                <a
+                  href={werkgroep.meer_info_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block mt-2 font-bold text-green-700 hover:underline"
+                >
+                  Lees meer...
+                </a>
+              )}
+            </div>
           )}
 
           <div className="wa-card p-4 text-gray-700">
