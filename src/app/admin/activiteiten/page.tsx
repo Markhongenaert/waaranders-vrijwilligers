@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 
@@ -77,6 +77,8 @@ export default function AdminActiviteitenPage() {
   const [items, setItems] = useState<Activiteit[]>([]);
   const [klanten, setKlanten] = useState<KlantMini[]>([]);
   const [klantenLoaded, setKlantenLoaded] = useState(false);
+  const [inschrijvingen, setInschrijvingen] = useState<Map<string, string[]>>(new Map());
+  const loadedActIds = useRef<Set<string>>(new Set());
 
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -179,7 +181,29 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
-    setItems((acts ?? []) as unknown as Activiteit[]);
+    const actLijst = (acts ?? []) as unknown as Activiteit[];
+    setItems(actLijst);
+
+    const ids = actLijst.map((a) => a.id);
+    loadedActIds.current = new Set(ids);
+
+    if (ids.length > 0) {
+      const { data: md } = await supabase
+        .from("meedoen_met_naam")
+        .select("activiteit_id,naam")
+        .in("activiteit_id", ids);
+
+      const map = new Map<string, string[]>();
+      for (const row of (md ?? []) as { activiteit_id: string; naam: string }[]) {
+        const lijst = map.get(row.activiteit_id) ?? [];
+        lijst.push(row.naam);
+        map.set(row.activiteit_id, lijst);
+      }
+      setInschrijvingen(map);
+    } else {
+      setInschrijvingen(new Map());
+    }
+
     setLoading(false);
   };
 
@@ -465,6 +489,16 @@ export default function AdminActiviteitenPage() {
                               {a.aantal_vrijwilligers != null ? <span>nodig: {a.aantal_vrijwilligers}</span> : null}
                               <span>klant: {kNaam ?? "(niet ingesteld)"}</span>
                             </div>
+
+                            {(() => {
+                              const namen = inschrijvingen.get(a.id) ?? [];
+                              return (
+                                <div className="text-sm text-gray-700">
+                                  <span className="font-medium">{namen.length} ingeschreven</span>
+                                  {namen.length > 0 && <>: {namen.join(", ")}</>}
+                                </div>
+                              );
+                            })()}
 
                             <div className="pt-2 flex gap-2">
                               <button
