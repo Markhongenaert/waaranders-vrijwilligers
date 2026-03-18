@@ -80,6 +80,18 @@ export default function LoginPage() {
         <div className="text-lg font-semibold leading-tight">Waaranders vrijwilligers</div>
       </div>
 
+      {showRegister && err && (
+        <div className="space-y-3 mb-4">
+          <p className="wa-alert-error">{err}</p>
+          <a
+            className="wa-btn wa-btn-action px-4 py-3 text-center w-full block"
+            href="/registreer"
+          >
+            Account aanmaken
+          </a>
+        </div>
+      )}
+
       <div className="border rounded-2xl p-5 bg-white shadow-sm space-y-4">
         <div>
           <label className="block font-medium mb-1">E-mail</label>
@@ -134,18 +146,8 @@ export default function LoginPage() {
           {busy ? "Bezig…" : "Inloggen"}
         </button>
 
-        {err && (
-          <div className="space-y-3">
-            <p className="wa-alert-error">{err}</p>
-            {showRegister && (
-              <a
-                className="wa-btn wa-btn-action px-4 py-3 text-center w-full block"
-                href="/registreer"
-              >
-                Account aanmaken
-              </a>
-            )}
-          </div>
+        {err && !showRegister && (
+          <p className="wa-alert-error">{err}</p>
         )}
       </div>
 
