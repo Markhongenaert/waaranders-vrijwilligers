@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { isAdmin } from "@/lib/auth";
+import { isDoenkerOrAdmin } from "@/lib/auth";
 
 export default function WerkgroepBewerkPage() {
   const params = useParams<{ id: string }>();
@@ -22,7 +22,7 @@ export default function WerkgroepBewerkPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const ok = await isAdmin();
+      const ok = await isDoenkerOrAdmin();
       if (!mounted) return;
       setAllowed(ok);
     })();

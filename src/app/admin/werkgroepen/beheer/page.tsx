@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { isAdmin } from "@/lib/auth";
+import { isDoenkerOrAdmin } from "@/lib/auth";
 
 type Werkgroep = {
   id: string;
@@ -30,7 +30,7 @@ export default function WerkgroepenBeheerPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const ok = await isAdmin();
+      const ok = await isDoenkerOrAdmin();
       if (!mounted) return;
       setAllowed(ok);
     })();
@@ -119,7 +119,7 @@ export default function WerkgroepenBeheerPage() {
   if (allowed === false) {
     return (
       <main className="p-6">
-        <div className="wa-alert-error">Geen toegang. Alleen admins kunnen werkgroepen beheren.</div>
+        <div className="wa-alert-error">Geen toegang.</div>
       </main>
     );
   }
