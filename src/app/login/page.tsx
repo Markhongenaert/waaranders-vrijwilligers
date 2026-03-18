@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 function isValidEmail(e: string) {
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -46,6 +48,7 @@ export default function LoginPage() {
       if (!known) {
         setErr("Dit e-mailadres is nog niet gekend bij Waaranders.");
         setShowRegister(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
 
@@ -97,19 +100,30 @@ export default function LoginPage() {
 
         <div>
           <label className="block font-medium mb-1">Wachtwoord</label>
-          <input
-            className="w-full border rounded-xl p-3 bg-white"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setErr(null);
-              setShowRegister(false);
-            }}
-            type="password"
-            autoComplete="current-password"
-            disabled={busy}
-            onKeyDown={(e) => { if (e.key === "Enter") handleLogin(); }}
-          />
+          <div className="relative">
+            <input
+              className="w-full border rounded-xl p-3 pr-11 bg-white"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setErr(null);
+                setShowRegister(false);
+              }}
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              disabled={busy}
+              onKeyDown={(e) => { if (e.key === "Enter") handleLogin(); }}
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowPassword((v) => !v)}
+              tabIndex={-1}
+              aria-label={showPassword ? "Verberg wachtwoord" : "Toon wachtwoord"}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
         </div>
 
         <button
