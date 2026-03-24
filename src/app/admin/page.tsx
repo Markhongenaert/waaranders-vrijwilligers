@@ -6,6 +6,7 @@ export default function AdminPage() {
     { title: "Klanten", href: "/admin/klanten" },
     { title: "Vrijwilligers", href: "/admin/vrijwilligers" },
     { title: "Werkgroepen", href: "/admin/werkgroepen" },
+    { title: "Vakanties", href: "/admin/vakanties" },
     { title: "Todo", href: "/admin/todos" },
     { title: "Admin", href: "/admin/admins" },
   ];
