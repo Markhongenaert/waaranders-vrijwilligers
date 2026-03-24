@@ -53,9 +53,10 @@ export default function VakantiesPage() {
 
       if (vErr) throw vErr;
 
-      // Filter op doenker of admin rol
+      // Filter op doenker of admin rol, en sluit de dummy-doenker uit
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const uniqueDoenkers: Doenker[] = (vData ?? []).filter((v: any) => {
+        if (v.voornaam === "Alle doenkers" && v.achternaam === "Waaranders") return false;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const codes: string[] = (v.vrijwilliger_roles ?? []).map((r: any) => r.roles?.code);
         return codes.includes("doenker") || codes.includes("admin");

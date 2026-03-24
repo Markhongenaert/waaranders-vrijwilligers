@@ -122,6 +122,12 @@ export default function KalenderTab({ doenkers, perioden }: Props) {
         <button onClick={nextMonth} className="wa-btn wa-btn-ghost px-3 py-1.5 text-sm">
           ›
         </button>
+        <button
+          onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()); }}
+          className="wa-btn wa-btn-ghost px-3 py-1.5 text-sm"
+        >
+          Vandaag
+        </button>
       </div>
 
       {/* Kalender grid — scroll navigeert maanden */}
