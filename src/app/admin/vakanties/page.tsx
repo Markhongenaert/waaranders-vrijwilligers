@@ -46,7 +46,7 @@ export default function VakantiesPage() {
       // Haal alle actieve vrijwilligers op inclusief hun rollen
       const { data: vData, error: vErr } = await supabase
         .from("vrijwilligers")
-        .select("id, voornaam, achternaam, vrijwilliger_roles(roles(code))")
+        .select("id, voornaam, achternaam, vrijwilliger_roles!vrijwilliger_id(roles(code))")
         .eq("actief", true)
         .order("achternaam", { ascending: true, nullsFirst: false })
         .order("voornaam", { ascending: true, nullsFirst: false });
