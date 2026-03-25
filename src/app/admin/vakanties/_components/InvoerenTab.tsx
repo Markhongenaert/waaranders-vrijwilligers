@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { addVakantiePerio, deleteVakantiePerio } from "../actions";
 import type { Doenker, VakantiePerio } from "../page";
 
 type Props = {
@@ -42,38 +42,28 @@ export default function InvoerenTab({ doenkers, perioden, onRefresh }: Props) {
       return;
     }
     setSaving(true);
-    try {
-      const { error } = await supabase.from("vakantie_perioden").insert({
-        vrijwilliger_id: selectedId,
-        begin_datum: beginDatum,
-        eind_datum: eindDatum,
-      });
-      if (error) throw error;
+    const result = await addVakantiePerio(selectedId, beginDatum, eindDatum);
+    if (result.error) {
+      setFormErr(result.error);
+    } else {
       setShowForm(false);
       setBeginDatum("");
       setEindDatum("");
       await onRefresh();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      setFormErr(e?.message ?? "Fout bij opslaan.");
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Weet je zeker dat je deze vakantieperiode wil verwijderen?")) return;
     setDeletingId(id);
-    try {
-      const { error } = await supabase.from("vakantie_perioden").delete().eq("id", id);
-      if (error) throw error;
+    const result = await deleteVakantiePerio(id);
+    if (result.error) {
+      alert(result.error);
+    } else {
       await onRefresh();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      alert(e?.message ?? "Fout bij verwijderen.");
-    } finally {
-      setDeletingId(null);
     }
+    setDeletingId(null);
   };
 
   return (

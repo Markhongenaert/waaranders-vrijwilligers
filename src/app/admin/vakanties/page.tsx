@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
+import { loadVakantieData } from "./actions";
 import InvoerenTab from "./_components/InvoerenTab";
 import KalenderTab from "./_components/KalenderTab";
 
@@ -42,47 +42,14 @@ export default function VakantiesPage() {
   const loadData = async () => {
     setLoading(true);
     setErr(null);
-    try {
-      // Haal alle actieve vrijwilligers op inclusief hun rollen
-      const { data: vData, error: vErr } = await supabase
-        .from("vrijwilligers")
-        .select("id, voornaam, achternaam, vrijwilliger_roles!vrijwilliger_id(roles(code))")
-        .eq("actief", true)
-        .order("achternaam", { ascending: true, nullsFirst: false })
-        .order("voornaam", { ascending: true, nullsFirst: false });
-
-      if (vErr) throw vErr;
-
-      // Filter op doenker of admin rol, en sluit de dummy-doenker uit
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const uniqueDoenkers: Doenker[] = (vData ?? []).filter((v: any) => {
-        if (v.voornaam === "Alle doenkers" && v.achternaam === "Waaranders") return false;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const codes: string[] = (v.vrijwilliger_roles ?? []).map((r: any) => r.roles?.code);
-        return codes.includes("doenker") || codes.includes("admin");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      }).map((v: any) => ({
-        id: v.id,
-        voornaam: v.voornaam,
-        achternaam: v.achternaam,
-      }));
-
-      // Haal alle vakantieperioden op
-      const { data: periData, error: periErr } = await supabase
-        .from("vakantie_perioden")
-        .select("id, vrijwilliger_id, begin_datum, eind_datum")
-        .order("begin_datum", { ascending: true });
-
-      if (periErr) throw periErr;
-
-      setDoenkers(uniqueDoenkers);
-      setPerioden((periData ?? []) as VakantiePerio[]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      setErr(e?.message ?? "Fout bij laden.");
-    } finally {
-      setLoading(false);
+    const result = await loadVakantieData();
+    if (result.error) {
+      setErr(result.error);
+    } else {
+      setDoenkers(result.doenkers);
+      setPerioden(result.perioden);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
