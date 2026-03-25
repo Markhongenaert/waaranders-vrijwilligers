@@ -1,7 +1,22 @@
 // src/app/layout.tsx
 import "./globals.css";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import AppHeader from "@/components/AppHeader";
+
+export const metadata: Metadata = {
+  title: "Waaranders",
+  description: "Vrijwilligersapp Waaranders",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Waaranders",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
