@@ -11,12 +11,18 @@ interface Props {
 
 export default async function WerkgroepDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const UUID_RE = /^[0-9a-f-]{36}$/i;
+  if (!UUID_RE.test(id)) notFound();
+
   const { terug } = await searchParams;
 
   const terugParam = terug ?? "";
-  const terugUrl = ALLOWED_TERUG_PREFIXES.some((p) => terugParam.startsWith(p))
-    ? terugParam
-    : "/profiel";
+  const SAFE_PATH_RE = /^\/[a-zA-Z0-9\-_/]*$/;
+  const terugUrl =
+    SAFE_PATH_RE.test(terugParam) &&
+    ALLOWED_TERUG_PREFIXES.some((p) => terugParam.startsWith(p))
+      ? terugParam
+      : "/profiel";
 
   const supabase = await supabaseServer();
   const { data: werkgroep, error } = await supabase
@@ -34,7 +40,7 @@ export default async function WerkgroepDetailPage({ params, searchParams }: Prop
       <div className="flex items-center gap-3">
         <a
           href={terugUrl}
-          className="border rounded-xl px-4 py-2 text-sm bg-white hover:shadow-sm transition"
+          className="wa-btn wa-btn-ghost px-4 py-2 text-sm"
         >
           ← Terug
         </a>
