@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
+import RijkeTekstEditor from "@/components/RijkeTekstEditor";
 
 type Werkgroep = {
   id: string;
@@ -25,6 +26,7 @@ export default function WerkgroepenBeheerPage() {
   const [opdracht, setOpdracht] = useState("");
   const [trekker, setTrekker] = useState("");
   const [meerInfoUrl, setMeerInfoUrl] = useState("");
+  const [uitgebreideInfo, setUitgebreideInfo] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -64,6 +66,7 @@ export default function WerkgroepenBeheerPage() {
     setOpdracht("");
     setTrekker("");
     setMeerInfoUrl("");
+    setUitgebreideInfo("");
     setErr(null);
     setMsg(null);
     setFormOpen(true);
@@ -76,7 +79,13 @@ export default function WerkgroepenBeheerPage() {
     try {
       const { error } = await supabase
         .from("werkgroepen")
-        .insert({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null, meer_info_url: meerInfoUrl.trim() || null });
+        .insert({
+            titel: titel.trim(),
+            opdracht: opdracht.trim() || null,
+            trekker: trekker.trim() || null,
+            meer_info_url: meerInfoUrl.trim() || null,
+            uitgebreide_info: uitgebreideInfo || null,
+          });
       if (error) throw error;
       setMsg("Werkgroep aangemaakt.");
       setFormOpen(false);
@@ -180,6 +189,11 @@ export default function WerkgroepenBeheerPage() {
               onChange={(e) => setOpdracht(e.target.value)}
               placeholder="Korte omschrijving van de werkgroep…"
             />
+          </div>
+
+          <div>
+            <label className="block font-medium mb-1">Uitgebreide informatie</label>
+            <RijkeTekstEditor value={uitgebreideInfo} onChange={setUitgebreideInfo} />
           </div>
 
           <div>
