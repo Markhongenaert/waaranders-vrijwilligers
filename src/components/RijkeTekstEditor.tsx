@@ -8,6 +8,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+const BUCKET = "werkgroep-afbeeldingen";
+
 interface Props {
   value: string;
   onChange: (html: string) => void;
@@ -45,15 +47,17 @@ export default function RijkeTekstEditor({ value, onChange }: Props) {
 
     try {
       const { error } = await supabase.storage
-        .from("werkgroep-afbeeldingen")
+        .from(BUCKET)
         .upload(path, file);
       if (error) throw error;
 
       const { data } = supabase.storage
-        .from("werkgroep-afbeeldingen")
+        .from(BUCKET)
         .getPublicUrl(path);
 
-      editor.chain().focus().setImage({ src: data.publicUrl }).run();
+      if (!editor.isDestroyed) {
+        editor.chain().focus().setImage({ src: data.publicUrl }).run();
+      }
     } catch {
       setUploadError("Upload mislukt. Probeer opnieuw.");
     } finally {
