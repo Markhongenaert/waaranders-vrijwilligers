@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Vrijwilliger = {
@@ -19,6 +20,7 @@ type Werkgroep = {
   titel: string;
   opdracht: string | null;
   meer_info_url: string | null;
+  uitgebreide_info: string | null;
 };
 
 function trimOrNull(s: string | null | undefined): string | null {
@@ -27,6 +29,7 @@ function trimOrNull(s: string | null | undefined): string | null {
 }
 
 export default function ProfielPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [vrijwilliger, setVrijwilliger] = useState<Vrijwilliger | null>(null);
 
@@ -36,7 +39,7 @@ export default function ProfielPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [opdrachtPopup, setOpdrachtPopup] = useState<{ tekst: string; url: string | null } | null>(null);
+  const [opdrachtPopup, setOpdrachtPopup] = useState<{ tekst: string; werkgroepId: string; uitgebreideInfo: string | null } | null>(null);
 
   const isValid = useMemo(() => {
     const vn = (vrijwilliger?.voornaam ?? "").trim();
@@ -112,7 +115,7 @@ export default function ProfielPage() {
       // 2) Werkgroepen lijst
       const { data: wgs, error: wErr } = await supabase
         .from("werkgroepen")
-        .select("id, titel, opdracht, meer_info_url")
+        .select("id, titel, opdracht, meer_info_url, uitgebreide_info")
         .order("titel", { ascending: true });
 
       if (wErr) {
@@ -325,10 +328,14 @@ export default function ProfielPage() {
                   <div className="font-semibold text-gray-900 w-full mb-2">{w.titel}</div>
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      {w.opdracht && (
+                      {(w.opdracht || w.uitgebreide_info) && (
                         <button
                           type="button"
-                          onClick={() => setOpdrachtPopup({ tekst: w.opdracht!, url: w.meer_info_url ?? null })}
+                          onClick={() => setOpdrachtPopup({
+                            tekst: w.opdracht ?? "",
+                            werkgroepId: w.id,
+                            uitgebreideInfo: w.uitgebreide_info ?? null,
+                          })}
                           className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm bg-white hover:shadow-sm transition"
                         >
                           Toelichting
@@ -375,16 +382,22 @@ export default function ProfielPage() {
               className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <p className="text-gray-800 leading-relaxed">{opdrachtPopup.tekst}</p>
-              {opdrachtPopup.url && (
-                <a
-                  href={opdrachtPopup.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block font-bold text-green-700 hover:underline"
+              {opdrachtPopup.tekst && (
+                <p className="text-gray-800 leading-relaxed">{opdrachtPopup.tekst}</p>
+              )}
+              {opdrachtPopup.uitgebreideInfo && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpdrachtPopup(null);
+                    router.push(
+                      `/activiteiten/werkgroepen/${opdrachtPopup.werkgroepId}?terug=/profiel`
+                    );
+                  }}
+                  className="block font-bold text-green-700 hover:underline text-left"
                 >
                   Meer lezen...
-                </a>
+                </button>
               )}
               <button
                 type="button"
