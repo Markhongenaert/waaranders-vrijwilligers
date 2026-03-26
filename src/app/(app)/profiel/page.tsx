@@ -19,7 +19,6 @@ type Werkgroep = {
   id: string;
   titel: string;
   opdracht: string | null;
-  meer_info_url: string | null;
   uitgebreide_info: string | null;
 };
 
@@ -115,7 +114,7 @@ export default function ProfielPage() {
       // 2) Werkgroepen lijst
       const { data: wgs, error: wErr } = await supabase
         .from("werkgroepen")
-        .select("id, titel, opdracht, meer_info_url, uitgebreide_info")
+        .select("id, titel, opdracht, uitgebreide_info")
         .order("titel", { ascending: true });
 
       if (wErr) {

@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+type WerkgroepData = {
+  titel: string;
+  opdracht: string | null;
+  trekker: string | null;
+  uitgebreide_info: string | null;
+};
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
@@ -18,7 +25,6 @@ export default function WerkgroepBewerkPage() {
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
   const [trekker, setTrekker] = useState("");
-  const [meerInfoUrl, setMeerInfoUrl] = useState("");
   const [uitgebreideInfo, setUitgebreideInfo] = useState("");
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -42,17 +48,17 @@ export default function WerkgroepBewerkPage() {
       try {
         const { data, error } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht, trekker, meer_info_url, uitgebreide_info")
+          .select("id, titel, opdracht, trekker, uitgebreide_info")
           .eq("id", id)
           .maybeSingle();
         if (error) throw error;
         if (!data) throw new Error("Werkgroep niet gevonden.");
         if (!mounted) return;
-        setTitel(data.titel ?? "");
-        setOpdracht(data.opdracht ?? "");
-        setTrekker((data as any).trekker ?? "");
-        setMeerInfoUrl((data as any).meer_info_url ?? "");
-        setUitgebreideInfo((data as any).uitgebreide_info ?? "");
+        const d = data as unknown as WerkgroepData;
+        setTitel(d.titel ?? "");
+        setOpdracht(d.opdracht ?? "");
+        setTrekker(d.trekker ?? "");
+        setUitgebreideInfo(d.uitgebreide_info ?? "");
       } catch (e: any) {
         if (!mounted) return;
         setErr(e?.message ?? "Fout bij laden.");
@@ -64,7 +70,12 @@ export default function WerkgroepBewerkPage() {
     return () => { mounted = false; };
   }, [allowed, id]);
 
+  const isFirstLoad = useRef(true);
   useEffect(() => {
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      return;
+    }
     setSavedSuccessfully(false);
   }, [uitgebreideInfo]);
 
@@ -80,7 +91,6 @@ export default function WerkgroepBewerkPage() {
           titel: titel.trim(),
           opdracht: opdracht.trim() || null,
           trekker: trekker.trim() || null,
-          meer_info_url: meerInfoUrl.trim() || null,
           uitgebreide_info: uitgebreideInfo || null,
         })
         .eq("id", id);
@@ -154,18 +164,6 @@ export default function WerkgroepBewerkPage() {
           <div>
             <label className="block font-medium mb-1">Uitgebreide informatie</label>
             <RijkeTekstEditor value={uitgebreideInfo} onChange={setUitgebreideInfo} />
-          </div>
-
-          <div>
-            <label className="block font-medium mb-1">Link voor meer info (optioneel)</label>
-            <input
-              className="w-full border rounded-xl p-3 bg-white"
-              value={meerInfoUrl}
-              onChange={(e) => setMeerInfoUrl(e.target.value)}
-              placeholder="https://…"
-              type="url"
-            />
-            <p className="text-xs text-gray-500 mt-1">Plak hier de link naar een Google Doc of andere pagina</p>
           </div>
 
           <div className="flex gap-2 pt-1">
