@@ -389,10 +389,9 @@ export default function ProfielPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    const id = opdrachtPopup.werkgroepId;
                     setOpdrachtPopup(null);
-                    router.push(
-                      `/activiteiten/werkgroepen/${opdrachtPopup.werkgroepId}?terug=/profiel`
-                    );
+                    router.push(`/activiteiten/werkgroepen/${id}?terug=/profiel`);
                   }}
                   className="block font-bold text-green-700 hover:underline text-left"
                 >
