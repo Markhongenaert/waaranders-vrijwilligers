@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Lokale bestanden die niet in git horen
+.claude/settings.local.json
+__pycache__/
+*.sql
+supabase/.temp/
+~$*
+~WRL*.tmp
