@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
+import RijkeTekstEditor from "@/components/RijkeTekstEditor";
 
 export default function WerkgroepBewerkPage() {
   const params = useParams<{ id: string }>();
@@ -18,6 +19,9 @@ export default function WerkgroepBewerkPage() {
   const [opdracht, setOpdracht] = useState("");
   const [trekker, setTrekker] = useState("");
   const [meerInfoUrl, setMeerInfoUrl] = useState("");
+  const [uitgebreideInfo, setUitgebreideInfo] = useState("");
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -38,7 +42,7 @@ export default function WerkgroepBewerkPage() {
       try {
         const { data, error } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht, trekker, meer_info_url")
+          .select("id, titel, opdracht, trekker, meer_info_url, uitgebreide_info")
           .eq("id", id)
           .maybeSingle();
         if (error) throw error;
@@ -48,6 +52,7 @@ export default function WerkgroepBewerkPage() {
         setOpdracht(data.opdracht ?? "");
         setTrekker((data as any).trekker ?? "");
         setMeerInfoUrl((data as any).meer_info_url ?? "");
+        setUitgebreideInfo((data as any).uitgebreide_info ?? "");
       } catch (e: any) {
         if (!mounted) return;
         setErr(e?.message ?? "Fout bij laden.");
@@ -59,17 +64,30 @@ export default function WerkgroepBewerkPage() {
     return () => { mounted = false; };
   }, [allowed, id]);
 
+  useEffect(() => {
+    setSavedSuccessfully(false);
+  }, [uitgebreideInfo]);
+
   async function save() {
     if (!titel.trim()) { setErr("Titel is verplicht."); return; }
     setBusy(true);
     setErr(null);
+    setMsg(null);
     try {
       const { error } = await supabase
         .from("werkgroepen")
-        .update({ titel: titel.trim(), opdracht: opdracht.trim() || null, trekker: trekker.trim() || null, meer_info_url: meerInfoUrl.trim() || null })
+        .update({
+          titel: titel.trim(),
+          opdracht: opdracht.trim() || null,
+          trekker: trekker.trim() || null,
+          meer_info_url: meerInfoUrl.trim() || null,
+          uitgebreide_info: uitgebreideInfo || null,
+        })
         .eq("id", id);
       if (error) throw error;
-      window.location.href = "/admin/werkgroepen/beheer";
+      setMsg("Opgeslagen.");
+      setSavedSuccessfully(true);
+      setBusy(false);
     } catch (e: any) {
       setErr(e?.message ?? "Fout bij opslaan.");
       setBusy(false);
@@ -95,6 +113,7 @@ export default function WerkgroepBewerkPage() {
       </div>
 
       {err && <div className="wa-alert-error">{err}</div>}
+      {msg && <div className="wa-alert-success">{msg}</div>}
 
       {loading ? (
         <div className="text-gray-600">Laden…</div>
@@ -133,6 +152,11 @@ export default function WerkgroepBewerkPage() {
           </div>
 
           <div>
+            <label className="block font-medium mb-1">Uitgebreide informatie</label>
+            <RijkeTekstEditor value={uitgebreideInfo} onChange={setUitgebreideInfo} />
+          </div>
+
+          <div>
             <label className="block font-medium mb-1">Link voor meer info (optioneel)</label>
             <input
               className="w-full border rounded-xl p-3 bg-white"
@@ -159,6 +183,17 @@ export default function WerkgroepBewerkPage() {
               Annuleren
             </a>
           </div>
+
+          {savedSuccessfully && uitgebreideInfo && (
+            <a
+              href={`/activiteiten/werkgroepen/${id}?terug=/admin/werkgroepen/beheer/${id}`}
+              className="inline-block text-sm text-sky-700 hover:underline mt-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Voorbeeld bekijken →
+            </a>
+          )}
         </div>
       )}
     </main>
