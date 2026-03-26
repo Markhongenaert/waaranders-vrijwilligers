@@ -1,5 +1,5 @@
 import { supabaseServer } from "@/lib/supabase/server";
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 import { notFound } from "next/navigation";
 
 const ALLOWED_TERUG_PREFIXES = ["/profiel", "/admin/werkgroepen/beheer"];
@@ -33,7 +33,10 @@ export default async function WerkgroepDetailPage({ params, searchParams }: Prop
 
   if (error || !werkgroep) notFound();
 
-  const safeHtml = DOMPurify.sanitize(werkgroep.uitgebreide_info ?? "");
+  const safeHtml = sanitizeHtml(werkgroep.uitgebreide_info ?? "", {
+    allowedTags: ["h2", "h3", "p", "strong", "em", "u", "ul", "ol", "li", "img", "br"],
+    allowedAttributes: { img: ["src", "alt"] },
+  });
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6 md:p-10 space-y-5">
