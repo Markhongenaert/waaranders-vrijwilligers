@@ -85,7 +85,7 @@ export default function LoginPage() {
           <p className="wa-alert-error">{err}</p>
           <a
             className="wa-btn wa-btn-action px-4 py-3 text-center w-full block"
-            href="/registreer"
+            href={`/registreer?email=${encodeURIComponent(normalizedEmail)}`}
           >
             Account aanmaken
           </a>

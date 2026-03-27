@@ -16,19 +16,19 @@ export default function AuthBootstrap({ children, requireAuth = true }: Props) {
   useEffect(() => {
     let alive = true;
 
-    const provision = async (user: { id: string; email?: string | null }) => {
+    const provision = async (user: { id: string; email?: string | null; user_metadata?: Record<string, any> }) => {
       // Maak/Update de vrijwilliger-rij (id = auth.uid())
+      // Voornaam en achternaam worden uit user_metadata gelezen zoals opgeslagen bij registratie.
       const { error } = await supabase
         .from("vrijwilligers")
         .upsert(
           {
             id: user.id,
             user_id: user.id,
-            // naam: beter niet hard overschrijven als vrijwilliger zelf een naam kiest
-            // Daarom alleen zetten als hij nog null is doen we later eventueel via DB.
-            // Voor nu: we laten naam weg of vullen minimaal.
+            voornaam: user.user_metadata?.voornaam ?? null,
+            achternaam: user.user_metadata?.achternaam ?? null,
           },
-          { onConflict: "id" }
+          { onConflict: "id", ignoreDuplicates: false }
         );
 
       return error?.message ?? null;
@@ -59,7 +59,7 @@ export default function AuthBootstrap({ children, requireAuth = true }: Props) {
         return;
       }
 
-      const msg = await provision({ id: user.id, email: user.email });
+      const msg = await provision({ id: user.id, email: user.email, user_metadata: user.user_metadata });
       if (!alive) return;
 
       if (msg) {
@@ -87,7 +87,7 @@ export default function AuthBootstrap({ children, requireAuth = true }: Props) {
       }
 
       // User is ingelogd → provision opnieuw (idempotent)
-      provision({ id: session.user.id, email: session.user.email }).then((msg) => {
+      provision({ id: session.user.id, email: session.user.email, user_metadata: session.user.user_metadata }).then((msg) => {
         if (!alive) return;
         if (msg) setErr(msg);
         setReady(true);

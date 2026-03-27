@@ -43,8 +43,9 @@ export default function ProfielPage() {
   const isValid = useMemo(() => {
     const vn = (vrijwilliger?.voornaam ?? "").trim();
     const an = (vrijwilliger?.achternaam ?? "").trim();
-    return vn.length >= 2 && an.length >= 2;
-  }, [vrijwilliger?.voornaam, vrijwilliger?.achternaam]);
+    const tel = (vrijwilliger?.telefoon ?? "").trim();
+    return vn.length >= 2 && an.length >= 2 && tel.length > 0;
+  }, [vrijwilliger?.voornaam, vrijwilliger?.achternaam, vrijwilliger?.telefoon]);
 
   useEffect(() => {
     const load = async () => {
@@ -196,6 +197,10 @@ export default function ProfielPage() {
       setErr("Achternaam is verplicht (minstens 2 tekens).");
       return;
     }
+    if (!(vrijwilliger.telefoon ?? "").trim()) {
+      setErr("Telefoon is verplicht.");
+      return;
+    }
 
     setBusy(true);
 
@@ -285,7 +290,7 @@ export default function ProfielPage() {
 
         <div className="grid grid-cols-1 gap-3">
           <div>
-            <label className="block font-medium mb-1">Telefoon</label>
+            <label className="block font-medium mb-1">Telefoon <span className="text-red-600">*</span></label>
             <input
               className="w-full border rounded-xl p-3 bg-white"
               value={vrijwilliger?.telefoon ?? ""}
@@ -422,7 +427,7 @@ export default function ProfielPage() {
 
         {!isValid && (
           <p className="text-sm text-gray-600">
-            <span className="text-red-600">*</span> Voornaam en achternaam zijn verplicht (min. 2 tekens).
+            <span className="text-red-600">*</span> Voornaam, achternaam (min. 2 tekens) en telefoon zijn verplicht.
           </p>
         )}
       </div>

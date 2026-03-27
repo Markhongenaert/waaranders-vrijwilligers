@@ -2,12 +2,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-
-function isValidEmail(e: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-}
 
 function humanize(raw?: string) {
   const msg = (raw || "").toLowerCase();
@@ -19,9 +16,11 @@ function humanize(raw?: string) {
 }
 
 export default function RegistreerPage() {
+  const searchParams = useSearchParams();
+  const emailFromQuery = (searchParams.get("email") ?? "").trim().toLowerCase();
+
   const [voornaam, setVoornaam] = useState("");
   const [achternaam, setAchternaam] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
 
@@ -33,7 +32,6 @@ export default function RegistreerPage() {
   const [err, setErr] = useState<string | null>(null);
   const [nameConflict, setNameConflict] = useState<string | null>(null);
 
-  const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
   const trimmedVoornaam = useMemo(() => voornaam.trim(), [voornaam]);
   const trimmedAchternaam = useMemo(() => achternaam.trim(), [achternaam]);
 
@@ -41,11 +39,9 @@ export default function RegistreerPage() {
     setErr(null);
     setMsg(null);
 
-    const e = normalizedEmail;
     if (!trimmedVoornaam) return setErr("Vul je voornaam in."), undefined;
     if (!trimmedAchternaam) return setErr("Vul je achternaam in."), undefined;
-    if (!e) return setErr("Vul een e-mailadres in."), undefined;
-    if (!isValidEmail(e)) return setErr("Dit e-mailadres lijkt niet correct."), undefined;
+    if (!emailFromQuery) return setErr("Geen geldig e-mailadres. Ga terug naar de loginpagina."), undefined;
     if (!password) return setErr("Kies een wachtwoord."), undefined;
     if (password.length < 8) return setErr("Kies minstens 8 tekens."), undefined;
     if (password !== password2) return setErr("Wachtwoorden komen niet overeen."), undefined;
@@ -69,31 +65,30 @@ export default function RegistreerPage() {
         return;
       }
 
-      await submitRegistration(e);
+      const emailRedirectTo = `${window.location.origin}/auth/callback`;
+
+      const { error } = await supabase.auth.signUp({
+        email: emailFromQuery,
+        password,
+        options: {
+          emailRedirectTo,
+          data: { voornaam: trimmedVoornaam, achternaam: trimmedAchternaam },
+        },
+      });
+
+      if (error) {
+        setErr(humanize(error.message));
+        return;
+      }
+
+      setMsg(
+        "Gelukt. Check je mailbox en klik op de bevestigingslink. Daarna kom je automatisch in je profiel terecht."
+      );
     } catch (ex: any) {
       setErr(humanize(ex?.message ?? String(ex)));
     } finally {
       setBusy(false);
     }
-  };
-
-  const submitRegistration = async (e: string) => {
-    const emailRedirectTo = `${window.location.origin}/auth/callback`;
-
-    const { error } = await supabase.auth.signUp({
-      email: e,
-      password,
-      options: { emailRedirectTo },
-    });
-
-    if (error) {
-      setErr(humanize(error.message));
-      return;
-    }
-
-    setMsg(
-      "Gelukt. Check je mailbox en klik op de bevestigingslink. Daarna kom je automatisch in je profiel terecht."
-    );
   };
 
   const handleSubmit = async () => {
@@ -135,12 +130,11 @@ export default function RegistreerPage() {
         <div>
           <label className="block font-medium mb-1">E-mail</label>
           <input
-            className="w-full border rounded-xl p-3 bg-white"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border rounded-xl p-3 bg-gray-50 text-gray-500 cursor-not-allowed"
+            value={emailFromQuery}
+            readOnly
             autoComplete="email"
             inputMode="email"
-            disabled={busy}
           />
         </div>
 
@@ -213,10 +207,7 @@ export default function RegistreerPage() {
         {nameConflict && (
           <div className="wa-alert-error">
             Er bestaat al een account met de naam <strong>{nameConflict}</strong> in Waaranders. Neem contact op met Mark om je mailadres te laten aanpassen (
-            <a
-              className="underline"
-              href="mailto:markhongenaert.x@gmail.com"
-            >
+            <a className="underline" href="mailto:markhongenaert.x@gmail.com">
               markhongenaert.x@gmail.com
             </a>
             ).
