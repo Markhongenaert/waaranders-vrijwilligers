@@ -17,17 +17,17 @@ export default function AuthBootstrap({ children, requireAuth = true }: Props) {
     let alive = true;
 
     const provision = async (user: { id: string; email?: string | null; user_metadata?: Record<string, any> }) => {
-      // Maak/Update de vrijwilliger-rij (id = auth.uid())
-      // Voornaam en achternaam worden uit user_metadata gelezen zoals opgeslagen bij registratie.
+      // Maak/Update de vrijwilliger-rij (id = auth.uid()).
+      // Voornaam en achternaam alleen meesturen als ze in user_metadata staan (registratiestap),
+      // anders niet aanraken om bestaande data niet te overschrijven met null.
+      const namePatch = user.user_metadata?.voornaam || user.user_metadata?.achternaam
+        ? { voornaam: user.user_metadata?.voornaam ?? null, achternaam: user.user_metadata?.achternaam ?? null }
+        : {};
+
       const { error } = await supabase
         .from("vrijwilligers")
         .upsert(
-          {
-            id: user.id,
-            user_id: user.id,
-            voornaam: user.user_metadata?.voornaam ?? null,
-            achternaam: user.user_metadata?.achternaam ?? null,
-          },
+          { id: user.id, user_id: user.id, ...namePatch },
           { onConflict: "id", ignoreDuplicates: false }
         );
 
