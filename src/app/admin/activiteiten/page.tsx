@@ -1,21 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
-
-type KlantMini = {
-  id: string;
-  naam: string;
-};
 
 type Activiteit = {
   id: string;
   titel: string;
   toelichting: string | null;
   wanneer: string; // YYYY-MM-DD
-  startuur: string | null; // "HH:MM:SS" of "HH:MM"
-  einduur: string | null;  // "HH:MM:SS" of "HH:MM"
+  startuur: string | null;
+  einduur: string | null;
   aantal_vrijwilligers: number | null;
   klant_id: string | null;
   klanten: { naam: string } | { naam: string }[] | null;
@@ -71,12 +67,11 @@ function hhmm(t: string | null): string | null {
 }
 
 export default function AdminActiviteitenPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
   const [items, setItems] = useState<Activiteit[]>([]);
-  const [klanten, setKlanten] = useState<KlantMini[]>([]);
-  const [klantenLoaded, setKlantenLoaded] = useState(false);
   const [inschrijvingen, setInschrijvingen] = useState<Map<string, string[]>>(new Map());
   const loadedActIds = useRef<Set<string>>(new Set());
 
@@ -84,22 +79,7 @@ export default function AdminActiviteitenPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitel, setEditTitel] = useState("");
-  const [editToelichting, setEditToelichting] = useState("");
-  const [editWanneer, setEditWanneer] = useState("");
-  const [editStartuur, setEditStartuur] = useState("");
-  const [editEinduur, setEditEinduur] = useState("");
-  const [editAantal, setEditAantal] = useState<number>(1);
-  const [editKlantId, setEditKlantId] = useState<string>("");
-
-  // Reeks edit state
-  const [editReeksId, setEditReeksId] = useState<string | null>(null);
-
-  type ReeksModal =
-    | { mode: "bewerken"; reeksId: string }
-    | { mode: "verwijderen"; reeksId: string; deleteId: string };
+  type ReeksModal = { reeksId: string; deleteId: string };
   const [reeksModal, setReeksModal] = useState<ReeksModal | null>(null);
 
   const grouped = useMemo(() => {
@@ -122,29 +102,6 @@ export default function AdminActiviteitenPage() {
     return groups;
   }, [items]);
 
-  const loadKlanten = async (): Promise<KlantMini[]> => {
-    setKlantenLoaded(false);
-
-    const { data, error: e } = await supabase
-      .from("klanten")
-      .select("id,naam")
-      .eq("actief", true)
-      .is("gearchiveerd_op", null)
-      .order("naam", { ascending: true });
-
-    if (e) {
-      setError(e.message);
-      setKlanten([]);
-      setKlantenLoaded(true);
-      return [];
-    }
-
-    const list = (data ?? []) as KlantMini[];
-    setKlanten(list);
-    setKlantenLoaded(true);
-    return list;
-  };
-
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -163,8 +120,6 @@ export default function AdminActiviteitenPage() {
       setLoading(false);
       return;
     }
-
-    await loadKlanten();
 
     const vanaf = todayISODate();
 
@@ -212,87 +167,6 @@ export default function AdminActiviteitenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startEdit = async (a: Activiteit) => {
-    setMsg(null);
-    setError(null);
-
-    const kList = klantenLoaded ? klanten : await loadKlanten();
-
-    setEditingId(a.id);
-    setEditTitel(a.titel ?? "");
-    setEditToelichting(a.toelichting ?? "");
-    setEditWanneer(a.wanneer ?? "");
-    setEditStartuur(hhmm(a.startuur) ?? "");
-    setEditEinduur(hhmm(a.einduur) ?? "");
-    setEditAantal(a.aantal_vrijwilligers ?? 1);
-    setEditReeksId(a.herhaling_reeks_id ?? null);
-
-    const klantFallback = kList[0]?.id ?? "";
-    setEditKlantId(a.klant_id ?? klantFallback);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditTitel("");
-    setEditToelichting("");
-    setEditWanneer("");
-    setEditStartuur("");
-    setEditEinduur("");
-    setEditAantal(1);
-    setEditKlantId("");
-    setEditReeksId(null);
-    setReeksModal(null);
-  };
-
-  /** Voer de opslaan-logica uit na keuze van scope. */
-  const executeEdit = async (scope: "enkel" | "reeks") => {
-    if (!editingId) return;
-
-    setBusy(true);
-    setReeksModal(null);
-    setError(null);
-    setMsg(null);
-
-    const contentPayload = {
-      titel: editTitel.trim(),
-      toelichting: editToelichting?.trim() ? editToelichting.trim() : null,
-      startuur: editStartuur,
-      einduur: editEinduur,
-      aantal_vrijwilligers: Number.isFinite(editAantal) ? editAantal : null,
-      klant_id: editKlantId,
-    };
-
-    let dbError = null;
-
-    if (scope === "enkel" || !editReeksId) {
-      // Enkel deze activiteit: ook datum mag veranderen
-      const { error } = await supabase
-        .from("activiteiten")
-        .update({ ...contentPayload, wanneer: editWanneer })
-        .eq("id", editingId);
-      dbError = error;
-    } else {
-      // Hele reeks: update alle activiteiten met zelfde reeks_id, datum ongewijzigd
-      const { error } = await supabase
-        .from("activiteiten")
-        .update(contentPayload)
-        .eq("herhaling_reeks_id", editReeksId);
-      dbError = error;
-    }
-
-    if (dbError) {
-      setError(dbError.message);
-      setBusy(false);
-      return;
-    }
-
-    setMsg(scope === "reeks" ? "Hele reeks bijgewerkt." : "Activiteit bijgewerkt.");
-    cancelEdit();
-    await load();
-    setBusy(false);
-  };
-
-  /** Verwijder een activiteit of hele reeks. */
   const executeDelete = async (scope: "enkel" | "reeks", id: string, reeksId: string | null) => {
     setBusy(true);
     setReeksModal(null);
@@ -320,31 +194,9 @@ export default function AdminActiviteitenPage() {
     setBusy(false);
   };
 
-  /** Valideer en sla op — toon modaal als het een reeksactiviteit is. */
-  const saveEdit = async () => {
-    if (!editingId) return;
-
-    setError(null);
-    setMsg(null);
-
-    if (!editTitel.trim()) return setError("Titel is verplicht.");
-    if (!editWanneer) return setError("Datum (wanneer) is verplicht.");
-    if (!editKlantId) return setError("Klant is verplicht.");
-    if (!editStartuur) return setError("Startuur is verplicht.");
-    if (!editEinduur) return setError("Einduur is verplicht.");
-    if (editEinduur <= editStartuur) return setError("Einduur moet later zijn dan startuur.");
-
-    if (editReeksId) {
-      setReeksModal({ mode: "bewerken", reeksId: editReeksId });
-      return;
-    }
-
-    await executeEdit("enkel");
-  };
-
   const deleteActiviteit = (a: Activiteit) => {
     if (a.herhaling_reeks_id) {
-      setReeksModal({ mode: "verwijderen", reeksId: a.herhaling_reeks_id, deleteId: a.id });
+      setReeksModal({ reeksId: a.herhaling_reeks_id, deleteId: a.id });
       return;
     }
 
@@ -367,49 +219,30 @@ export default function AdminActiviteitenPage() {
 
   return (
     <>
-      {/* Modaal voor reeksbewerking of -verwijdering */}
+      {/* Modaal voor reeksverwijdering */}
       {reeksModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
-            <h2 className="font-semibold text-lg">
-              {reeksModal.mode === "bewerken" ? "Herhalende activiteit aanpassen" : "Herhalende activiteit verwijderen"}
-            </h2>
+            <h2 className="font-semibold text-lg">Herhalende activiteit verwijderen</h2>
             <p className="text-sm text-gray-700">
-              Wil je deze wijziging toepassen op enkel deze activiteit, of op alle toekomstige activiteiten in deze reeks?
+              Wil je enkel deze activiteit verwijderen, of alle activiteiten in deze reeks?
             </p>
             <div className="flex flex-col gap-2">
               <button
                 className="border rounded-xl px-4 py-3 text-sm bg-white hover:bg-gray-50 transition text-left"
-                onClick={() => {
-                  if (reeksModal.mode === "bewerken") executeEdit("enkel");
-                  else executeDelete("enkel", reeksModal.deleteId, null);
-                }}
+                onClick={() => executeDelete("enkel", reeksModal.deleteId, null)}
                 disabled={busy}
               >
                 <span className="font-medium">Enkel deze</span>
-                <span className="block text-xs text-gray-500 mt-0.5">
-                  Alleen deze activiteit wordt {reeksModal.mode === "bewerken" ? "aangepast" : "verwijderd"}.
-                </span>
+                <span className="block text-xs text-gray-500 mt-0.5">Alleen deze activiteit wordt verwijderd.</span>
               </button>
               <button
-                className={[
-                  "border rounded-xl px-4 py-3 text-sm transition text-left",
-                  reeksModal.mode === "verwijderen"
-                    ? "bg-red-50 border-red-200 hover:bg-red-100"
-                    : "bg-white hover:bg-gray-50",
-                ].join(" ")}
-                onClick={() => {
-                  if (reeksModal.mode === "bewerken") executeEdit("reeks");
-                  else executeDelete("reeks", reeksModal.deleteId, reeksModal.reeksId);
-                }}
+                className="border rounded-xl px-4 py-3 text-sm bg-red-50 border-red-200 hover:bg-red-100 transition text-left"
+                onClick={() => executeDelete("reeks", reeksModal.deleteId, reeksModal.reeksId)}
                 disabled={busy}
               >
-                <span className={["font-medium", reeksModal.mode === "verwijderen" ? "text-red-700" : ""].join(" ")}>
-                  Hele reeks
-                </span>
-                <span className="block text-xs text-gray-500 mt-0.5">
-                  Alle activiteiten in deze reeks worden {reeksModal.mode === "bewerken" ? "aangepast" : "verwijderd"}.
-                </span>
+                <span className="font-medium text-red-700">Hele reeks</span>
+                <span className="block text-xs text-gray-500 mt-0.5">Alle activiteiten in deze reeks worden verwijderd.</span>
               </button>
               <button
                 className="border rounded-xl px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 transition"
@@ -425,10 +258,7 @@ export default function AdminActiviteitenPage() {
 
       <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteiten beheren</h1>
-          </div>
-
+          <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteiten beheren</h1>
           <div className="flex gap-2">
             <a className="wa-btn-action px-3 py-2 text-sm text-center" href="/admin/toevoegen">
               Activiteit toevoegen
@@ -436,12 +266,8 @@ export default function AdminActiviteitenPage() {
           </div>
         </div>
 
-        {error && (
-          <div className="wa-alert-error mb-4">Fout: {error}</div>
-        )}
-        {msg && (
-          <div className="wa-alert-success mb-4">{msg}</div>
-        )}
+        {error && <div className="wa-alert-error mb-4">Fout: {error}</div>}
+        {msg && <div className="wa-alert-success mb-4">{msg}</div>}
 
         {items.length === 0 ? (
           <p className="text-gray-700">Geen toekomstige activiteiten.</p>
@@ -457,171 +283,62 @@ export default function AdminActiviteitenPage() {
 
                 <ul className="space-y-3 mt-3">
                   {g.items.map((a) => {
-                    const isEditing = editingId === a.id;
                     const kNaam = klantNaamOfNull(a.klanten);
                     const s = hhmm(a.startuur);
                     const e = hhmm(a.einduur);
 
                     return (
                       <li key={a.id} className="wa-card p-4">
-                        {!isEditing ? (
-                          <div className="space-y-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">
-                                {a.titel}
-                              </div>
-                              {a.herhaling_reeks_id && (
-                                <span className="shrink-0 wa-badge-herhaling">
-                                  ↻ Reeks
-                                </span>
-                              )}
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">
+                              {a.titel}
                             </div>
-
-                            {a.toelichting && (
-                              <div className="text-sm text-gray-700 whitespace-pre-line break-words">
-                                {a.toelichting}
-                              </div>
+                            {a.herhaling_reeks_id && (
+                              <span className="shrink-0 wa-badge-herhaling">↻ Reeks</span>
                             )}
-
-                            <div className="text-sm text-gray-700 flex flex-wrap gap-x-3 gap-y-1">
-                              <span className="text-gray-600">{formatDatumNL(a.wanneer)}</span>
-                              {s && e ? <span>van {s} tot {e}</span> : <span className="text-gray-500">(geen uren)</span>}
-                              {a.aantal_vrijwilligers != null ? <span>nodig: {a.aantal_vrijwilligers}</span> : null}
-                              <span>klant: {kNaam ?? "(niet ingesteld)"}</span>
-                            </div>
-
-                            {(() => {
-                              const namen = inschrijvingen.get(a.id) ?? [];
-                              return (
-                                <div className="text-sm text-gray-700">
-                                  <span className="font-medium">{namen.length} ingeschreven</span>
-                                  {namen.length > 0 && <>: {namen.join(", ")}</>}
-                                </div>
-                              );
-                            })()}
-
-                            <div className="pt-2 flex gap-2">
-                              <button
-                                className="wa-btn wa-btn-ghost flex-1 px-4 py-2 text-sm"
-                                onClick={() => startEdit(a)}
-                                disabled={busy}
-                              >
-                                Bewerken
-                              </button>
-                              <button
-                                className="wa-btn-danger flex-1 px-4 py-2 text-sm"
-                                onClick={() => deleteActiviteit(a)}
-                                disabled={busy}
-                              >
-                                Verwijderen
-                              </button>
-                            </div>
                           </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {editReeksId && (
-                              <p className="wa-alert-info text-xs">
-                                Dit is een herhalende activiteit. Bij opslaan wordt gevraagd of je enkel deze activiteit of de hele reeks wil aanpassen.
-                              </p>
-                            )}
 
-                            <div>
-                              <label className="text-sm font-medium block mb-1">Titel</label>
-                              <input
-                                className="w-full border rounded-xl p-3 bg-white"
-                                value={editTitel}
-                                onChange={(e2) => setEditTitel(e2.target.value)}
-                              />
+                          {a.toelichting && (
+                            <div className="text-sm text-gray-700 whitespace-pre-line break-words">
+                              {a.toelichting}
                             </div>
+                          )}
 
-                            <div>
-                              <label className="text-sm font-medium block mb-1">Toelichting</label>
-                              <textarea
-                                className="w-full border rounded-xl p-3 bg-white"
-                                rows={4}
-                                value={editToelichting}
-                                onChange={(e2) => setEditToelichting(e2.target.value)}
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-medium block mb-1">
-                                Datum{editReeksId ? " (enkel voor deze activiteit)" : ""}
-                              </label>
-                              <input
-                                type="date"
-                                className="w-full border rounded-xl p-3 bg-white"
-                                value={editWanneer}
-                                onChange={(e2) => setEditWanneer(e2.target.value)}
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-sm font-medium block mb-1">Startuur</label>
-                                <input
-                                  type="time"
-                                  className="w-full border rounded-xl p-3 bg-white"
-                                  value={editStartuur}
-                                  onChange={(e2) => setEditStartuur(e2.target.value)}
-                                />
-                              </div>
-
-                              <div>
-                                <label className="text-sm font-medium block mb-1">Einduur</label>
-                                <input
-                                  type="time"
-                                  className="w-full border rounded-xl p-3 bg-white"
-                                  value={editEinduur}
-                                  onChange={(e2) => setEditEinduur(e2.target.value)}
-                                />
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-medium block mb-1">Klant (verplicht)</label>
-                              <select
-                                className="w-full border rounded-xl p-3 bg-white"
-                                value={editKlantId}
-                                onChange={(e2) => setEditKlantId(e2.target.value)}
-                              >
-                                {klanten.map((k) => (
-                                  <option key={k.id} value={k.id}>
-                                    {k.naam}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-medium block mb-1">Aantal vrijwilligers (nodig)</label>
-                              <input
-                                type="number"
-                                min={0}
-                                className="w-full border rounded-xl p-3 bg-white"
-                                value={editAantal}
-                                onChange={(e2) => setEditAantal(Number(e2.target.value))}
-                              />
-                            </div>
-
-                            <div className="flex gap-2">
-                              <button
-                                className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
-                                onClick={saveEdit}
-                                disabled={busy}
-                              >
-                                {busy ? "Bezig…" : "Opslaan"}
-                              </button>
-                              <button
-                                className="flex-1 rounded-xl px-4 py-2 text-sm font-medium bg-white border hover:bg-gray-50 transition"
-                                onClick={cancelEdit}
-                                disabled={busy}
-                              >
-                                Annuleren
-                              </button>
-                            </div>
+                          <div className="text-sm text-gray-700 flex flex-wrap gap-x-3 gap-y-1">
+                            <span className="text-gray-600">{formatDatumNL(a.wanneer)}</span>
+                            {s && e ? <span>van {s} tot {e}</span> : <span className="text-gray-500">(geen uren)</span>}
+                            {a.aantal_vrijwilligers != null ? <span>nodig: {a.aantal_vrijwilligers}</span> : null}
+                            <span>klant: {kNaam ?? "(niet ingesteld)"}</span>
                           </div>
-                        )}
+
+                          {(() => {
+                            const namen = inschrijvingen.get(a.id) ?? [];
+                            return (
+                              <div className="text-sm text-gray-700">
+                                <span className="font-medium">{namen.length} ingeschreven</span>
+                                {namen.length > 0 && <>: {namen.join(", ")}</>}
+                              </div>
+                            );
+                          })()}
+
+                          <div className="pt-2 flex gap-2">
+                            <button
+                              className="wa-btn wa-btn-ghost flex-1 px-4 py-2 text-sm"
+                              onClick={() => router.push(`/admin/activiteiten/${a.id}`)}
+                              disabled={busy}
+                            >
+                              Bewerken
+                            </button>
+                            <button
+                              className="wa-btn-danger flex-1 px-4 py-2 text-sm"
+                              onClick={() => deleteActiviteit(a)}
+                              disabled={busy}
+                            >
+                              Verwijderen
+                            </button>
+                          </div>
+                        </div>
                       </li>
                     );
                   })}
