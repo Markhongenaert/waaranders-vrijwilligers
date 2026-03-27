@@ -324,6 +324,9 @@ export default function ProfielPage() {
                   key={id}
                   className={lid ? "wa-werkgroep-lid" : "wa-werkgroep-geen-lid"}
                 >
+                  {lid && (
+                    <div className="font-bold text-green-700 text-sm mb-1">Ik ben lid</div>
+                  )}
                   <div className="font-semibold text-gray-900 w-full mb-2">{w.titel}</div>
                   <div className="flex items-center justify-between gap-2">
                     <div>
