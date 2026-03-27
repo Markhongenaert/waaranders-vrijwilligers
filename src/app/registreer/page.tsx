@@ -1,7 +1,7 @@
 // src/app/registreer/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -16,6 +16,14 @@ function humanize(raw?: string) {
 }
 
 export default function RegistreerPage() {
+  return (
+    <Suspense>
+      <RegistreerForm />
+    </Suspense>
+  );
+}
+
+function RegistreerForm() {
   const searchParams = useSearchParams();
   const emailFromQuery = (searchParams.get("email") ?? "").trim().toLowerCase();
 
