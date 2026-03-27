@@ -11,6 +11,7 @@ type Props = {
 type Popup = {
   iso: string;
   aanwezig: Doenker[];
+  afwezig: Doenker[];
 };
 
 const MAANDEN = [
@@ -100,13 +101,16 @@ export default function KalenderTab({ doenkers, perioden }: Props) {
 
   const todayISO = toISOLocal(now);
 
-  function getAanwezig(date: Date): Doenker[] {
-    const iso = toISOLocal(date);
-    return doenkers.filter((d) => {
-      return !perioden.some(
-        (p) => p.vrijwilliger_id === d.id && isOnVakantie(p, iso)
-      );
-    });
+  function getAanwezig(iso: string): Doenker[] {
+    return doenkers.filter((d) =>
+      !perioden.some((p) => p.vrijwilliger_id === d.id && isOnVakantie(p, iso))
+    );
+  }
+
+  function getAfwezig(iso: string): Doenker[] {
+    return doenkers.filter((d) =>
+      perioden.some((p) => p.vrijwilliger_id === d.id && isOnVakantie(p, iso))
+    );
   }
 
   return (
@@ -150,14 +154,15 @@ export default function KalenderTab({ doenkers, perioden }: Props) {
 
           {days.map((date) => {
             const iso = toISOLocal(date);
-            const aanwezig = getAanwezig(date);
+            const aanwezig = getAanwezig(iso);
+            const afwezig = getAfwezig(iso);
             const color = badgeColor(aanwezig.length);
             const isToday = iso === todayISO;
 
             return (
               <div
                 key={iso}
-                onClick={() => setPopup({ iso, aanwezig })}
+                onClick={() => setPopup({ iso, aanwezig, afwezig })}
                 className={`rounded-lg p-1 flex flex-col items-center gap-0.5 cursor-pointer hover:bg-gray-50 transition ${
                   isToday ? "ring-2 ring-blue-400" : ""
                 }`}
@@ -188,7 +193,7 @@ export default function KalenderTab({ doenkers, perioden }: Props) {
           >
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-gray-800">
-                Aanwezig op {popup.iso.split("-").reverse().join("/")}
+                {popup.iso.split("-").reverse().join("/")}
               </h2>
               <button
                 onClick={() => setPopup(null)}
@@ -199,17 +204,41 @@ export default function KalenderTab({ doenkers, perioden }: Props) {
               </button>
             </div>
 
-            {popup.aanwezig.length === 0 ? (
-              <p className="text-sm text-gray-500">Niemand aanwezig.</p>
-            ) : (
-              <ul className="space-y-1">
-                {popup.aanwezig.map((d) => (
-                  <li key={d.id} className="text-sm text-gray-700">
-                    {fullName(d)}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">
+                  Aanwezig ({popup.aanwezig.length})
+                </p>
+                {popup.aanwezig.length === 0 ? (
+                  <p className="text-sm text-gray-400">Niemand aanwezig.</p>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {popup.aanwezig.map((d) => (
+                      <li key={d.id} className="text-sm text-green-700">
+                        {fullName(d)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">
+                  Afwezig ({popup.afwezig.length})
+                </p>
+                {popup.afwezig.length === 0 ? (
+                  <p className="text-sm text-gray-400">Niemand afwezig.</p>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {popup.afwezig.map((d) => (
+                      <li key={d.id} className="text-sm text-red-600">
+                        {fullName(d)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
 
             <button
               onClick={() => setPopup(null)}
