@@ -2,7 +2,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import sanitizeHtml from "sanitize-html";
 import { notFound } from "next/navigation";
 
-const ALLOWED_TERUG_PREFIXES = ["/profiel", "/admin/werkgroepen/beheer"];
+const ALLOWED_TERUG_PREFIXES = ["/profiel", "/admin/werkgroepen/beheer", "/admin/werkgroepen"];
 
 interface Props {
   params: Promise<{ id: string }>;

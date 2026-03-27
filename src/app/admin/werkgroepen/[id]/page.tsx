@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import { formatDagMaand } from "@/lib/dateHelpers";
@@ -17,6 +17,7 @@ type Werkgroep = {
   opdracht: string | null;
   trekker: string | null;
   meer_info_url: string | null;
+  uitgebreide_info: string | null;
 };
 
 type Deelnemer = {
@@ -42,6 +43,7 @@ type Prikbord = {
 export default function WerkgroepDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
+  const router = useRouter();
 
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,7 @@ export default function WerkgroepDetailPage() {
       try {
         const { data: wg, error: wErr } = await supabase
           .from("werkgroepen")
-          .select("id, titel, opdracht, trekker, meer_info_url")
+          .select("id, titel, opdracht, trekker, meer_info_url, uitgebreide_info")
           .eq("id", id)
           .maybeSingle();
         if (wErr) throw wErr;
@@ -276,7 +278,14 @@ export default function WerkgroepDetailPage() {
           {werkgroep?.opdracht && (
             <div className="wa-card p-4 text-gray-700">
               {werkgroep.opdracht}
-              {werkgroep.meer_info_url && (
+              {werkgroep.uitgebreide_info ? (
+                <button
+                  onClick={() => router.push(`/activiteiten/werkgroepen/${werkgroep.id}?terug=/admin/werkgroepen/${werkgroep.id}`)}
+                  className="block mt-2 font-bold text-green-700 hover:underline text-left"
+                >
+                  Lees meer...
+                </button>
+              ) : werkgroep.meer_info_url ? (
                 <a
                   href={werkgroep.meer_info_url}
                   target="_blank"
@@ -285,7 +294,7 @@ export default function WerkgroepDetailPage() {
                 >
                   Lees meer...
                 </a>
-              )}
+              ) : null}
             </div>
           )}
 
