@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 type Doelgroep = { id: string; naam: string };
+type Doenker = { id: string; voornaam: string | null; achternaam: string | null };
 
 type Props = {
   mode: "create" | "edit";
@@ -13,15 +14,17 @@ type Props = {
     contactpersoon_email: string;
     adres: string;
     doelgroep_id: string | null;
+    aanspreekpunt_vrijwilliger_id: string | null;
     actief: boolean;
   };
   doelgroepen: Doelgroep[];
+  doenkers: Doenker[];
   onSubmit: (payload: any) => Promise<void>;
   onArchive?: (() => Promise<void>) | null;
   returnTo?: string | null;
 };
 
-export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArchive, returnTo }: Props) {
+export default function KlantForm({ mode, initial, doelgroepen, doenkers, onSubmit, onArchive, returnTo }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -31,6 +34,7 @@ export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArch
   const [contactpersoon_email, setCpEmail] = useState(initial.contactpersoon_email);
   const [adres, setAdres] = useState(initial.adres);
   const [doelgroep_id, setDoelgroepId] = useState<string | "">(initial.doelgroep_id ?? "");
+  const [aanspreekpuntId, setAanspreekpuntId] = useState<string>(initial.aanspreekpunt_vrijwilliger_id ?? "");
   const [actief, setActief] = useState(initial.actief);
 
   const doelgroepLabel = useMemo(
@@ -45,6 +49,10 @@ export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArch
       setErr("Naam is verplicht.");
       return;
     }
+    if (!aanspreekpuntId) {
+      setErr("Aanspreekpunt is verplicht.");
+      return;
+    }
 
     setBusy(true);
     try {
@@ -55,6 +63,7 @@ export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArch
         contactpersoon_email: contactpersoon_email.trim() || null,
         adres: adres.trim() || null,
         doelgroep_id: doelgroep_id || null,
+        aanspreekpunt_vrijwilliger_id: aanspreekpuntId,
         actief,
         returnTo: returnTo ?? null,
       });
@@ -85,6 +94,25 @@ export default function KlantForm({ mode, initial, doelgroepen, onSubmit, onArch
       <div>
         <label className="block font-medium mb-1">Naam (verplicht)</label>
         <input className="w-full border rounded-xl p-3" value={naam} onChange={(e) => setNaam(e.target.value)} />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">
+          Aanspreekpunt <span className="text-red-600">*</span>
+        </label>
+        <select
+          className="w-full border rounded-xl p-3"
+          value={aanspreekpuntId}
+          onChange={(e) => setAanspreekpuntId(e.target.value)}
+          disabled={busy}
+        >
+          <option value="">— Kies een doenker —</option>
+          {doenkers.map((d) => (
+            <option key={d.id} value={d.id}>
+              {[d.voornaam, d.achternaam].filter(Boolean).join(" ")}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

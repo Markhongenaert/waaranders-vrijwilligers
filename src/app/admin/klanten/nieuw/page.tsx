@@ -11,6 +11,12 @@ type Doelgroep = {
   titel: string;
 };
 
+type Doenker = {
+  id: string;
+  voornaam: string | null;
+  achternaam: string | null;
+};
+
 function safeReturnTo(raw: string | null): string | null {
   if (!raw) return null;
   if (!raw.startsWith("/")) return null;
@@ -32,6 +38,7 @@ export default function NieuweKlantPage() {
   const [allowed, setAllowed] = useState(false);
 
   const [doelgroepen, setDoelgroepen] = useState<Doelgroep[]>([]);
+  const [doenkers, setDoenkers] = useState<Doenker[]>([]);
 
   const [naam, setNaam] = useState("");
   const [contactpersoonNaam, setContactpersoonNaam] = useState("");
@@ -39,6 +46,7 @@ export default function NieuweKlantPage() {
   const [contactpersoonEmail, setContactpersoonEmail] = useState("");
   const [adres, setAdres] = useState("");
   const [doelgroepId, setDoelgroepId] = useState("");
+  const [aanspreekpuntId, setAanspreekpuntId] = useState("");
   const [actief, setActief] = useState(true);
 
   const [busy, setBusy] = useState(false);
@@ -62,6 +70,24 @@ export default function NieuweKlantPage() {
         .order("titel", { ascending: true });
 
       setDoelgroepen((dg ?? []) as Doelgroep[]);
+
+      const { data: vData } = await supabase
+        .from("vrijwilligers")
+        .select("id, voornaam, achternaam, vrijwilliger_roles!vrijwilliger_id(roles(code))")
+        .eq("actief", true)
+        .order("achternaam", { ascending: true, nullsFirst: false })
+        .order("voornaam", { ascending: true, nullsFirst: false });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const gevondenDoenkers: Doenker[] = (vData ?? []).filter((v: any) => {
+        if (v.voornaam === "Alle doenkers" && v.achternaam === "Waaranders") return false;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const codes: string[] = (v.vrijwilliger_roles ?? []).map((r: any) => r.roles?.code);
+        return codes.includes("doenker") || codes.includes("admin");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }).map((v: any) => ({ id: v.id, voornaam: v.voornaam, achternaam: v.achternaam }));
+
+      setDoenkers(gevondenDoenkers);
       setLoading(false);
     };
 
@@ -72,6 +98,7 @@ export default function NieuweKlantPage() {
     setError(null);
     const naamNorm = normalizeNaam(naam);
     if (!naamNorm) { setError("Naam is verplicht."); return; }
+    if (!aanspreekpuntId) { setError("Aanspreekpunt is verplicht."); return; }
 
     setBusy(true);
 
@@ -84,6 +111,7 @@ export default function NieuweKlantPage() {
         contactpersoon_email: contactpersoonEmail.trim() || null,
         adres: adres.trim() || null,
         actief,
+        aanspreekpunt_vrijwilliger_id: aanspreekpuntId,
         gearchiveerd_op: null,
       })
       .select("id")
@@ -130,6 +158,25 @@ export default function NieuweKlantPage() {
             onChange={(e) => setNaam(e.target.value)}
             disabled={busy}
           />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">
+            Aanspreekpunt <span className="text-red-600">*</span>
+          </label>
+          <select
+            className="w-full border rounded-xl p-3"
+            value={aanspreekpuntId}
+            onChange={(e) => setAanspreekpuntId(e.target.value)}
+            disabled={busy}
+          >
+            <option value="">— Kies een doenker —</option>
+            {doenkers.map((d) => (
+              <option key={d.id} value={d.id}>
+                {[d.voornaam, d.achternaam].filter(Boolean).join(" ")}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
