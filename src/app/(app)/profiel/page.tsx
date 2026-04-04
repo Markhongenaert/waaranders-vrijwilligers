@@ -34,6 +34,7 @@ export default function ProfielPage() {
 
   const [werkgroepen, setWerkgroepen] = useState<Werkgroep[]>([]);
   const [selectedWerkgroepIds, setSelectedWerkgroepIds] = useState<Set<string>>(new Set());
+  const [ledenPerWerkgroep, setLedenPerWerkgroep] = useState<Record<string, string[]>>({});
 
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -138,6 +139,35 @@ export default function ProfielPage() {
       }
 
       setSelectedWerkgroepIds(new Set((mine ?? []).map((r: any) => String(r.werkgroep_id))));
+
+      // 4) Leden per werkgroep (alle werkgroepen in één query, enkel actieve vrijwilligers)
+      const { data: leden, error: lErr } = await supabase
+        .from("werkgroep_deelnemers")
+        .select("werkgroep_id, vrijwilligers!inner(voornaam, achternaam, actief)")
+        .eq("vrijwilligers.actief", true);
+
+      if (lErr) {
+        setErr(lErr.message);
+        setLoading(false);
+        return;
+      }
+
+      const ledenMap: Record<string, string[]> = {};
+      for (const r of leden ?? []) {
+        const wid = String(r.werkgroep_id);
+        const vr = (r as any).vrijwilligers;
+        if (!vr) continue;
+        const voornaam = (vr.voornaam ?? "").trim();
+        const achternaam = (vr.achternaam ?? "").trim();
+        if (!voornaam) continue;
+        const label = achternaam
+          ? `${voornaam} ${achternaam.slice(0, 1).toUpperCase()}.`
+          : voornaam;
+        if (!ledenMap[wid]) ledenMap[wid] = [];
+        ledenMap[wid].push(label);
+      }
+      setLedenPerWerkgroep(ledenMap);
+
       setLoading(false);
     };
 
@@ -369,6 +399,13 @@ export default function ProfielPage() {
                       </button>
                     )}
                   </div>
+                  {(ledenPerWerkgroep[id]?.length ?? 0) > 0 && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      {ledenPerWerkgroep[id].length === 1
+                        ? `Doet mee: ${ledenPerWerkgroep[id][0]}`
+                        : `Doen mee: ${ledenPerWerkgroep[id].join(", ")}`}
+                    </p>
+                  )}
                 </div>
               );
             })}
