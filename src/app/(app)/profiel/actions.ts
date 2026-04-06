@@ -198,9 +198,11 @@ export async function schrijfIn(
     .insert({ vrijwilliger_id: user.id, werkgroep_id: werkgroepId });
   if (error) return { ok: false, error: error.message };
 
-  sendInschrijvingMails(user.id, werkgroepId).catch((e) =>
-    console.error("Onverwachte fout bij inschrijving mails:", e)
-  );
+  try {
+    await sendInschrijvingMails(user.id, werkgroepId);
+  } catch (e) {
+    console.error("Onverwachte fout bij inschrijving mails:", e);
+  }
 
   return { ok: true };
 }
@@ -219,9 +221,11 @@ export async function schrijfUit(
     .eq("werkgroep_id", werkgroepId);
   if (error) return { ok: false, error: error.message };
 
-  sendUitschrijvingMails(user.id, werkgroepId).catch((e) =>
-    console.error("Onverwachte fout bij uitschrijving mails:", e)
-  );
+  try {
+    await sendUitschrijvingMails(user.id, werkgroepId);
+  } catch (e) {
+    console.error("Onverwachte fout bij uitschrijving mails:", e);
+  }
 
   return { ok: true };
 }
