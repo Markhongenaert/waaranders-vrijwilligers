@@ -24,10 +24,23 @@ async function haalOntvangers(werkgroepId: string): Promise<{
 
   const { data: wg, error: wgErr } = await supabase
     .from("werkgroepen")
-    .select("titel, trekker")
+    .select("titel, coordinator_id")
     .eq("id", werkgroepId)
     .maybeSingle();
   if (wgErr) return { ontvangers: [], trekker: "", werkgroepTitel: "", error: wgErr.message };
+
+  // Haal coordinatornaam op via coordinator_id
+  let trekkerNaam = "";
+  if (wg?.coordinator_id) {
+    const { data: coord } = await supabase
+      .from("vrijwilligers")
+      .select("voornaam, achternaam")
+      .eq("id", wg.coordinator_id)
+      .maybeSingle();
+    if (coord) {
+      trekkerNaam = `${coord.voornaam ?? ""} ${coord.achternaam ?? ""}`.trim();
+    }
+  }
 
   const { data: wd, error: wdErr } = await supabase
     .from("werkgroep_deelnemers")
@@ -37,7 +50,7 @@ async function haalOntvangers(werkgroepId: string): Promise<{
 
   const vrijwilligerIds = (wd ?? []).map((r) => r.vrijwilliger_id as string).filter(Boolean);
   if (vrijwilligerIds.length === 0) {
-    return { ontvangers: [], trekker: wg?.trekker ?? "", werkgroepTitel: wg?.titel ?? "" };
+    return { ontvangers: [], trekker: trekkerNaam, werkgroepTitel: wg?.titel ?? "" };
   }
 
   const { data: vv, error: vErr } = await supabase
@@ -58,7 +71,7 @@ async function haalOntvangers(werkgroepId: string): Promise<{
     .filter((u) => voornaamByUserId.has(u.id) && !!u.email)
     .map((u) => ({ email: u.email as string, voornaam: voornaamByUserId.get(u.id) ?? "" }));
 
-  return { ontvangers, trekker: wg?.trekker ?? "", werkgroepTitel: wg?.titel ?? "" };
+  return { ontvangers, trekker: trekkerNaam, werkgroepTitel: wg?.titel ?? "" };
 }
 
 export async function stuurMailNaarWerkgroep(

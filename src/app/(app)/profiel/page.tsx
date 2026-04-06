@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { schrijfIn, schrijfUit } from "./actions";
 
 type Vrijwilliger = {
   id: string;
@@ -175,28 +176,25 @@ export default function ProfielPage() {
   }, []);
 
   async function toggleWerkgroep(id: string) {
-    const { data: sessionRes } = await supabase.auth.getSession();
-    const user = sessionRes.session?.user;
-    if (!user) return;
+    const isLid = selectedWerkgroepIds.has(id);
 
-    if (selectedWerkgroepIds.has(id)) {
-      const { error } = await supabase
-        .from("werkgroep_deelnemers")
-        .delete()
-        .eq("vrijwilliger_id", user.id)
-        .eq("werkgroep_id", id);
-      if (error) { setErr(error.message); return; }
+    // Optimistische update
+    setSelectedWerkgroepIds((prev) => {
+      const next = new Set(prev);
+      if (isLid) next.delete(id); else next.add(id);
+      return next;
+    });
+
+    const result = isLid ? await schrijfUit(id) : await schrijfIn(id);
+
+    if (!result.ok) {
+      // Terugdraaien bij fout
       setSelectedWerkgroepIds((prev) => {
         const next = new Set(prev);
-        next.delete(id);
+        if (isLid) next.add(id); else next.delete(id);
         return next;
       });
-    } else {
-      const { error } = await supabase
-        .from("werkgroep_deelnemers")
-        .insert({ vrijwilliger_id: user.id, werkgroep_id: id });
-      if (error) { setErr(error.message); return; }
-      setSelectedWerkgroepIds((prev) => new Set([...prev, id]));
+      setErr(result.error ?? "Fout bij in-/uitschrijving.");
     }
   }
 

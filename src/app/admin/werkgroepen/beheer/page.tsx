@@ -9,13 +9,19 @@ type Werkgroep = {
   id: string;
   titel: string;
   opdracht: string | null;
-  trekker: string | null;
+  coordinator_id: string | null;
+};
+
+type Coordinator = {
+  id: string;
+  naam: string;
 };
 
 export default function WerkgroepenBeheerPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [werkgroepen, setWerkgroepen] = useState<Werkgroep[]>([]);
+  const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -23,7 +29,7 @@ export default function WerkgroepenBeheerPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
-  const [trekker, setTrekker] = useState("");
+  const [coordinatorId, setCoordinatorId] = useState("");
   const [uitgebreideInfo, setUitgebreideInfo] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -37,13 +43,44 @@ export default function WerkgroepenBeheerPage() {
     return () => { mounted = false; };
   }, []);
 
+  async function loadCoordinators() {
+    const { data: rolEntries } = await supabase
+      .from("vrijwilliger_roles")
+      .select("vrijwilliger_id, roles(code)");
+
+    const coördinatorIds = [...new Set(
+      (rolEntries ?? [])
+        .filter((r: any) => r.roles?.code === "doenker" || r.roles?.code === "admin")
+        .map((r: any) => r.vrijwilliger_id as string)
+    )];
+
+    if (coördinatorIds.length === 0) {
+      setCoordinators([]);
+      return;
+    }
+
+    const { data: vvs } = await supabase
+      .from("vrijwilligers")
+      .select("id, voornaam, achternaam")
+      .in("id", coördinatorIds)
+      .eq("actief", true)
+      .order("voornaam");
+
+    setCoordinators(
+      (vvs ?? []).map((v: any) => ({
+        id: v.id,
+        naam: `${v.voornaam ?? ""} ${v.achternaam ?? ""}`.trim(),
+      }))
+    );
+  }
+
   async function load() {
     setLoading(true);
     setErr(null);
     try {
       const { data, error } = await supabase
         .from("werkgroepen")
-        .select("id, titel, opdracht, trekker")
+        .select("id, titel, opdracht, coordinator_id")
         .order("titel", { ascending: true });
       if (error) throw error;
       setWerkgroepen((data ?? []) as Werkgroep[]);
@@ -57,12 +94,13 @@ export default function WerkgroepenBeheerPage() {
   useEffect(() => {
     if (allowed !== true) return;
     load();
+    loadCoordinators();
   }, [allowed]);
 
   function openNew() {
     setTitel("");
     setOpdracht("");
-    setTrekker("");
+    setCoordinatorId("");
     setUitgebreideInfo("");
     setErr(null);
     setMsg(null);
@@ -71,17 +109,18 @@ export default function WerkgroepenBeheerPage() {
 
   async function saveNew() {
     if (!titel.trim()) { setErr("Titel is verplicht."); return; }
+    if (!coordinatorId) { setErr("Trekker is verplicht."); return; }
     setBusy(true);
     setErr(null);
     try {
       const { error } = await supabase
         .from("werkgroepen")
         .insert({
-            titel: titel.trim(),
-            opdracht: opdracht.trim() || null,
-            trekker: trekker.trim() || null,
-            uitgebreide_info: uitgebreideInfo || null,
-          });
+          titel: titel.trim(),
+          opdracht: opdracht.trim() || null,
+          coordinator_id: coordinatorId,
+          uitgebreide_info: uitgebreideInfo || null,
+        });
       if (error) throw error;
       setMsg("Werkgroep aangemaakt.");
       setFormOpen(false);
@@ -168,13 +207,19 @@ export default function WerkgroepenBeheerPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1">Trekker</label>
-            <input
+            <label className="block font-medium mb-1">
+              Trekker <span className="text-red-600">*</span>
+            </label>
+            <select
               className="w-full border rounded-xl p-3 bg-white"
-              value={trekker}
-              onChange={(e) => setTrekker(e.target.value)}
-              placeholder="Naam van de trekker (optioneel)"
-            />
+              value={coordinatorId}
+              onChange={(e) => setCoordinatorId(e.target.value)}
+            >
+              <option value="">— Kies een trekker —</option>
+              {coordinators.map((c) => (
+                <option key={c.id} value={c.id}>{c.naam}</option>
+              ))}
+            </select>
           </div>
 
           <div>

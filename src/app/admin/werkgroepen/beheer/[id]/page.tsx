@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-type WerkgroepData = {
-  titel: string;
-  opdracht: string | null;
-  trekker: string | null;
-  uitgebreide_info: string | null;
-};
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import RijkeTekstEditor from "@/components/RijkeTekstEditor";
+
+type WerkgroepData = {
+  titel: string;
+  opdracht: string | null;
+  coordinator_id: string | null;
+  uitgebreide_info: string | null;
+};
+
+type Coordinator = {
+  id: string;
+  naam: string;
+};
 
 export default function WerkgroepBewerkPage() {
   const params = useParams<{ id: string }>();
@@ -24,7 +29,8 @@ export default function WerkgroepBewerkPage() {
 
   const [titel, setTitel] = useState("");
   const [opdracht, setOpdracht] = useState("");
-  const [trekker, setTrekker] = useState("");
+  const [coordinatorId, setCoordinatorId] = useState("");
+  const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
   const [uitgebreideInfo, setUitgebreideInfo] = useState("");
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -39,6 +45,37 @@ export default function WerkgroepBewerkPage() {
     return () => { mounted = false; };
   }, []);
 
+  async function loadCoordinators() {
+    const { data: rolEntries } = await supabase
+      .from("vrijwilliger_roles")
+      .select("vrijwilliger_id, roles(code)");
+
+    const coördinatorIds = [...new Set(
+      (rolEntries ?? [])
+        .filter((r: any) => r.roles?.code === "doenker" || r.roles?.code === "admin")
+        .map((r: any) => r.vrijwilliger_id as string)
+    )];
+
+    if (coördinatorIds.length === 0) {
+      setCoordinators([]);
+      return;
+    }
+
+    const { data: vvs } = await supabase
+      .from("vrijwilligers")
+      .select("id, voornaam, achternaam")
+      .in("id", coördinatorIds)
+      .eq("actief", true)
+      .order("voornaam");
+
+    setCoordinators(
+      (vvs ?? []).map((v: any) => ({
+        id: v.id,
+        naam: `${v.voornaam ?? ""} ${v.achternaam ?? ""}`.trim(),
+      }))
+    );
+  }
+
   useEffect(() => {
     if (allowed !== true || !id) return;
     let mounted = true;
@@ -46,18 +83,23 @@ export default function WerkgroepBewerkPage() {
       setLoading(true);
       setErr(null);
       try {
-        const { data, error } = await supabase
-          .from("werkgroepen")
-          .select("id, titel, opdracht, trekker, uitgebreide_info")
-          .eq("id", id)
-          .maybeSingle();
+        const [wgResult] = await Promise.all([
+          supabase
+            .from("werkgroepen")
+            .select("id, titel, opdracht, coordinator_id, uitgebreide_info")
+            .eq("id", id)
+            .maybeSingle(),
+          loadCoordinators(),
+        ]);
+
+        const { data, error } = wgResult;
         if (error) throw error;
         if (!data) throw new Error("Werkgroep niet gevonden.");
         if (!mounted) return;
         const d = data as unknown as WerkgroepData;
         setTitel(d.titel ?? "");
         setOpdracht(d.opdracht ?? "");
-        setTrekker(d.trekker ?? "");
+        setCoordinatorId(d.coordinator_id ?? "");
         setUitgebreideInfo(d.uitgebreide_info ?? "");
       } catch (e: any) {
         if (!mounted) return;
@@ -81,6 +123,7 @@ export default function WerkgroepBewerkPage() {
 
   async function save() {
     if (!titel.trim()) { setErr("Titel is verplicht."); return; }
+    if (!coordinatorId) { setErr("Trekker is verplicht."); return; }
     setBusy(true);
     setErr(null);
     setMsg(null);
@@ -90,7 +133,7 @@ export default function WerkgroepBewerkPage() {
         .update({
           titel: titel.trim(),
           opdracht: opdracht.trim() || null,
-          trekker: trekker.trim() || null,
+          coordinator_id: coordinatorId,
           uitgebreide_info: uitgebreideInfo || null,
         })
         .eq("id", id);
@@ -142,13 +185,19 @@ export default function WerkgroepBewerkPage() {
           </div>
 
           <div>
-            <label className="block font-medium mb-1">Trekker</label>
-            <input
+            <label className="block font-medium mb-1">
+              Trekker <span className="text-red-600">*</span>
+            </label>
+            <select
               className="w-full border rounded-xl p-3 bg-white"
-              value={trekker}
-              onChange={(e) => setTrekker(e.target.value)}
-              placeholder="Naam van de trekker (optioneel)"
-            />
+              value={coordinatorId}
+              onChange={(e) => setCoordinatorId(e.target.value)}
+            >
+              <option value="">— Kies een trekker —</option>
+              {coordinators.map((c) => (
+                <option key={c.id} value={c.id}>{c.naam}</option>
+              ))}
+            </select>
           </div>
 
           <div>
