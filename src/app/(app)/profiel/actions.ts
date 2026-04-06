@@ -101,7 +101,7 @@ async function sendInschrijvingMails(
         replyTo: REPLY_TO,
         to: vrEmail,
         subject: `Welkom bij ${wgTitel}`,
-        text: `Beste ${vrVoornaam},\n\nJe bent ingeschreven voor de werkgroep ${wgTitel} bij Waaranders. We verwelkomen je van harte!\n\nMet vriendelijke groeten,\n${coordinatorNaam}`,
+        text: `Beste ${vrVoornaam},\n\nJe bent ingeschreven voor de werkgroep ${wgTitel} bij Waaranders. Hartelijk welkom!\n\nMet Waaranderse groeten,\n${coordinatorVoornaam || coordinatorNaam}`,
       }).catch((e) => console.error("Fout bij mail 1 (inschrijving vrijwilliger):", e))
     );
   }
