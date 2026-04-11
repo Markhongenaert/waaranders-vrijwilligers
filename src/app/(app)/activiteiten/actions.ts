@@ -64,7 +64,7 @@ export async function stuurOpmerkingMail(
       replyTo: "info@waaranders.be",
       to: apUser.email,
       subject: `Opmerking bij ${act.titel}`,
-      text: `Beste ${ap.voornaam ?? ""},\n\n${vrijwilligerNaam} ${actie}\n\nMet vriendelijke groeten,\nhet Waaranders-team`,
+      text: `Beste ${ap.voornaam ?? ""},\n\n${vrijwilligerNaam} ${actie}\n\nMet vriendelijke groeten,\nhet Waaranders-team\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
     });
   } catch (e) {
     console.error("Fout bij versturen opmerkingmail:", e);

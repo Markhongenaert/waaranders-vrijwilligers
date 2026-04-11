@@ -70,7 +70,7 @@ export async function stuurMailNaarDeelnemers(
             replyTo: "info@waaranders.be",
             to: email,
             subject: titel,
-            text: `Beste ${voornaam},\n\n${boodschap}\n\nMet vriendelijke groeten,\nhet Waaranders-team`,
+            text: `Beste ${voornaam},\n\n${boodschap}\n\nMet vriendelijke groeten,\nhet Waaranders-team\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
           });
           return true;
         } catch (e) {

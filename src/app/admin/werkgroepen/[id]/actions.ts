@@ -92,7 +92,7 @@ export async function stuurMailNaarWerkgroep(
           replyTo: "info@waaranders.be",
           to: email,
           subject: onderwerp,
-          text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n${trekker}`,
+          text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n${trekker}\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
         })
       )
     );
@@ -153,8 +153,8 @@ export async function maakPrikbordAan(
           replyTo: "info@waaranders.be",
             to: email,
             subject: onderwerp,
-            html: `<p>Beste ${voornaam},</p><p>De trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.</p><p><a href="${link}">Klik hier om je beschikbaarheid in te geven</a></p><p>Met Waaranderse groeten,<br>${trekker}</p>`,
-            text: `Beste ${voornaam},\n\nDe trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.\n\nKlik hier om je beschikbaarheid in te geven:\n${link}\n\nMet Waaranderse groeten,\n${trekker}`,
+            html: `<p>Beste ${voornaam},</p><p>De trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.</p><p><a href="${link}">Klik hier om je beschikbaarheid in te geven</a></p><p>Met Waaranderse groeten,<br>${trekker}</p><p><a href="https://waaranders-vrijwilligers.vercel.app">Ga naar de Waaranders App</a></p>`,
+            text: `Beste ${voornaam},\n\nDe trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.\n\nKlik hier om je beschikbaarheid in te geven:\n${link}\n\nMet Waaranderse groeten,\n${trekker}\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
           })
         )
       );

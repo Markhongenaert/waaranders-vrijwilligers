@@ -101,7 +101,7 @@ async function sendInschrijvingMails(
         replyTo: REPLY_TO,
         to: vrEmail,
         subject: `Welkom bij ${wgTitel}`,
-        text: `Beste ${vrVoornaam},\n\nJe bent ingeschreven voor de werkgroep ${wgTitel} bij Waaranders. Hartelijk welkom!\n\nMet Waaranderse groeten,\n${coordinatorVoornaam || coordinatorNaam}`,
+        text: `Beste ${vrVoornaam},\n\nJe bent ingeschreven voor de werkgroep ${wgTitel} bij Waaranders. Hartelijk welkom!\n\nMet Waaranderse groeten,\n${coordinatorVoornaam || coordinatorNaam}\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
       }).catch((e) => console.error("Fout bij mail 1 (inschrijving vrijwilliger):", e))
     );
   }
@@ -114,7 +114,7 @@ async function sendInschrijvingMails(
         replyTo: REPLY_TO,
         to: coordinatorEmail,
         subject: `Nieuwe inschrijving voor ${wgTitel}`,
-        text: `Beste ${coordinatorVoornaam},\n\n${vrNaam} heeft zich ingeschreven voor de werkgroep ${wgTitel}.\n\nMet vriendelijke groeten,\nHet Waaranders-team`,
+        text: `Beste ${coordinatorVoornaam},\n\n${vrNaam} heeft zich ingeschreven voor de werkgroep ${wgTitel}.\n\nMet vriendelijke groeten,\nHet Waaranders-team\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
       }).catch((e) => console.error("Fout bij mail 2 (inschrijving trekker):", e))
     );
   }
@@ -165,7 +165,7 @@ async function sendUitschrijvingMails(
         replyTo: REPLY_TO,
         to: vrEmail,
         subject: `Je uitschrijving bij ${wgTitel}`,
-        text: `Beste ${vrVoornaam},\n\nJe hebt je uitgeschreven bij de werkgroep ${wgTitel}. Jammer, maar je kan je op elk moment opnieuw inschrijven via je profiel in de app.\n\nMet vriendelijke groeten,\n${coordinatorNaam}`,
+        text: `Beste ${vrVoornaam},\n\nJe hebt je uitgeschreven bij de werkgroep ${wgTitel}. Jammer, maar je kan je op elk moment opnieuw inschrijven via je profiel in de app.\n\nMet vriendelijke groeten,\n${coordinatorNaam}\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
       }).catch((e) => console.error("Fout bij mail 3 (uitschrijving vrijwilliger):", e))
     );
   }
@@ -178,7 +178,7 @@ async function sendUitschrijvingMails(
         replyTo: REPLY_TO,
         to: coordinatorEmail,
         subject: `Uitschrijving bij ${wgTitel}`,
-        text: `Beste ${coordinatorVoornaam},\n\n${vrNaam} heeft zich uitgeschreven bij de werkgroep ${wgTitel}.\n\nMet vriendelijke groeten,\nHet Waaranders-team`,
+        text: `Beste ${coordinatorVoornaam},\n\n${vrNaam} heeft zich uitgeschreven bij de werkgroep ${wgTitel}.\n\nMet vriendelijke groeten,\nHet Waaranders-team\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
       }).catch((e) => console.error("Fout bij mail 4 (uitschrijving trekker):", e))
     );
   }

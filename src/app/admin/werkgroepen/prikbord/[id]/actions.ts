@@ -106,7 +106,7 @@ export async function stuurDefinitieveMail(
           replyTo: "info@waaranders.be",
           to: email,
           subject: onderwerp,
-          text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n${trekker}`,
+          text: `Beste ${voornaam},\n\n${boodschap}\n\nMet Waaranderse groeten,\n${trekker}\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
         })
       )
     );
