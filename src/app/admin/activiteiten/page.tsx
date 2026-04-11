@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
+import { stuurMailNaarDeelnemers } from "./actions";
 
 type Activiteit = {
   id: string;
@@ -16,6 +17,12 @@ type Activiteit = {
   klant_id: string | null;
   klanten: { naam: string } | { naam: string }[] | null;
   herhaling_reeks_id: string | null;
+};
+
+type OpmerkingRow = {
+  activiteit_id: string;
+  opmerking: string;
+  vrijwilligers: { voornaam: string | null; achternaam: string | null } | null;
 };
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
@@ -81,6 +88,17 @@ export default function AdminActiviteitenPage() {
 
   type ReeksModal = { reeksId: string; deleteId: string };
   const [reeksModal, setReeksModal] = useState<ReeksModal | null>(null);
+
+  // Mail modal state
+  type MailModal = { activiteitId: string; titel: string };
+  const [mailModal, setMailModal] = useState<MailModal | null>(null);
+  const [mailBoodschap, setMailBoodschap] = useState("");
+  const [mailBezig, setMailBezig] = useState(false);
+  const [mailResultaat, setMailResultaat] = useState<string | null>(null);
+  const [mailFout, setMailFout] = useState<string | null>(null);
+
+  // Opmerkingen state
+  const [adminOpmerkingen, setAdminOpmerkingen] = useState<Map<string, { naam: string; opmerking: string }[]>>(new Map());
 
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
@@ -155,8 +173,27 @@ export default function AdminActiviteitenPage() {
         map.set(row.activiteit_id, lijst);
       }
       setInschrijvingen(map);
+
+      const { data: opmerkingenData } = await supabase
+        .from("meedoen")
+        .select("activiteit_id, opmerking, vrijwilligers(voornaam, achternaam)")
+        .not("opmerking", "is", null)
+        .in("activiteit_id", ids);
+
+      const opMap = new Map<string, { naam: string; opmerking: string }[]>();
+      for (const row of (opmerkingenData ?? []) as unknown as OpmerkingRow[]) {
+        if (!row.opmerking) continue;
+        const vn = row.vrijwilligers?.voornaam ?? "";
+        const an = row.vrijwilligers?.achternaam ?? "";
+        const naam = `${vn} ${an}`.trim() || "(onbekend)";
+        const lijst = opMap.get(row.activiteit_id) ?? [];
+        lijst.push({ naam, opmerking: row.opmerking });
+        opMap.set(row.activiteit_id, lijst);
+      }
+      setAdminOpmerkingen(opMap);
     } else {
       setInschrijvingen(new Map());
+      setAdminOpmerkingen(new Map());
     }
 
     setLoading(false);
@@ -206,6 +243,32 @@ export default function AdminActiviteitenPage() {
     executeDelete("enkel", a.id, null);
   };
 
+  function openMailModal(a: Activiteit) {
+    setMailBoodschap("");
+    setMailResultaat(null);
+    setMailFout(null);
+    setMailModal({ activiteitId: a.id, titel: a.titel });
+  }
+
+  async function verstuurMail() {
+    if (!mailModal || !mailBoodschap.trim()) return;
+    setMailBezig(true);
+    setMailFout(null);
+    setMailResultaat(null);
+    try {
+      const result = await stuurMailNaarDeelnemers(mailModal.activiteitId, mailBoodschap.trim());
+      if (result.error) {
+        setMailFout(result.error);
+      } else {
+        setMailResultaat(`Mail verstuurd naar ${result.verstuurd} vrijwilliger${result.verstuurd !== 1 ? "s" : ""}.`);
+      }
+    } catch (e: unknown) {
+      setMailFout(e instanceof Error ? e.message : "Fout bij versturen.");
+    } finally {
+      setMailBezig(false);
+    }
+  }
+
   if (loading) return <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">Laden…</main>;
 
   if (!allowed) {
@@ -252,6 +315,54 @@ export default function AdminActiviteitenPage() {
                 Annuleren
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mail modal */}
+      {mailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
+            <h2 className="font-semibold text-lg">Mail versturen naar deelnemers</h2>
+            <p className="text-sm text-gray-600">{mailModal.titel}</p>
+            {mailResultaat ? (
+              <>
+                <div className="wa-alert-success">{mailResultaat}</div>
+                <button
+                  className="wa-btn wa-btn-ghost w-full py-2 text-sm"
+                  onClick={() => setMailModal(null)}
+                >
+                  Sluiten
+                </button>
+              </>
+            ) : (
+              <>
+                {mailFout && <div className="wa-alert-error">{mailFout}</div>}
+                <textarea
+                  className="w-full border rounded-xl px-3 py-2 text-sm min-h-[120px] resize-y"
+                  placeholder="Typ hier je bericht…"
+                  value={mailBoodschap}
+                  onChange={(e) => setMailBoodschap(e.target.value)}
+                  disabled={mailBezig}
+                />
+                <div className="flex gap-2">
+                  <button
+                    className="wa-btn wa-btn-brand flex-1 py-2 text-sm"
+                    onClick={verstuurMail}
+                    disabled={mailBezig || !mailBoodschap.trim()}
+                  >
+                    {mailBezig ? "Versturen…" : "Versturen"}
+                  </button>
+                  <button
+                    className="wa-btn wa-btn-ghost flex-1 py-2 text-sm"
+                    onClick={() => setMailModal(null)}
+                    disabled={mailBezig}
+                  >
+                    Annuleren
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -322,7 +433,33 @@ export default function AdminActiviteitenPage() {
                             );
                           })()}
 
-                          <div className="pt-2 flex gap-2">
+                          {(() => {
+                            const actOpmerkingen = adminOpmerkingen.get(a.id) ?? [];
+                            return actOpmerkingen.length > 0 ? (
+                              <div className="text-sm text-gray-700 space-y-1">
+                                <div className="font-medium text-gray-800">Opmerkingen</div>
+                                {actOpmerkingen.map((o, i) => (
+                                  <div key={i} className="text-sm text-gray-600">
+                                    <span className="font-medium">{o.naam}</span>: {o.opmerking}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null;
+                          })()}
+
+                          <div className="pt-2 flex flex-wrap gap-2">
+                            {(() => {
+                              const namen = inschrijvingen.get(a.id) ?? [];
+                              return namen.length > 0 ? (
+                                <button
+                                  className="wa-btn wa-btn-ghost flex-1 px-4 py-2 text-sm"
+                                  onClick={() => openMailModal(a)}
+                                  disabled={busy}
+                                >
+                                  Mail naar deelnemers
+                                </button>
+                              ) : null;
+                            })()}
                             <button
                               className="wa-btn wa-btn-ghost flex-1 px-4 py-2 text-sm"
                               onClick={() => router.push(`/admin/activiteiten/${a.id}`)}

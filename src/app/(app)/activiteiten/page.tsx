@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { stuurOpmerkingMail } from "./actions";
 
 type Activiteit = {
   id: string;
@@ -17,6 +18,11 @@ type MeedoenMetNaamRow = {
   activiteit_id: string;
   vrijwilliger_id: string; // = auth.uid()
   naam: string | null;
+};
+
+type MijnMeedoenRow = {
+  activiteit_id: string;
+  opmerking: string | null;
 };
 
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
@@ -215,6 +221,16 @@ export default function ActiviteitenPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [mijnNaam, setMijnNaam] = useState<string>("");
+  const [opmerkingen, setOpmerkingen] = useState<Map<string, string | null>>(new Map());
+
+  // Opmerking modal state
+  type OpmerkingModal = { activiteitId: string; activiteitTitel: string };
+  const [opmerkingModal, setOpmerkingModal] = useState<OpmerkingModal | null>(null);
+  const [opmerkingTekst, setOpmerkingTekst] = useState("");
+  const [opmerkingBezig, setOpmerkingBezig] = useState(false);
+  const [opmerkingFout, setOpmerkingFout] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState<"lijst" | "kalender">("lijst");
   const [scrollToId, setScrollToId] = useState<string | null>(null);
 
@@ -366,6 +382,28 @@ export default function ActiviteitenPage() {
     }
 
     setMeedoen((md ?? []) as MeedoenMetNaamRow[]);
+
+    // Naam van de ingelogde vrijwilliger
+    const { data: vNaam } = await supabase
+      .from("vrijwilligers")
+      .select("voornaam, achternaam")
+      .eq("id", user.id)
+      .maybeSingle();
+    setMijnNaam(`${vNaam?.voornaam ?? ""} ${vNaam?.achternaam ?? ""}`.trim());
+
+    // Opmerkingen van de ingelogde vrijwilliger
+    const { data: mijnMeedoen } = await supabase
+      .from("meedoen")
+      .select("activiteit_id, opmerking")
+      .eq("vrijwilliger_id", user.id)
+      .in("activiteit_id", ids);
+
+    const opMap = new Map<string, string | null>();
+    for (const row of (mijnMeedoen ?? []) as MijnMeedoenRow[]) {
+      opMap.set(row.activiteit_id, row.opmerking);
+    }
+    setOpmerkingen(opMap);
+
     setLoading(false);
   };
 
@@ -426,8 +464,118 @@ export default function ActiviteitenPage() {
     setBusyId(null);
   };
 
+  function openOpmerkingModal(a: Activiteit) {
+    setOpmerkingTekst(opmerkingen.get(a.id) ?? "");
+    setOpmerkingFout(null);
+    setOpmerkingModal({ activiteitId: a.id, activiteitTitel: a.titel });
+  }
+
+  async function slaOpmerkingOp() {
+    if (!opmerkingModal || !myId) return;
+    const { activiteitId } = opmerkingModal;
+    const tekst = opmerkingTekst.trim() || null;
+
+    setOpmerkingBezig(true);
+    setOpmerkingFout(null);
+
+    const { error } = await supabase
+      .from("meedoen")
+      .update({ opmerking: tekst })
+      .eq("activiteit_id", activiteitId)
+      .eq("vrijwilliger_id", myId);
+
+    if (error) {
+      setOpmerkingFout(error.message);
+      setOpmerkingBezig(false);
+      return;
+    }
+
+    const wasUpdate = !!(opmerkingen.get(activiteitId));
+    setOpmerkingen((prev) => new Map(prev).set(activiteitId, tekst));
+    setOpmerkingModal(null);
+    setOpmerkingBezig(false);
+
+    if (tekst) {
+      stuurOpmerkingMail(activiteitId, mijnNaam, tekst, wasUpdate).catch((e) =>
+        console.error("Opmerkingmail mislukt:", e)
+      );
+    }
+  }
+
+  async function verwijderOpmerking() {
+    if (!opmerkingModal || !myId) return;
+    const { activiteitId } = opmerkingModal;
+
+    setOpmerkingBezig(true);
+    setOpmerkingFout(null);
+
+    const { error } = await supabase
+      .from("meedoen")
+      .update({ opmerking: null })
+      .eq("activiteit_id", activiteitId)
+      .eq("vrijwilliger_id", myId);
+
+    if (error) {
+      setOpmerkingFout(error.message);
+      setOpmerkingBezig(false);
+      return;
+    }
+
+    setOpmerkingen((prev) => {
+      const next = new Map(prev);
+      next.set(activiteitId, null);
+      return next;
+    });
+    setOpmerkingModal(null);
+    setOpmerkingBezig(false);
+  }
+
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
+    <>
+      {/* Opmerking modal */}
+      {opmerkingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
+            <h2 className="font-semibold text-lg">Opmerking</h2>
+            <p className="text-sm text-gray-600">{opmerkingModal.activiteitTitel}</p>
+            {opmerkingFout && <div className="wa-alert-error">{opmerkingFout}</div>}
+            <textarea
+              className="w-full border rounded-xl px-3 py-2 text-sm min-h-[100px] resize-y"
+              placeholder="Typ hier je opmerking…"
+              value={opmerkingTekst}
+              onChange={(e) => setOpmerkingTekst(e.target.value)}
+              disabled={opmerkingBezig}
+            />
+            <div className="flex flex-col gap-2">
+              <button
+                className="wa-btn wa-btn-brand py-2 text-sm"
+                onClick={slaOpmerkingOp}
+                disabled={opmerkingBezig || !opmerkingTekst.trim()}
+              >
+                {opmerkingBezig ? "Bezig…" : "Opslaan"}
+              </button>
+              {opmerkingen.get(opmerkingModal.activiteitId) && (
+                <button
+                  className="wa-btn-danger py-2 text-sm"
+                  onClick={verwijderOpmerking}
+                  disabled={opmerkingBezig}
+                >
+                  Verwijderen
+                </button>
+              )}
+              <button
+                className="wa-btn wa-btn-ghost py-2 text-sm"
+                onClick={() => setOpmerkingModal(null)}
+                disabled={opmerkingBezig}
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
       {/* Tabbladen */}
       <div className="flex border-b border-gray-200 mb-6">
         {(["lijst", "kalender"] as const).map((tab) => (
@@ -518,9 +666,17 @@ export default function ActiviteitenPage() {
                           </div>
 
                           {isIn && (
-                            <span className="wa-active-badge px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
-                              Jij doet mee
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="wa-active-badge px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
+                                Jij doet mee
+                              </span>
+                              <button
+                                className="text-xs text-blue-700 hover:underline"
+                                onClick={() => openOpmerkingModal(a)}
+                              >
+                                {opmerkingen.get(a.id) ? "✎ Jouw opmerking" : "＋ Opmerking toevoegen"}
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -592,6 +748,6 @@ export default function ActiviteitenPage() {
           ))}
         </div>
       )}
-    </main>
+    </main></>
   );
 }
