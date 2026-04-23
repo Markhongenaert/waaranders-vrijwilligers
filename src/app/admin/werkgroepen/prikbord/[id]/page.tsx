@@ -328,16 +328,26 @@ export default function PrikbordBeheerPage() {
                     Gepersonaliseerde begroeting en afsluiting worden automatisch toegevoegd.
                   </p>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => setMailModalOpen(false)} className="wa-btn wa-btn-ghost" disabled={mailBezig}>
-                    Annuleren
-                  </button>
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={verstuurDefinitieveMail}
-                    className="wa-btn wa-btn-brand"
+                    className="wa-btn wa-btn-brand flex-1"
                     disabled={mailBezig || !mailBoodschap.trim()}
                   >
-                    {mailBezig ? "Versturen…" : "Versturen"}
+                    {mailBezig ? "Versturen…" : "Verstuur via e-mail"}
+                  </button>
+                  <a
+                    className="wa-btn wa-btn-whatsapp flex-1 py-2 text-sm text-center"
+                    href={`https://wa.me/?text=${encodeURIComponent(mailBoodschap)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-disabled={!mailBoodschap.trim()}
+                    onClick={(e) => { if (!mailBoodschap.trim()) e.preventDefault(); }}
+                  >
+                    Verstuur via WhatsApp
+                  </a>
+                  <button onClick={() => setMailModalOpen(false)} className="wa-btn wa-btn-ghost w-full" disabled={mailBezig}>
+                    Annuleren
                   </button>
                 </div>
               </>

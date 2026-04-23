@@ -345,16 +345,26 @@ export default function AdminActiviteitenPage() {
                   onChange={(e) => setMailBoodschap(e.target.value)}
                   disabled={mailBezig}
                 />
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button
                     className="wa-btn wa-btn-brand flex-1 py-2 text-sm"
                     onClick={verstuurMail}
                     disabled={mailBezig || !mailBoodschap.trim()}
                   >
-                    {mailBezig ? "Versturen…" : "Versturen"}
+                    {mailBezig ? "Versturen…" : "Verstuur via e-mail"}
                   </button>
+                  <a
+                    className="wa-btn wa-btn-whatsapp flex-1 py-2 text-sm text-center"
+                    href={`https://wa.me/?text=${encodeURIComponent(mailBoodschap)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-disabled={!mailBoodschap.trim()}
+                    onClick={(e) => { if (!mailBoodschap.trim()) e.preventDefault(); }}
+                  >
+                    Verstuur via WhatsApp
+                  </a>
                   <button
-                    className="wa-btn wa-btn-ghost flex-1 py-2 text-sm"
+                    className="wa-btn wa-btn-ghost w-full py-2 text-sm"
                     onClick={() => setMailModal(null)}
                     disabled={mailBezig}
                   >

@@ -429,12 +429,22 @@ export default function WerkgroepDetailPage() {
                     Geef enkel de tekst zelf. Gepersonaliseerde begroeting en afsluiting van de mail worden automatisch aangemaakt.
                   </p>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => setModalOpen(false)} className="wa-btn wa-btn-ghost" disabled={mailBezig}>
-                    Annuleren
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={verstuurMail} className="wa-btn wa-btn-brand flex-1" disabled={mailBezig || !mailBoodschap.trim()}>
+                    {mailBezig ? "Versturen…" : "Verstuur via e-mail"}
                   </button>
-                  <button onClick={verstuurMail} className="wa-btn wa-btn-brand" disabled={mailBezig || !mailBoodschap.trim()}>
-                    {mailBezig ? "Versturen…" : "Versturen"}
+                  <a
+                    className="wa-btn wa-btn-whatsapp flex-1 py-2 text-sm text-center"
+                    href={`https://wa.me/?text=${encodeURIComponent(mailBoodschap)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-disabled={!mailBoodschap.trim()}
+                    onClick={(e) => { if (!mailBoodschap.trim()) e.preventDefault(); }}
+                  >
+                    Verstuur via WhatsApp
+                  </a>
+                  <button onClick={() => setModalOpen(false)} className="wa-btn wa-btn-ghost w-full" disabled={mailBezig}>
+                    Annuleren
                   </button>
                 </div>
               </>

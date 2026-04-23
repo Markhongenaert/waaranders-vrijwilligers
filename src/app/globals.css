@@ -83,6 +83,10 @@ body {
   .wa-btn-success {
     @apply border border-green-400 text-green-700 bg-white hover:bg-green-50 rounded-xl font-medium transition;
   }
+  .wa-btn-whatsapp {
+    background-color: #25D366;
+    @apply text-white hover:opacity-90 rounded-xl font-medium transition disabled:opacity-60;
+  }
 
   /* Werkgroep-kaders (profiel) */
   .wa-werkgroep-lid {
