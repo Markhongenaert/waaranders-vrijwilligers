@@ -101,6 +101,10 @@ export default function AppHeader() {
             Activiteiten
           </a>
 
+          <a href="/ezelwandelingen" className="wa-btn wa-btn-brand px-4 py-2 text-sm font-semibold">
+            Ezelwandelingen
+          </a>
+
           <a href="/profiel" className="wa-btn wa-btn-brand px-4 py-2 text-sm font-semibold">
             Profiel
           </a>
