@@ -442,7 +442,7 @@ export default function EzelwandelingenPage() {
       <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
         <h1 className="text-2xl font-bold mb-2">Ezelwandelingen</h1>
         <p className="text-gray-600 mb-6 text-sm">
-          Hieronder vind je alle geplande ezelwandelingen. Schrijf je in en vergeet je laarzen niet!
+          Hieronder vind je alle geplande ezelwandelingen. Schrijf je in en vergeet je goeie schoenen niet!
           Vertrekpunt is altijd de weide op Waaranders.
         </p>
 
@@ -473,11 +473,7 @@ export default function EzelwandelingenPage() {
         {loading ? (
           <p>Laden…</p>
         ) : activeTab === "kalender" ? (
-          items.length === 0 ? (
-            <p className="text-gray-700">Geen toekomstige ezelwandelingen.</p>
-          ) : (
-            <Kalender items={items} onBadgeClick={handleBadgeClick} />
-          )
+          <Kalender items={items} onBadgeClick={handleBadgeClick} />
         ) : items.length === 0 ? (
           <p className="text-gray-700">Geen toekomstige ezelwandelingen.</p>
         ) : (
