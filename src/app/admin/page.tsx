@@ -3,6 +3,7 @@
 export default function AdminPage() {
   const tiles = [
     { title: "Activiteiten", href: "/admin/activiteiten" },
+    { title: "Ezelwandelingen", href: "/admin/ezelwandelingen" },
     { title: "Klanten", href: "/admin/klanten" },
     { title: "Vrijwilligers", href: "/admin/vrijwilligers" },
     { title: "Werkgroepen", href: "/admin/werkgroepen" },
