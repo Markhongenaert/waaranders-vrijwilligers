@@ -9,7 +9,7 @@ type Ezelwandeling = {
   wanneer: string;
   startuur: string | null;
   einduur: string | null;
-  toelichting: string | null;
+  omschrijving: string | null;
 };
 
 type Deelnemer = {
@@ -136,7 +136,7 @@ export default function EzelwandelingenPage() {
 
     const { data: wandelingen, error: e1 } = await supabase
       .from("ezelwandelingen")
-      .select("id,titel,wanneer,startuur,einduur,toelichting")
+      .select("id,titel,wanneer,startuur,einduur,omschrijving")
       .gte("wanneer", todayISODate())
       .order("wanneer", { ascending: true })
       .order("startuur", { ascending: true });
@@ -358,9 +358,9 @@ export default function EzelwandelingenPage() {
                             )}
                           </div>
 
-                          {w.toelichting && (
+                          {w.omschrijving && (
                             <div className="text-sm text-gray-700 whitespace-pre-line break-words">
-                              {w.toelichting}
+                              {w.omschrijving}
                             </div>
                           )}
 
