@@ -13,7 +13,7 @@ type Ezelwandeling = {
 };
 
 type Deelnemer = {
-  ezelwandeling_id: string;
+  wandeling_id: string;
   vrijwilliger_id: string;
   opmerking: string | null;
 };
@@ -215,9 +215,9 @@ export default function EzelwandelingenPage() {
   const deelnemersByWandeling = useMemo(() => {
     const map = new Map<string, { vrijwilligerIds: Set<string>; voornamen: string[] }>();
     for (const d of deelnemers) {
-      if (!map.has(d.ezelwandeling_id))
-        map.set(d.ezelwandeling_id, { vrijwilligerIds: new Set(), voornamen: [] });
-      const entry = map.get(d.ezelwandeling_id)!;
+      if (!map.has(d.wandeling_id))
+        map.set(d.wandeling_id, { vrijwilligerIds: new Set(), voornamen: [] });
+      const entry = map.get(d.wandeling_id)!;
       entry.vrijwilligerIds.add(d.vrijwilliger_id);
       const naam = voornaamById.get(d.vrijwilliger_id)?.trim();
       if (naam) entry.voornamen.push(naam);
@@ -230,7 +230,7 @@ export default function EzelwandelingenPage() {
     myId ? (deelnemersByWandeling.get(id)?.vrijwilligerIds.has(myId) ?? false) : false;
 
   const getMijnOpmerking = (id: string) =>
-    deelnemers.find((d) => d.ezelwandeling_id === id && d.vrijwilliger_id === myId)?.opmerking ?? null;
+    deelnemers.find((d) => d.wandeling_id === id && d.vrijwilliger_id === myId)?.opmerking ?? null;
 
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) =>
@@ -293,8 +293,8 @@ export default function EzelwandelingenPage() {
 
     const { data: dl, error: e2 } = await supabase
       .from("ezelwandeling_deelnemers")
-      .select("ezelwandeling_id,vrijwilliger_id,opmerking")
-      .in("ezelwandeling_id", ids);
+      .select("wandeling_id,vrijwilliger_id,opmerking")
+      .in("wandeling_id", ids);
 
     if (e2) { setError(e2.message); setLoading(false); return; }
 
@@ -342,14 +342,14 @@ export default function EzelwandelingenPage() {
     setModalFout(null);
 
     const { error } = await supabase.from("ezelwandeling_deelnemers").insert({
-      ezelwandeling_id: wandelingId,
+      wandeling_id: wandelingId,
       vrijwilliger_id: myId,
       opmerking,
     });
 
     if (error) { setModalFout(error.message); setModalBezig(false); return; }
 
-    setDeelnemers((prev) => [...prev, { ezelwandeling_id: wandelingId, vrijwilliger_id: myId, opmerking }]);
+    setDeelnemers((prev) => [...prev, { wandeling_id: wandelingId, vrijwilliger_id: myId, opmerking }]);
     setVoornaamById((prev) => {
       if (prev.has(myId)) return prev;
       return new Map(prev).set(myId, mijnVoornaam);
@@ -369,14 +369,14 @@ export default function EzelwandelingenPage() {
     const { error } = await supabase
       .from("ezelwandeling_deelnemers")
       .update({ opmerking })
-      .eq("ezelwandeling_id", wandelingId)
+      .eq("wandeling_id", wandelingId)
       .eq("vrijwilliger_id", myId);
 
     if (error) { setModalFout(error.message); setModalBezig(false); return; }
 
     setDeelnemers((prev) =>
       prev.map((d) =>
-        d.ezelwandeling_id === wandelingId && d.vrijwilliger_id === myId ? { ...d, opmerking } : d
+        d.wandeling_id === wandelingId && d.vrijwilliger_id === myId ? { ...d, opmerking } : d
       )
     );
     setModal(null);
@@ -391,13 +391,13 @@ export default function EzelwandelingenPage() {
     const { error } = await supabase
       .from("ezelwandeling_deelnemers")
       .delete()
-      .eq("ezelwandeling_id", wandelingId)
+      .eq("wandeling_id", wandelingId)
       .eq("vrijwilliger_id", myId);
 
     if (error) { setError(error.message); setBusyId(null); return; }
 
     setDeelnemers((prev) =>
-      prev.filter((d) => !(d.ezelwandeling_id === wandelingId && d.vrijwilliger_id === myId))
+      prev.filter((d) => !(d.wandeling_id === wandelingId && d.vrijwilliger_id === myId))
     );
     setBusyId(null);
   }

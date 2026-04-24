@@ -15,7 +15,7 @@ type Ezelwandeling = {
 };
 
 type Deelnemer = {
-  ezelwandeling_id: string;
+  wandeling_id: string;
   vrijwilliger_id: string;
   opmerking: string | null;
 };
@@ -118,9 +118,9 @@ export default function AdminEzelwandelingenPage() {
   const deelnemersByWandeling = useMemo(() => {
     const map = new Map<string, Deelnemer[]>();
     for (const d of deelnemers) {
-      const lijst = map.get(d.ezelwandeling_id) ?? [];
+      const lijst = map.get(d.wandeling_id) ?? [];
       lijst.push(d);
-      map.set(d.ezelwandeling_id, lijst);
+      map.set(d.wandeling_id, lijst);
     }
     return map;
   }, [deelnemers]);
@@ -154,8 +154,8 @@ export default function AdminEzelwandelingenPage() {
 
     const { data: dl, error: e2 } = await supabase
       .from("ezelwandeling_deelnemers")
-      .select("ezelwandeling_id,vrijwilliger_id,opmerking")
-      .in("ezelwandeling_id", ids);
+      .select("wandeling_id,vrijwilliger_id,opmerking")
+      .in("wandeling_id", ids);
 
     if (e2) { setError(e2.message); setLoading(false); return; }
 

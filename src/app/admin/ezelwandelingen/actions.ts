@@ -29,7 +29,7 @@ export async function stuurMailNaarDeelnemers(
     const { data: deelnemerRows, error: dErr } = await supabase
       .from("ezelwandeling_deelnemers")
       .select("vrijwilliger_id")
-      .eq("ezelwandeling_id", wandelingId);
+      .eq("wandeling_id", wandelingId);
     if (dErr) return { verstuurd: 0, error: dErr.message };
 
     const vrijwilligerIds = (deelnemerRows ?? [])
