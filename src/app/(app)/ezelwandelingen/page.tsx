@@ -531,7 +531,7 @@ export default function EzelwandelingenPage() {
                             {isIn && (
                               <div className="flex flex-col items-end gap-1">
                                 <span className="wa-active-badge px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
-                                  Jij doet mee
+                                  Jij wandelt mee
                                 </span>
                                 <button
                                   className="text-xs text-blue-700 hover:underline"
