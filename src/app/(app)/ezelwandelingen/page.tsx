@@ -112,20 +112,14 @@ function Kalender({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="wa-btn wa-btn-ghost px-4 py-1 text-xl leading-none">
-          ‹
-        </button>
+        <button onClick={prevMonth} className="wa-btn wa-btn-ghost px-4 py-1 text-xl leading-none">‹</button>
         <span className="font-semibold text-base sm:text-lg">{calMonthLabel(year, month)}</span>
-        <button onClick={nextMonth} className="wa-btn wa-btn-ghost px-4 py-1 text-xl leading-none">
-          ›
-        </button>
+        <button onClick={nextMonth} className="wa-btn wa-btn-ghost px-4 py-1 text-xl leading-none">›</button>
       </div>
 
       <div className="grid grid-cols-7 mb-1">
         {WEEKDAY_SHORT.map((d) => (
-          <div key={d} className="text-center text-xs font-semibold text-gray-500 py-1">
-            {d}
-          </div>
+          <div key={d} className="text-center text-xs font-semibold text-gray-500 py-1">{d}</div>
         ))}
       </div>
 
@@ -140,10 +134,7 @@ function Kalender({
           return (
             <div
               key={i}
-              className={[
-                "min-h-[60px] sm:min-h-[80px] p-1",
-                isInMonth ? "bg-white" : "bg-gray-50",
-              ].join(" ")}
+              className={["min-h-[60px] sm:min-h-[80px] p-1", isInMonth ? "bg-white" : "bg-gray-50"].join(" ")}
             >
               {isInMonth && (
                 <>
@@ -191,11 +182,12 @@ export default function EzelwandelingenPage() {
   const [activeTab, setActiveTab] = useState<"lijst" | "kalender">("lijst");
   const [scrollToId, setScrollToId] = useState<string | null>(null);
 
-  type Modal = { wandelingId: string; wandelingTitel: string; mode: "inschrijven" | "wijzigen" };
-  const [modal, setModal] = useState<Modal | null>(null);
-  const [modalOpmerking, setModalOpmerking] = useState("");
-  const [modalBezig, setModalBezig] = useState(false);
-  const [modalFout, setModalFout] = useState<string | null>(null);
+  // Opmerking modal
+  type OpmerkingModal = { wandelingId: string; wandelingTitel: string };
+  const [opmerkingModal, setOpmerkingModal] = useState<OpmerkingModal | null>(null);
+  const [opmerkingTekst, setOpmerkingTekst] = useState("");
+  const [opmerkingBezig, setOpmerkingBezig] = useState(false);
+  const [opmerkingFout, setOpmerkingFout] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab === "lijst" && scrollToId) {
@@ -321,69 +313,27 @@ export default function EzelwandelingenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function openInschrijfModal(w: Ezelwandeling) {
-    setModalOpmerking("");
-    setModalFout(null);
-    setModal({ wandelingId: w.id, wandelingTitel: w.titel, mode: "inschrijven" });
-  }
-
-  function openWijzigModal(w: Ezelwandeling) {
-    setModalOpmerking(getMijnOpmerking(w.id) ?? "");
-    setModalFout(null);
-    setModal({ wandelingId: w.id, wandelingTitel: w.titel, mode: "wijzigen" });
-  }
-
-  async function bevestigInschrijving() {
-    if (!modal || !myId) return;
-    const { wandelingId } = modal;
-    const opmerking = modalOpmerking.trim() || null;
-
-    setModalBezig(true);
-    setModalFout(null);
+  const inschrijven = async (wandelingId: string) => {
+    if (!myId) return;
+    setBusyId(wandelingId);
+    setError(null);
 
     const { error } = await supabase.from("ezelwandeling_deelnemers").insert({
       wandeling_id: wandelingId,
       vrijwilliger_id: myId,
-      opmerking,
     });
 
-    if (error) { setModalFout(error.message); setModalBezig(false); return; }
+    if (error) { setError(error.message); setBusyId(null); return; }
 
-    setDeelnemers((prev) => [...prev, { wandeling_id: wandelingId, vrijwilliger_id: myId, opmerking }]);
+    setDeelnemers((prev) => [...prev, { wandeling_id: wandelingId, vrijwilliger_id: myId, opmerking: null }]);
     setVoornaamById((prev) => {
       if (prev.has(myId)) return prev;
       return new Map(prev).set(myId, mijnVoornaam);
     });
-    setModal(null);
-    setModalBezig(false);
-  }
+    setBusyId(null);
+  };
 
-  async function bevestigWijziging() {
-    if (!modal || !myId) return;
-    const { wandelingId } = modal;
-    const opmerking = modalOpmerking.trim() || null;
-
-    setModalBezig(true);
-    setModalFout(null);
-
-    const { error } = await supabase
-      .from("ezelwandeling_deelnemers")
-      .update({ opmerking })
-      .eq("wandeling_id", wandelingId)
-      .eq("vrijwilliger_id", myId);
-
-    if (error) { setModalFout(error.message); setModalBezig(false); return; }
-
-    setDeelnemers((prev) =>
-      prev.map((d) =>
-        d.wandeling_id === wandelingId && d.vrijwilliger_id === myId ? { ...d, opmerking } : d
-      )
-    );
-    setModal(null);
-    setModalBezig(false);
-  }
-
-  async function uitschrijven(wandelingId: string) {
+  const uitschrijven = async (wandelingId: string) => {
     if (!myId) return;
     setBusyId(wandelingId);
     setError(null);
@@ -400,37 +350,100 @@ export default function EzelwandelingenPage() {
       prev.filter((d) => !(d.wandeling_id === wandelingId && d.vrijwilliger_id === myId))
     );
     setBusyId(null);
+  };
+
+  function openOpmerkingModal(w: Ezelwandeling) {
+    setOpmerkingTekst(getMijnOpmerking(w.id) ?? "");
+    setOpmerkingFout(null);
+    setOpmerkingModal({ wandelingId: w.id, wandelingTitel: w.titel });
+  }
+
+  async function slaOpmerkingOp() {
+    if (!opmerkingModal || !myId) return;
+    const { wandelingId } = opmerkingModal;
+    const tekst = opmerkingTekst.trim() || null;
+
+    setOpmerkingBezig(true);
+    setOpmerkingFout(null);
+
+    const { error } = await supabase
+      .from("ezelwandeling_deelnemers")
+      .update({ opmerking: tekst })
+      .eq("wandeling_id", wandelingId)
+      .eq("vrijwilliger_id", myId);
+
+    if (error) { setOpmerkingFout(error.message); setOpmerkingBezig(false); return; }
+
+    setDeelnemers((prev) =>
+      prev.map((d) =>
+        d.wandeling_id === wandelingId && d.vrijwilliger_id === myId ? { ...d, opmerking: tekst } : d
+      )
+    );
+    setOpmerkingModal(null);
+    setOpmerkingBezig(false);
+  }
+
+  async function verwijderOpmerking() {
+    if (!opmerkingModal || !myId) return;
+    const { wandelingId } = opmerkingModal;
+
+    setOpmerkingBezig(true);
+    setOpmerkingFout(null);
+
+    const { error } = await supabase
+      .from("ezelwandeling_deelnemers")
+      .update({ opmerking: null })
+      .eq("wandeling_id", wandelingId)
+      .eq("vrijwilliger_id", myId);
+
+    if (error) { setOpmerkingFout(error.message); setOpmerkingBezig(false); return; }
+
+    setDeelnemers((prev) =>
+      prev.map((d) =>
+        d.wandeling_id === wandelingId && d.vrijwilliger_id === myId ? { ...d, opmerking: null } : d
+      )
+    );
+    setOpmerkingModal(null);
+    setOpmerkingBezig(false);
   }
 
   return (
     <>
-      {modal && (
+      {/* Opmerking modal */}
+      {opmerkingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
-            <h2 className="font-semibold text-lg">
-              {modal.mode === "inschrijven" ? "Inschrijven" : "Opmerking wijzigen"}
-            </h2>
-            <p className="text-sm text-gray-600">{modal.wandelingTitel}</p>
-            {modalFout && <div className="wa-alert-error">{modalFout}</div>}
+            <h2 className="font-semibold text-lg">Opmerking</h2>
+            <p className="text-sm text-gray-600">{opmerkingModal.wandelingTitel}</p>
+            {opmerkingFout && <div className="wa-alert-error">{opmerkingFout}</div>}
             <textarea
               className="w-full border rounded-xl px-3 py-2 text-sm min-h-[100px] resize-y"
-              placeholder="Opmerking (optioneel)"
-              value={modalOpmerking}
-              onChange={(e) => setModalOpmerking(e.target.value)}
-              disabled={modalBezig}
+              placeholder="Typ hier je opmerking…"
+              value={opmerkingTekst}
+              onChange={(e) => setOpmerkingTekst(e.target.value)}
+              disabled={opmerkingBezig}
             />
             <div className="flex flex-col gap-2">
               <button
                 className="wa-btn wa-btn-brand py-2 text-sm"
-                onClick={modal.mode === "inschrijven" ? bevestigInschrijving : bevestigWijziging}
-                disabled={modalBezig}
+                onClick={slaOpmerkingOp}
+                disabled={opmerkingBezig || !opmerkingTekst.trim()}
               >
-                {modalBezig ? "Bezig…" : modal.mode === "inschrijven" ? "Bevestigen" : "Opslaan"}
+                {opmerkingBezig ? "Bezig…" : "Opslaan"}
               </button>
+              {getMijnOpmerking(opmerkingModal.wandelingId) && (
+                <button
+                  className="wa-btn-danger py-2 text-sm"
+                  onClick={verwijderOpmerking}
+                  disabled={opmerkingBezig}
+                >
+                  Verwijderen
+                </button>
+              )}
               <button
                 className="wa-btn wa-btn-ghost py-2 text-sm"
-                onClick={() => setModal(null)}
-                disabled={modalBezig}
+                onClick={() => setOpmerkingModal(null)}
+                disabled={opmerkingBezig}
               >
                 Annuleren
               </button>
@@ -514,10 +527,19 @@ export default function EzelwandelingenPage() {
                                 {w.titel}
                               </div>
                             </div>
+
                             {isIn && (
-                              <span className="wa-active-badge px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
-                                Jij doet mee
-                              </span>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="wa-active-badge px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
+                                  Jij doet mee
+                                </span>
+                                <button
+                                  className="text-xs text-blue-700 hover:underline"
+                                  onClick={() => openOpmerkingModal(w)}
+                                >
+                                  {getMijnOpmerking(w.id) ? "✎ Jouw opmerking" : "＋ Opmerking toevoegen"}
+                                </button>
+                              </div>
                             )}
                           </div>
 
@@ -548,32 +570,23 @@ export default function EzelwandelingenPage() {
                             )}
                           </div>
 
-                          <div className="pt-2 flex gap-2 flex-wrap">
+                          <div className="pt-2 flex gap-2">
                             {!isIn ? (
                               <button
                                 className="wa-btn wa-btn-ghost flex-1"
-                                onClick={() => openInschrijfModal(w)}
+                                onClick={() => inschrijven(w.id)}
                                 disabled={busy}
                               >
-                                Inschrijven
+                                {busy ? "Bezig…" : "Inschrijven"}
                               </button>
                             ) : (
-                              <>
-                                <button
-                                  className="wa-btn wa-btn-ghost flex-1"
-                                  onClick={() => uitschrijven(w.id)}
-                                  disabled={busy}
-                                >
-                                  {busy ? "Bezig…" : "Uitschrijven"}
-                                </button>
-                                <button
-                                  className="wa-btn wa-btn-ghost flex-1"
-                                  onClick={() => openWijzigModal(w)}
-                                  disabled={busy}
-                                >
-                                  Opmerking wijzigen
-                                </button>
-                              </>
+                              <button
+                                className="wa-btn wa-btn-ghost flex-1"
+                                onClick={() => uitschrijven(w.id)}
+                                disabled={busy}
+                              >
+                                {busy ? "Bezig…" : "Uitschrijven"}
+                              </button>
                             )}
                           </div>
                         </div>
