@@ -60,6 +60,37 @@ function hhmm(t: string | null): string {
   return t.length >= 5 ? t.slice(0, 5) : t;
 }
 
+const UREN = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const MINUTEN = ["00", "15", "30", "45"];
+
+function TijdPicker({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const parts = value.split(":");
+  const uur = parts[0] ?? "00";
+  const min = MINUTEN.includes(parts[1]) ? parts[1] : "00";
+
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        className="flex-1 border rounded-xl p-3 bg-white text-sm"
+        value={uur}
+        onChange={(e) => onChange(`${e.target.value}:${min}`)}
+        disabled={disabled}
+      >
+        {UREN.map((u) => <option key={u} value={u}>{u}</option>)}
+      </select>
+      <span className="text-gray-500 font-medium">:</span>
+      <select
+        className="flex-1 border rounded-xl p-3 bg-white text-sm"
+        value={min}
+        onChange={(e) => onChange(`${uur}:${e.target.value}`)}
+        disabled={disabled}
+      >
+        {MINUTEN.map((m) => <option key={m} value={m}>{m}</option>)}
+      </select>
+    </div>
+  );
+}
+
 export default function AdminEzelwandelingenPage() {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
@@ -188,23 +219,20 @@ export default function AdminEzelwandelingenPage() {
   // --- Formulier ---
   function openNieuw() {
     setFormTitel(""); setFormOmschrijving(""); setFormWanneer("");
-    setFormStartuur(""); setFormEinduur(""); setFormFout(null);
+    setFormStartuur("00:00"); setFormEinduur("00:00"); setFormFout(null);
     setFormModal({ mode: "nieuw" });
   }
 
   function openBewerken(w: Ezelwandeling) {
     setFormTitel(w.titel); setFormOmschrijving(w.omschrijving ?? "");
-    setFormWanneer(w.wanneer); setFormStartuur(hhmm(w.startuur));
-    setFormEinduur(hhmm(w.einduur)); setFormFout(null);
+    setFormWanneer(w.wanneer); setFormStartuur(hhmm(w.startuur) || "00:00");
+    setFormEinduur(hhmm(w.einduur) || "00:00"); setFormFout(null);
     setFormModal({ mode: "bewerken", wandelingId: w.id });
   }
 
   async function slaFormOp() {
     if (!formTitel.trim()) { setFormFout("Titel is verplicht."); return; }
     if (!formWanneer) { setFormFout("Datum is verplicht."); return; }
-    if (!formStartuur) { setFormFout("Startuur is verplicht."); return; }
-    if (!formEinduur) { setFormFout("Einduur is verplicht."); return; }
-
     setFormBezig(true);
     setFormFout(null);
 
@@ -328,23 +356,11 @@ export default function AdminEzelwandelingenPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium block mb-1">Startuur</label>
-                <input
-                  type="time"
-                  className="w-full border rounded-xl p-3 bg-white text-sm"
-                  value={formStartuur}
-                  onChange={(e) => setFormStartuur(e.target.value)}
-                  disabled={formBezig}
-                />
+                <TijdPicker value={formStartuur} onChange={setFormStartuur} disabled={formBezig} />
               </div>
               <div>
                 <label className="text-sm font-medium block mb-1">Einduur</label>
-                <input
-                  type="time"
-                  className="w-full border rounded-xl p-3 bg-white text-sm"
-                  value={formEinduur}
-                  onChange={(e) => setFormEinduur(e.target.value)}
-                  disabled={formBezig}
-                />
+                <TijdPicker value={formEinduur} onChange={setFormEinduur} disabled={formBezig} />
               </div>
             </div>
             <div className="flex gap-2 pt-2">
