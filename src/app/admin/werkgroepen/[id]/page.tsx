@@ -63,10 +63,12 @@ export default function WerkgroepDetailPage() {
   // Prikbord aanmaken modal state
   const [pbModalOpen, setPbModalOpen] = useState(false);
   const [pbTitel, setPbTitel] = useState("");
+  const [pbToelichting, setPbToelichting] = useState("");
   const [pbMomenten, setPbMomenten] = useState<MomentInput[]>([{ datum: "", beginuur: null, einduur: null }]);
   const [pbBezig, setPbBezig] = useState(false);
   const [pbFout, setPbFout] = useState<string | null>(null);
   const [pbResultaat, setPbResultaat] = useState<string | null>(null);
+  const [pbAangemaaktId, setPbAangemaaktId] = useState<string | null>(null);
   const [pbTijdFouten, setPbTijdFouten] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
@@ -190,9 +192,11 @@ export default function WerkgroepDetailPage() {
   // --- Prikbord aanmaken modal ---
   function openPbModal() {
     setPbTitel("");
+    setPbToelichting("");
     setPbMomenten([{ datum: "", beginuur: null, einduur: null }]);
     setPbFout(null);
     setPbResultaat(null);
+    setPbAangemaaktId(null);
     setPbTijdFouten({});
     setPbModalOpen(true);
   }
@@ -231,10 +235,11 @@ export default function WerkgroepDetailPage() {
     setPbBezig(true);
     setPbFout(null);
     try {
-      const result = await maakPrikbordAan(id, pbTitel.trim(), geldigeMomenten);
+      const result = await maakPrikbordAan(id, pbTitel.trim(), geldigeMomenten, pbToelichting.trim() || null);
       if (result.error) {
         setPbFout(result.error);
       } else {
+        setPbAangemaaktId(result.prikbordId);
         setPbResultaat(`Prikbord aangemaakt en mail verstuurd naar ${result.verstuurd} vrijwilliger${result.verstuurd !== 1 ? "s" : ""}.`);
         // Prikborden lijst verversen
         const { data: pb } = await supabase
@@ -462,6 +467,18 @@ export default function WerkgroepDetailPage() {
             {pbResultaat ? (
               <>
                 <div className="wa-alert-success">{pbResultaat}</div>
+                {pbAangemaaktId && (
+                  <a
+                    className="wa-btn wa-btn-whatsapp w-full py-2 text-sm text-center"
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      `${pbTitel}${pbToelichting.trim() ? `\n\n${pbToelichting.trim()}` : ""}\n\nGeef je beschikbaarheid in:\n${window.location.origin}/prikbord/${pbAangemaaktId}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Deel via WhatsApp
+                  </a>
+                )}
                 <div className="flex justify-end">
                   <button onClick={() => setPbModalOpen(false)} className="wa-btn wa-btn-ghost">
                     Sluiten
@@ -482,6 +499,22 @@ export default function WerkgroepDetailPage() {
                     placeholder="bv. Planningsmoment mei"
                     disabled={pbBezig}
                   />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Toelichting (optioneel)</label>
+                  <textarea
+                    value={pbToelichting}
+                    onChange={(e) => setPbToelichting(e.target.value.slice(0, 600))}
+                    rows={4}
+                    className="w-full border rounded-lg px-3 py-2 text-sm resize-y"
+                    placeholder="Geef wat context of motivatie mee voor de deelnemers..."
+                    disabled={pbBezig}
+                    maxLength={600}
+                  />
+                  {pbToelichting.length > 0 && (
+                    <p className="text-xs text-gray-400 text-right">{pbToelichting.length}/600</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

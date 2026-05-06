@@ -111,7 +111,8 @@ export type MomentInput = {
 export async function maakPrikbordAan(
   werkgroepId: string,
   titel: string,
-  momenten: MomentInput[]
+  momenten: MomentInput[],
+  toelichting?: string | null
 ): Promise<{ prikbordId: string; verstuurd: number; error?: string }> {
   try {
     const supabase = supabaseAdmin();
@@ -119,7 +120,7 @@ export async function maakPrikbordAan(
     // 1) Prikbord aanmaken
     const { data: pb, error: pbErr } = await supabase
       .from("prikborden")
-      .insert({ werkgroep_id: werkgroepId, titel })
+      .insert({ werkgroep_id: werkgroepId, titel, toelichting: toelichting?.trim() || null })
       .select("id")
       .single();
     if (pbErr) return { prikbordId: "", verstuurd: 0, error: pbErr.message };
@@ -145,16 +146,21 @@ export async function maakPrikbordAan(
       const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
       const link = `${baseUrl}/prikbord/${pb.id}`;
       const onderwerp = `Waaranders - prikbord: ${titel}`;
+      const toelichtingTekst = toelichting?.trim() ?? "";
+      const toelichtingHtml = toelichtingTekst
+        ? `<p>Hier is wat meer context:<br>${toelichtingTekst.replace(/\n/g, "<br>")}</p>`
+        : "";
+      const toelichtingPlain = toelichtingTekst ? `\n\nHier is wat meer context:\n${toelichtingTekst}` : "";
       const resend = new Resend(process.env.RESEND_API_KEY);
       await Promise.all(
         ontvangers.map(({ email, voornaam }) =>
           resend.emails.send({
             from: "Waaranders <noreply@waaranders.be>",
-          replyTo: "info@waaranders.be",
+            replyTo: "info@waaranders.be",
             to: email,
             subject: onderwerp,
-            html: `<p>Beste ${voornaam},</p><p>De trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.</p><p><a href="${link}">Klik hier om je beschikbaarheid in te geven</a></p><p>Met Waaranderse groeten,<br>${trekker}</p><p><a href="https://waaranders-vrijwilligers.vercel.app">Ga naar de Waaranders App</a></p>`,
-            text: `Beste ${voornaam},\n\nDe trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.\n\nKlik hier om je beschikbaarheid in te geven:\n${link}\n\nMet Waaranderse groeten,\n${trekker}\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
+            html: `<p>Beste ${voornaam},</p><p>De trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.</p>${toelichtingHtml}<p><a href="${link}">Klik hier om je beschikbaarheid in te geven</a></p><p>Met Waaranderse groeten,<br>${trekker}</p><p><a href="https://waaranders-vrijwilligers.vercel.app">Ga naar de Waaranders App</a></p>`,
+            text: `Beste ${voornaam},\n\nDe trekker van jouw werkgroep ${werkgroepTitel} wil een werkmoment plannen.${toelichtingPlain}\n\nKlik hier om je beschikbaarheid in te geven:\n${link}\n\nMet Waaranderse groeten,\n${trekker}\n\nGa naar de Waaranders App: https://waaranders-vrijwilligers.vercel.app`,
           })
         )
       );
