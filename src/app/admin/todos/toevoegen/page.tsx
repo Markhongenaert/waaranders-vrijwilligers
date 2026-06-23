@@ -44,7 +44,7 @@ export default function TodoToevoegenPage() {
 
       const { data: v, error: e1 } = await supabase
         .from("vrijwilligers")
-        .select("id,naam")
+        .select("id,naam,vrijwilliger_roles(roles(code))")
         .eq("actief", true)
         .order("naam", { ascending: true });
 
@@ -54,8 +54,21 @@ export default function TodoToevoegenPage() {
         return;
       }
 
-      setVrijwilligers((v ?? []) as Vrijwilliger[]);
-      if ((v ?? []).length > 0) setWie((v ?? [])[0].id);
+      const seen = new Set<string>();
+      const doenkers: Vrijwilliger[] = [];
+      for (const vw of (v ?? []) as any[]) {
+        if (seen.has(vw.id)) continue;
+        const hasDoenkerRole = vw.vrijwilliger_roles?.some(
+          (r: any) => r.roles && ["doenker", "admin"].includes(r.roles.code)
+        );
+        if (hasDoenkerRole) {
+          seen.add(vw.id);
+          doenkers.push({ id: vw.id, naam: vw.naam });
+        }
+      }
+
+      setVrijwilligers(doenkers);
+      if (doenkers.length > 0) setWie(doenkers[0].id);
 
       const { data: wg } = await supabase
         .from("werkgroepen")

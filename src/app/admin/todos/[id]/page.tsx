@@ -85,18 +85,46 @@ export default function TodoEditPage() {
     setStatus(tt.status);
     setWerkgroepId(tt.werkgroep_id ?? "");
 
-    // 2) vrijwilligerslijst (voor dropdown). Als dit faalt: geen harde stop.
+    // 2) vrijwilligerslijst (voor dropdown): alleen doenkers/admins.
+    // Als dit faalt: geen harde stop.
     const { data: v, error: eV } = await supabase
       .from("vrijwilligers")
-      .select("id,naam")
+      .select("id,naam,vrijwilliger_roles(roles(code))")
       .eq("actief", true)
       .order("naam", { ascending: true });
 
-    if (!eV) setVrijwilligers((v ?? []) as Vrijwilliger[]);
-    else {
+    const doenkers: Vrijwilliger[] = [];
+    if (!eV) {
+      const seen = new Set<string>();
+      for (const vw of (v ?? []) as any[]) {
+        if (seen.has(vw.id)) continue;
+        const hasDoenkerRole = vw.vrijwilliger_roles?.some(
+          (r: any) => r.roles && ["doenker", "admin"].includes(r.roles.code)
+        );
+        if (hasDoenkerRole) {
+          seen.add(vw.id);
+          doenkers.push({ id: vw.id, naam: vw.naam });
+        }
+      }
+
+      // Als de huidige verantwoordelijke geen doenker/admin is, toch in de lijst zetten
+      const currentWie = tt.wie_vrijwilliger_id;
+      if (currentWie && !seen.has(currentWie)) {
+        const { data: assignee } = await supabase
+          .from("vrijwilligers")
+          .select("id,naam")
+          .eq("id", currentWie)
+          .maybeSingle();
+        if (assignee) {
+          doenkers.push({ id: (assignee as Vrijwilliger).id, naam: (assignee as Vrijwilliger).naam });
+          doenkers.sort((a, b) => (a.naam ?? "").localeCompare(b.naam ?? "", "nl"));
+        }
+      }
+    } else {
       console.warn("Vrijwilligerslijst niet leesbaar:", eV.message);
-      setVrijwilligers([]);
     }
+
+    setVrijwilligers(doenkers);
 
     const { data: wg } = await supabase
       .from("werkgroepen")
