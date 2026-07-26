@@ -30,6 +30,8 @@ export default function BewerkActiviteitPage() {
   const [startuur, setStartuur] = useState("");
   const [einduur, setEinduur] = useState("");
   const [aantal, setAantal] = useState<number>(1);
+  const [aantalDeelnemers, setAantalDeelnemers] = useState<number>(0);
+  const [aantalExterneBegeleiders, setAantalExterneBegeleiders] = useState<number>(0);
   const [klantId, setKlantId] = useState("");
 
   const [busy, setBusy] = useState(false);
@@ -55,7 +57,7 @@ export default function BewerkActiviteitPage() {
           .order("naam", { ascending: true }),
         supabase
           .from("activiteiten")
-          .select("id,titel,toelichting,wanneer,startuur,einduur,aantal_vrijwilligers,klant_id,herhaling_reeks_id")
+          .select("id,titel,toelichting,wanneer,startuur,einduur,aantal_vrijwilligers,aantal_deelnemers,aantal_externe_begeleiders,klant_id,herhaling_reeks_id")
           .eq("id", id)
           .maybeSingle(),
       ]);
@@ -72,6 +74,8 @@ export default function BewerkActiviteitPage() {
       setStartuur(hhmm(a.startuur));
       setEinduur(hhmm(a.einduur));
       setAantal(a.aantal_vrijwilligers ?? 1);
+      setAantalDeelnemers(a.aantal_deelnemers ?? 0);
+      setAantalExterneBegeleiders(a.aantal_externe_begeleiders ?? 0);
       setKlantId(a.klant_id ?? "");
       setReeksId(a.herhaling_reeks_id ?? null);
 
@@ -92,6 +96,8 @@ export default function BewerkActiviteitPage() {
       startuur,
       einduur,
       aantal_vrijwilligers: Number.isFinite(aantal) ? aantal : null,
+      aantal_deelnemers: Number.isFinite(aantalDeelnemers) ? aantalDeelnemers : 0,
+      aantal_externe_begeleiders: Number.isFinite(aantalExterneBegeleiders) ? aantalExterneBegeleiders : 0,
       klant_id: klantId || null,
     };
 
@@ -262,6 +268,31 @@ export default function BewerkActiviteitPage() {
               onChange={(e) => setAantal(Number(e.target.value))}
               disabled={busy}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium block mb-1">Aantal deelnemers</label>
+              <input
+                type="number"
+                min={0}
+                className="w-full border rounded-xl p-3 bg-white"
+                value={aantalDeelnemers}
+                onChange={(e) => setAantalDeelnemers(Number(e.target.value))}
+                disabled={busy}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Aantal externe begeleiders</label>
+              <input
+                type="number"
+                min={0}
+                className="w-full border rounded-xl p-3 bg-white"
+                value={aantalExterneBegeleiders}
+                onChange={(e) => setAantalExterneBegeleiders(Number(e.target.value))}
+                disabled={busy}
+              />
+            </div>
           </div>
 
           <div>

@@ -63,6 +63,8 @@ export default function ToevoegenActiviteitPage() {
   const [einduur, setEinduur] = useState(""); // "HH:MM"
 
   const [aantal, setAantal] = useState<number>(0);
+  const [aantalDeelnemers, setAantalDeelnemers] = useState<number>(0);
+  const [aantalExterneBegeleiders, setAantalExterneBegeleiders] = useState<number>(0);
   const [klantId, setKlantId] = useState<string>("");
 
   // Herhaling state
@@ -173,6 +175,8 @@ export default function ToevoegenActiviteitPage() {
       startuur,
       einduur,
       aantal_vrijwilligers: Number.isFinite(aantal) ? Number(aantal) : 0,
+      aantal_deelnemers: Number.isFinite(aantalDeelnemers) ? Number(aantalDeelnemers) : 0,
+      aantal_externe_begeleiders: Number.isFinite(aantalExterneBegeleiders) ? Number(aantalExterneBegeleiders) : 0,
       klant_id: klantId,
       status: "gepland",
     };
@@ -236,6 +240,8 @@ export default function ToevoegenActiviteitPage() {
     setStartuur("");
     setEinduur("");
     setAantal(0);
+    setAantalDeelnemers(0);
+    setAantalExterneBegeleiders(0);
     setHerhaling(false);
     setHerhalingInterval("1");
     setHerhalingType("wekelijks");
@@ -412,6 +418,33 @@ export default function ToevoegenActiviteitPage() {
             onFocus={(e) => e.target.select()}
             disabled={busy}
           />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium block mb-1">Aantal deelnemers</label>
+            <input
+              type="number"
+              min={0}
+              className="w-full border rounded-xl p-3 bg-white"
+              value={aantalDeelnemers}
+              onChange={(e) => setAantalDeelnemers(Number(e.target.value))}
+              onFocus={(e) => e.target.select()}
+              disabled={busy}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium block mb-1">Aantal externe begeleiders</label>
+            <input
+              type="number"
+              min={0}
+              className="w-full border rounded-xl p-3 bg-white"
+              value={aantalExterneBegeleiders}
+              onChange={(e) => setAantalExterneBegeleiders(Number(e.target.value))}
+              onFocus={(e) => e.target.select()}
+              disabled={busy}
+            />
+          </div>
         </div>
 
         {/* ── Herhaling ── */}

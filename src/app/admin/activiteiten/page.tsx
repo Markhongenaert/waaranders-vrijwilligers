@@ -14,6 +14,8 @@ type Activiteit = {
   startuur: string | null;
   einduur: string | null;
   aantal_vrijwilligers: number | null;
+  aantal_deelnemers: number | null;
+  aantal_externe_begeleiders: number | null;
   klant_id: string | null;
   klanten: { naam: string } | { naam: string }[] | null;
   herhaling_reeks_id: string | null;
@@ -143,7 +145,7 @@ export default function AdminActiviteitenPage() {
 
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
-      .select("id,titel,toelichting,wanneer,startuur,einduur,aantal_vrijwilligers,klant_id,klanten(naam),herhaling_reeks_id")
+      .select("id,titel,toelichting,wanneer,startuur,einduur,aantal_vrijwilligers,aantal_deelnemers,aantal_externe_begeleiders,klant_id,klanten(naam),herhaling_reeks_id")
       .gte("wanneer", vanaf)
       .order("wanneer", { ascending: true })
       .order("startuur", { ascending: true });
@@ -431,6 +433,8 @@ export default function AdminActiviteitenPage() {
                             {s && e ? <span>van {s} tot {e}</span> : <span className="text-gray-500">(geen uren)</span>}
                             {a.aantal_vrijwilligers != null ? <span>nodig: {a.aantal_vrijwilligers}</span> : null}
                             <span>klant: {kNaam ?? "(niet ingesteld)"}</span>
+                            {(a.aantal_deelnemers ?? 0) > 0 && <span>deelnemers: {a.aantal_deelnemers}</span>}
+                            {(a.aantal_externe_begeleiders ?? 0) > 0 && <span>ext. begeleiders: {a.aantal_externe_begeleiders}</span>}
                           </div>
 
                           {(() => {
