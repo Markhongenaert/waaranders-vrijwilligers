@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { isDoenkerOrAdmin } from "@/lib/auth";
 import { stuurOpmerkingMail } from "./actions";
 
 type Activiteit = {
@@ -11,7 +12,10 @@ type Activiteit = {
   startuur: string | null; // "HH:MM:SS" of "HH:MM"
   einduur: string | null; // "HH:MM:SS" of "HH:MM"
   aantal_vrijwilligers: number | null;
+  aantal_deelnemers: number | null;
+  aantal_externe_begeleiders: number | null;
   toelichting: string | null;
+  klanten: { naam: string } | { naam: string }[] | null;
 };
 
 type MeedoenMetNaamRow = {
@@ -218,6 +222,7 @@ export default function ActiviteitenPage() {
   const [meedoen, setMeedoen] = useState<MeedoenMetNaamRow[]>([]);
   const [myId, setMyId] = useState<string | null>(null);
 
+  const [isDoenker, setIsDoenker] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -315,6 +320,9 @@ export default function ActiviteitenPage() {
 
     setMyId(user.id);
 
+    const doenker = await isDoenkerOrAdmin();
+    setIsDoenker(doenker);
+
     // ✅ Onboarding guard: profiel_afgewerkt + actief
     const { data: vRow, error: vErr } = await supabase
       .from("vrijwilligers")
@@ -348,7 +356,7 @@ export default function ActiviteitenPage() {
     // Activiteiten
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
-      .select("id,titel,wanneer,startuur,einduur,aantal_vrijwilligers,toelichting")
+      .select("id,titel,wanneer,startuur,einduur,aantal_vrijwilligers,aantal_deelnemers,aantal_externe_begeleiders,toelichting,klanten(naam)")
       .gte("wanneer", vanaf)
       .order("wanneer", { ascending: true })
       .order("startuur", { ascending: true });
@@ -627,8 +635,8 @@ export default function ActiviteitenPage() {
                   const namen = entry?.namen ?? [];
                   const count = namen.length;
 
-                  const preview = namen.slice(0, 3);
-                  const rest = Math.max(0, count - preview.length);
+                  const preview = isDoenker ? namen : namen.slice(0, 3);
+                  const rest = isDoenker ? 0 : Math.max(0, count - preview.length);
 
                   const isIn = ingeschreven(a.id);
 
