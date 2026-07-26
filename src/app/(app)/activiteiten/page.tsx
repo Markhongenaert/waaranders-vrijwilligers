@@ -236,8 +236,6 @@ export default function ActiviteitenPage() {
   const [opmerkingBezig, setOpmerkingBezig] = useState(false);
   const [opmerkingFout, setOpmerkingFout] = useState<string | null>(null);
 
-  const [detailsModal, setDetailsModal] = useState<Activiteit | null>(null);
-
   const [activeTab, setActiveTab] = useState<"lijst" | "kalender">("lijst");
   const [scrollToId, setScrollToId] = useState<string | null>(null);
 
@@ -542,62 +540,6 @@ export default function ActiviteitenPage() {
 
   return (
     <>
-      {/* Details modal (enkel voor doenkers) */}
-      {detailsModal && (() => {
-        const da = detailsModal;
-        const entry = meedoenByAct.get(da.id);
-        const namen = entry?.namen ?? [];
-        const s = hhmm(da.startuur);
-        const e = hhmm(da.einduur);
-        const klantNaam = da.klanten
-          ? Array.isArray(da.klanten)
-            ? da.klanten[0]?.naam ?? null
-            : (da.klanten as { naam: string }).naam ?? null
-          : null;
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-5 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="font-semibold text-lg leading-snug">{da.titel}</h2>
-                  <button
-                    className="wa-btn wa-btn-ghost px-3 py-1 text-sm shrink-0"
-                    onClick={() => setDetailsModal(null)}
-                  >
-                    Sluiten
-                  </button>
-                </div>
-
-                {da.toelichting && (
-                  <div className="text-sm text-gray-700 whitespace-pre-line break-words">
-                    {da.toelichting}
-                  </div>
-                )}
-
-                <div className="text-sm text-gray-700 flex flex-wrap gap-x-4 gap-y-1">
-                  <span>{formatDatumKaart(da.wanneer)}</span>
-                  {s && e ? <span>van {s} tot {e}</span> : <span className="text-gray-500">(geen uren)</span>}
-                  {da.aantal_vrijwilligers != null && <span>nodig: {da.aantal_vrijwilligers}</span>}
-                  {klantNaam && <span>klant: {klantNaam}</span>}
-                </div>
-
-                {((da.aantal_deelnemers ?? 0) > 0 || (da.aantal_externe_begeleiders ?? 0) > 0) && (
-                  <div className="text-sm text-gray-700 flex flex-wrap gap-x-4 gap-y-1">
-                    {(da.aantal_deelnemers ?? 0) > 0 && <span>Deelnemers: {da.aantal_deelnemers}</span>}
-                    {(da.aantal_externe_begeleiders ?? 0) > 0 && <span>Externe begeleiders: {da.aantal_externe_begeleiders}</span>}
-                  </div>
-                )}
-
-                <div className="text-sm text-gray-700">
-                  <span className="font-medium">{namen.length} ingeschreven</span>
-                  {namen.length > 0 && <>: {namen.join(", ")}</>}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Opmerking modal */}
       {opmerkingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -805,12 +747,12 @@ export default function ActiviteitenPage() {
                             </button>
                           )}
                           {isDoenker && (
-                            <button
-                              className="wa-btn wa-btn-ghost px-4"
-                              onClick={() => setDetailsModal(a)}
+                            <a
+                              className="wa-btn wa-btn-ghost px-4 text-center"
+                              href={`/admin/activiteiten/${a.id}`}
                             >
                               Details
-                            </button>
+                            </a>
                           )}
                         </div>
                       </div>
