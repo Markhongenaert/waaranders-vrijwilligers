@@ -279,6 +279,7 @@ export default function BewerkActiviteitPage() {
                 className="w-full border rounded-xl p-3 bg-white"
                 value={aantalDeelnemers}
                 onChange={(e) => setAantalDeelnemers(Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
                 disabled={busy}
               />
             </div>
@@ -290,6 +291,7 @@ export default function BewerkActiviteitPage() {
                 className="w-full border rounded-xl p-3 bg-white"
                 value={aantalExterneBegeleiders}
                 onChange={(e) => setAantalExterneBegeleiders(Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
                 disabled={busy}
               />
             </div>
