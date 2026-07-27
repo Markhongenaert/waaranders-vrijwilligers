@@ -13,6 +13,7 @@ type Klant = {
   contactpersoon_telefoon: string | null;
   contactpersoon_email: string | null;
   adres: string | null;
+  opmerkingen: string | null;
   doelgroep_id: string | null;
   aanspreekpunt_vrijwilliger_id: string | null;
   actief: boolean;
@@ -59,6 +60,7 @@ export default function KlantDetailPage() {
   const [contactpersoonTelefoon, setContactpersoonTelefoon] = useState("");
   const [contactpersoonEmail, setContactpersoonEmail] = useState("");
   const [adres, setAdres] = useState("");
+  const [opmerkingen, setOpmerkingen] = useState("");
   const [doelgroepId, setDoelgroepId] = useState<string>("");
   const [aanspreekpuntId, setAanspreekpuntId] = useState<string>("");
 
@@ -106,6 +108,7 @@ export default function KlantDetailPage() {
     setContactpersoonTelefoon(k.contactpersoon_telefoon ?? "");
     setContactpersoonEmail(k.contactpersoon_email ?? "");
     setAdres(k.adres ?? "");
+    setOpmerkingen(k.opmerkingen ?? "");
     setDoelgroepId(k.doelgroep_id ?? "");
     setAanspreekpuntId(k.aanspreekpunt_vrijwilliger_id ?? "");
 
@@ -185,6 +188,7 @@ export default function KlantDetailPage() {
       contactpersoon_telefoon: contactpersoonTelefoon || null,
       contactpersoon_email: contactpersoonEmail || null,
       adres: adres || null,
+      opmerkingen: opmerkingen.trim() || null,
       doelgroep_id: doelgroepId || null,
       aanspreekpunt_vrijwilliger_id: aanspreekpuntId || null,
     };
@@ -293,6 +297,18 @@ export default function KlantDetailPage() {
             rows={3}
             value={adres}
             onChange={(e) => setAdres(e.target.value)}
+            disabled={busy}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">Opmerkingen</label>
+          <textarea
+            className="w-full border rounded-xl p-3"
+            rows={4}
+            value={opmerkingen}
+            onChange={(e) => setOpmerkingen(e.target.value)}
+            placeholder="Vrij tekstveld voor interne notities"
             disabled={busy}
           />
         </div>
