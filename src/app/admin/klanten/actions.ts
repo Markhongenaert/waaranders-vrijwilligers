@@ -9,6 +9,7 @@ type KlantInput = {
   contactpersoon_naam?: string | null;
   contactpersoon_telefoon?: string | null;
   adres?: string | null;
+  opmerkingen?: string | null;
   doelgroep_id?: string | null; // single
   actief?: boolean;
 };
@@ -31,6 +32,7 @@ export async function createKlantAction(form: KlantInput & { returnTo?: string |
       contactpersoon_naam: form.contactpersoon_naam ?? null,
       contactpersoon_telefoon: form.contactpersoon_telefoon ?? null,
       adres: form.adres ?? null,
+      opmerkingen: form.opmerkingen ?? null,
       actief: form.actief ?? true,
       gearchiveerd_op: null,
     })
@@ -79,6 +81,7 @@ export async function updateKlantAction(
       contactpersoon_naam: form.contactpersoon_naam ?? null,
       contactpersoon_telefoon: form.contactpersoon_telefoon ?? null,
       adres: form.adres ?? null,
+      opmerkingen: form.opmerkingen ?? null,
       actief: form.actief ?? true,
     })
     .eq("id", klantId);
