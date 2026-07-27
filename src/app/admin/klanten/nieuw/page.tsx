@@ -45,6 +45,7 @@ export default function NieuweKlantPage() {
   const [contactpersoonTelefoon, setContactpersoonTelefoon] = useState("");
   const [contactpersoonEmail, setContactpersoonEmail] = useState("");
   const [adres, setAdres] = useState("");
+  const [opmerkingen, setOpmerkingen] = useState("");
   const [doelgroepId, setDoelgroepId] = useState("");
   const [aanspreekpuntId, setAanspreekpuntId] = useState("");
   const [actief, setActief] = useState(true);
@@ -110,6 +111,7 @@ export default function NieuweKlantPage() {
         contactpersoon_telefoon: contactpersoonTelefoon.trim() || null,
         contactpersoon_email: contactpersoonEmail.trim() || null,
         adres: adres.trim() || null,
+        opmerkingen: opmerkingen.trim() || null,
         actief,
         aanspreekpunt_vrijwilliger_id: aanspreekpuntId,
         gearchiveerd_op: null,
@@ -217,6 +219,18 @@ export default function NieuweKlantPage() {
             rows={3}
             value={adres}
             onChange={(e) => setAdres(e.target.value)}
+            disabled={busy}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">Opmerkingen</label>
+          <textarea
+            className="w-full border rounded-xl p-3"
+            rows={4}
+            value={opmerkingen}
+            onChange={(e) => setOpmerkingen(e.target.value)}
+            placeholder="Vrij tekstveld voor interne notities"
             disabled={busy}
           />
         </div>

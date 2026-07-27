@@ -13,6 +13,7 @@ type Props = {
     contactpersoon_telefoon: string;
     contactpersoon_email: string;
     adres: string;
+    opmerkingen: string;
     doelgroep_id: string | null;
     aanspreekpunt_vrijwilliger_id: string | null;
     actief: boolean;
@@ -33,6 +34,7 @@ export default function KlantForm({ mode, initial, doelgroepen, doenkers, onSubm
   const [contactpersoon_telefoon, setCpTel] = useState(initial.contactpersoon_telefoon);
   const [contactpersoon_email, setCpEmail] = useState(initial.contactpersoon_email);
   const [adres, setAdres] = useState(initial.adres);
+  const [opmerkingen, setOpmerkingen] = useState(initial.opmerkingen ?? "");
   const [doelgroep_id, setDoelgroepId] = useState<string | "">(initial.doelgroep_id ?? "");
   const [aanspreekpuntId, setAanspreekpuntId] = useState<string>(initial.aanspreekpunt_vrijwilliger_id ?? "");
   const [actief, setActief] = useState(initial.actief);
@@ -62,6 +64,7 @@ export default function KlantForm({ mode, initial, doelgroepen, doenkers, onSubm
         contactpersoon_telefoon: contactpersoon_telefoon.trim() || null,
         contactpersoon_email: contactpersoon_email.trim() || null,
         adres: adres.trim() || null,
+        opmerkingen: opmerkingen.trim() || null,
         doelgroep_id: doelgroep_id || null,
         aanspreekpunt_vrijwilliger_id: aanspreekpuntId,
         actief,
@@ -151,6 +154,17 @@ export default function KlantForm({ mode, initial, doelgroepen, doenkers, onSubm
       <div>
         <label className="block font-medium mb-1">Adres</label>
         <input className="w-full border rounded-xl p-3" value={adres} onChange={(e) => setAdres(e.target.value)} />
+      </div>
+
+      <div>
+        <label className="block font-medium mb-1">Opmerkingen</label>
+        <textarea
+          className="w-full border rounded-xl p-3"
+          rows={4}
+          value={opmerkingen}
+          onChange={(e) => setOpmerkingen(e.target.value)}
+          placeholder="Vrij tekstveld voor interne notities"
+        />
       </div>
 
       <label className="flex items-center gap-3">
