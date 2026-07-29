@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
@@ -213,7 +213,6 @@ export default function AdminActiviteitenPage() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -422,13 +421,24 @@ export default function AdminActiviteitenPage() {
                 </div>
 
                 <ul className="space-y-3 mt-3">
-                  {g.items.map((a) => {
+                  {g.items.flatMap((a) => {
                     const kNaam = klantNaamOfNull(a.klanten);
                     const s = hhmm(a.startuur);
                     const e = hhmm(a.einduur);
+                    const isFirstFuture = a.id === firstFutureId;
 
-                    return (
-                      <li key={a.id} ref={a.id === firstFutureId ? todayRef : null} className="wa-card p-4">
+                    const vandaagDivider = isFirstFuture ? (
+                      <li key="vandaag-divider" ref={todayRef} className="flex items-center gap-3 py-1 select-none">
+                        <div className="flex-1 h-px bg-emerald-600" />
+                        <span className="text-xs font-semibold uppercase tracking-widest text-emerald-700 whitespace-nowrap">
+                          Vandaag
+                        </span>
+                        <div className="flex-1 h-px bg-emerald-600" />
+                      </li>
+                    ) : null;
+
+                    const card = (
+                      <li key={a.id} className="wa-card p-4">
                         <div className="space-y-3">
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">
@@ -509,6 +519,7 @@ export default function AdminActiviteitenPage() {
                         </div>
                       </li>
                     );
+                    return [vandaagDivider, card].filter(Boolean) as ReactNode[];
                   })}
                 </ul>
               </section>
