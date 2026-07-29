@@ -102,6 +102,9 @@ export default function AdminActiviteitenPage() {
   // Opmerkingen state
   const [adminOpmerkingen, setAdminOpmerkingen] = useState<Map<string, { naam: string; opmerking: string }[]>>(new Map());
 
+  const todayRef = useRef<HTMLLIElement | null>(null);
+  const hasScrolled = useRef(false);
+
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
 
@@ -121,6 +124,16 @@ export default function AdminActiviteitenPage() {
 
     return groups;
   }, [items]);
+
+  const firstFutureId = useMemo(() => {
+    const t = todayISODate();
+    for (const g of grouped) {
+      for (const a of g.items) {
+        if (a.wanneer >= t) return a.id;
+      }
+    }
+    return null;
+  }, [grouped]);
 
   const load = async () => {
     setLoading(true);
@@ -202,6 +215,13 @@ export default function AdminActiviteitenPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!loading && !hasScrolled.current && todayRef.current) {
+      hasScrolled.current = true;
+      todayRef.current.scrollIntoView({ behavior: "auto", block: "start" });
+    }
+  }, [loading]);
 
   const executeDelete = async (scope: "enkel" | "reeks", id: string, reeksId: string | null) => {
     setBusy(true);
@@ -408,7 +428,7 @@ export default function AdminActiviteitenPage() {
                     const e = hhmm(a.einduur);
 
                     return (
-                      <li key={a.id} className="wa-card p-4">
+                      <li key={a.id} ref={a.id === firstFutureId ? todayRef : null} className="wa-card p-4">
                         <div className="space-y-3">
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">
