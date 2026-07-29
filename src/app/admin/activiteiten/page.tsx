@@ -141,12 +141,9 @@ export default function AdminActiviteitenPage() {
       return;
     }
 
-    const vanaf = todayISODate();
-
     const { data: acts, error: e1 } = await supabase
       .from("activiteiten")
       .select("id,titel,toelichting,wanneer,startuur,einduur,aantal_vrijwilligers,aantal_deelnemers,aantal_externe_begeleiders,klant_id,klanten(naam),herhaling_reeks_id")
-      .gte("wanneer", vanaf)
       .order("wanneer", { ascending: true })
       .order("startuur", { ascending: true });
 
@@ -393,7 +390,7 @@ export default function AdminActiviteitenPage() {
         {msg && <div className="wa-alert-success mb-4">{msg}</div>}
 
         {items.length === 0 ? (
-          <p className="text-gray-700">Geen toekomstige activiteiten.</p>
+          <p className="text-gray-700">Geen activiteiten gevonden.</p>
         ) : (
           <div className="space-y-8">
             {grouped.map((g) => (
