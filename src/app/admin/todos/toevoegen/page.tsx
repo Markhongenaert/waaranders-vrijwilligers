@@ -44,7 +44,7 @@ export default function TodoToevoegenPage() {
 
       const { data: v, error: e1 } = await supabase
         .from("vrijwilligers")
-        .select("id,naam,vrijwilliger_roles(roles(code))")
+        .select("id,naam,vrijwilliger_roles!vrijwilliger_id(roles(code))")
         .eq("actief", true)
         .order("naam", { ascending: true });
 

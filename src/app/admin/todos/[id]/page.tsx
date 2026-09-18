@@ -89,7 +89,7 @@ export default function TodoEditPage() {
     // Als dit faalt: geen harde stop.
     const { data: v, error: eV } = await supabase
       .from("vrijwilligers")
-      .select("id,naam,vrijwilliger_roles(roles(code))")
+      .select("id,naam,vrijwilliger_roles!vrijwilliger_id(roles(code))")
       .eq("actief", true)
       .order("naam", { ascending: true });
 
