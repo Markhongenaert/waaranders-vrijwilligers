@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import { stuurMailNaarDeelnemers } from "./actions";
+import DeelnemersBeheer from "./_components/DeelnemersBeheer";
 
 type Activiteit = {
   id: string;
@@ -464,15 +465,7 @@ export default function AdminActiviteitenPage() {
                             {(a.aantal_externe_begeleiders ?? 0) > 0 && <span>ext. begeleiders: {a.aantal_externe_begeleiders}</span>}
                           </div>
 
-                          {(() => {
-                            const namen = inschrijvingen.get(a.id) ?? [];
-                            return (
-                              <div className="text-sm text-gray-700">
-                                <span className="font-medium">{namen.length} ingeschreven</span>
-                                {namen.length > 0 && <>: {namen.join(", ")}</>}
-                              </div>
-                            );
-                          })()}
+                          <DeelnemersBeheer activiteitId={a.id} aantalVrijwilligers={a.aantal_vrijwilligers} />
 
                           {(() => {
                             const actOpmerkingen = adminOpmerkingen.get(a.id) ?? [];
