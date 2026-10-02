@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { isDoenkerOrAdmin } from "@/lib/auth";
+import RoutesSectie from "@/components/wandelroutes/RoutesSectie";
 
 type Ezelwandeling = {
   id: string;
@@ -10,6 +12,8 @@ type Ezelwandeling = {
   startuur: string | null;
   einduur: string | null;
   omschrijving: string | null;
+  route_id: string | null;
+  wandelroutes: { id: string; titel: string } | { id: string; titel: string }[] | null;
 };
 
 type Deelnemer = {
@@ -55,6 +59,12 @@ function todayISODate() {
 function hhmm(t: string | null): string | null {
   if (!t) return null;
   return t.length >= 5 ? t.slice(0, 5) : t;
+}
+
+function routeVan(w: Ezelwandeling): { id: string; titel: string } | null {
+  const r = w.wandelroutes;
+  if (!r) return null;
+  return Array.isArray(r) ? r[0] ?? null : r;
 }
 
 function calMonthLabel(year: number, month: number) {
@@ -179,8 +189,10 @@ export default function EzelwandelingenPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"lijst" | "kalender">("lijst");
+  const [activeTab, setActiveTab] = useState<"lijst" | "kalender" | "routes">("lijst");
   const [scrollToId, setScrollToId] = useState<string | null>(null);
+  const [beheer, setBeheer] = useState(false);
+  const [openRouteId, setOpenRouteId] = useState<string | null>(null);
 
   // Opmerking modal
   type OpmerkingModal = { wandelingId: string; wandelingTitel: string };
@@ -255,6 +267,8 @@ export default function EzelwandelingenPage() {
 
     setMyId(user.id);
 
+    setBeheer(await isDoenkerOrAdmin());
+
     const { data: vRow, error: vErr } = await supabase
       .from("vrijwilligers")
       .select("id, actief, profiel_afgewerkt, voornaam")
@@ -270,7 +284,7 @@ export default function EzelwandelingenPage() {
 
     const { data: wandelingen, error: e1 } = await supabase
       .from("ezelwandelingen")
-      .select("id,titel,wanneer,startuur,einduur,omschrijving")
+      .select("id,titel,wanneer,startuur,einduur,omschrijving,route_id,wandelroutes(id,titel)")
       .gte("wanneer", todayISODate())
       .order("wanneer", { ascending: true })
       .order("startuur", { ascending: true });
@@ -460,8 +474,8 @@ export default function EzelwandelingenPage() {
         </p>
 
         {/* Tabbladen */}
-        <div className="flex border-b border-gray-200 mb-6">
-          {(["lijst", "kalender"] as const).map((tab) => (
+        <div className="flex border-b border-gray-200 mb-6 print:hidden">
+          {(["lijst", "kalender", "routes"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -472,7 +486,7 @@ export default function EzelwandelingenPage() {
                   : "border-transparent text-gray-500 hover:text-gray-700",
               ].join(" ")}
             >
-              {tab === "lijst" ? "Lijst" : "Kalender"}
+              {tab === "lijst" ? "Lijst" : tab === "kalender" ? "Kalender" : "Routes"}
             </button>
           ))}
         </div>
@@ -483,7 +497,13 @@ export default function EzelwandelingenPage() {
           </div>
         )}
 
-        {loading ? (
+        {activeTab === "routes" ? (
+          <RoutesSectie
+            beheer={beheer}
+            openRouteId={openRouteId}
+            onOpenRouteGesloten={() => setOpenRouteId(null)}
+          />
+        ) : loading ? (
           <p>Laden…</p>
         ) : activeTab === "kalender" ? (
           <Kalender items={items} onBadgeClick={handleBadgeClick} />
@@ -548,6 +568,22 @@ export default function EzelwandelingenPage() {
                               {w.omschrijving}
                             </div>
                           )}
+
+                          {(() => {
+                            const route = routeVan(w);
+                            return route ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenRouteId(route.id);
+                                  setActiveTab("routes");
+                                }}
+                                className="text-sm text-blue-700 hover:underline text-left"
+                              >
+                                Route: {route.titel}
+                              </button>
+                            ) : null;
+                          })()}
 
                           <div className="text-sm text-gray-600">{formatDatum(w.wanneer)}</div>
 
