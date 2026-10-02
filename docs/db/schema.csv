@@ -1,0 +1,337 @@
+soort,tabel,naam,detail
+foreign key,activiteiten,klant_id,-> klanten.id
+foreign key,ezelwandeling_deelnemers,vrijwilliger_id,-> vrijwilligers.id
+foreign key,ezelwandeling_deelnemers,wandeling_id,-> ezelwandelingen.id
+foreign key,klant_doelgroepen,doelgroep_id,-> doelgroepen.id
+foreign key,klant_doelgroepen,klant_id,-> klanten.id
+foreign key,klanten,aanspreekpunt_vrijwilliger_id,-> vrijwilligers.id
+foreign key,klanten,doelgroep_id,-> doelgroepen.id
+foreign key,meedoen,activiteit_id,-> activiteiten.id
+foreign key,meedoen,vrijwilliger_id,-> vrijwilligers.id
+foreign key,prikbord_antwoorden,moment_id,-> prikbord_momenten.id
+foreign key,prikbord_momenten,prikbord_id,-> prikborden.id
+foreign key,prikborden,aangemaakt_door,-> vrijwilligers.id
+foreign key,prikborden,werkgroep_id,-> werkgroepen.id
+foreign key,themas,aanspreekpunt_vrijwilliger_id,-> vrijwilligers.id
+foreign key,todos,aangemaakt_door,-> vrijwilligers.id
+foreign key,todos,bijgewerkt_door,-> vrijwilligers.id
+foreign key,todos,thema_id,-> themas.id
+foreign key,todos,werkgroep_id,-> werkgroepen.id
+foreign key,todos,wie_vrijwilliger_id,-> vrijwilligers.id
+foreign key,vakantie_perioden,vrijwilliger_id,-> vrijwilligers.id
+foreign key,vrijwilliger_interesses,interesse_id,-> interesses.id
+foreign key,vrijwilliger_interesses,vrijwilliger_id,-> vrijwilligers.id
+foreign key,vrijwilliger_roles,rol_id,-> roles.id
+foreign key,vrijwilliger_roles,toegekend_door,-> vrijwilligers.id
+foreign key,vrijwilliger_roles,vrijwilliger_id,-> vrijwilligers.id
+foreign key,vrijwilliger_themas,thema_id,-> themas.id
+foreign key,vrijwilliger_themas,vrijwilliger_id,-> vrijwilligers.id
+foreign key,vrijwilligers_public__bak,id,-> vrijwilligers.id
+foreign key,werkgroep_deelnemers,vrijwilliger_id,-> vrijwilligers.id
+foreign key,werkgroep_deelnemers,werkgroep_id,-> werkgroepen.id
+foreign key,werkgroepen,coordinator_id,-> vrijwilligers.id
+functie,,check_email_registered,SECURITY DEFINER | argumenten: email_input text
+functie,,handle_new_user,"SECURITY DEFINER | argumenten: "
+functie,,has_role,"SECURITY DEFINER | argumenten: p_user uuid, p_code text"
+functie,,is_admin,SECURITY INVOKER | argumenten: uid uuid
+functie,,is_admin,"SECURITY DEFINER | argumenten: "
+functie,,is_admin_role,SECURITY DEFINER | argumenten: p_user uuid
+functie,,is_admin_uid,SECURITY DEFINER | argumenten: p_uid uuid
+functie,,is_doenker,SECURITY DEFINER | argumenten: uid uuid
+functie,,is_doenker_or_admin,SECURITY INVOKER | argumenten: uid uuid
+functie,,is_doenker_role,SECURITY DEFINER | argumenten: p_user uuid
+functie,,my_vrijwilliger_id,"SECURITY INVOKER | argumenten: "
+functie,,set_default_rol_vrijwilliger,"SECURITY DEFINER | argumenten: "
+functie,,set_vrijwilliger_naam_from_parts,"SECURITY INVOKER | argumenten: "
+functie,,tg_set_bijgewerkt_op,"SECURITY INVOKER | argumenten: "
+functie,,vrijwilligers_public_fn,"SECURITY DEFINER | argumenten: "
+kolom,activiteiten,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,activiteiten,aantal_deelnemers,integer NOT NULL default 0
+kolom,activiteiten,aantal_externe_begeleiders,integer NOT NULL default 0
+kolom,activiteiten,aantal_vrijwilligers,integer NOT NULL default 0
+kolom,activiteiten,bijgewerkt_op,timestamp with time zone NOT NULL default now()
+kolom,activiteiten,doelgroep,text
+kolom,activiteiten,einduur,time without time zone
+kolom,activiteiten,herhaling_einde_aantal,integer
+kolom,activiteiten,herhaling_einde_datum,date
+kolom,activiteiten,herhaling_interval,integer
+kolom,activiteiten,herhaling_reeks_id,uuid
+kolom,activiteiten,herhaling_type,text
+kolom,activiteiten,id,uuid NOT NULL default gen_random_uuid()
+kolom,activiteiten,klant_id,uuid
+kolom,activiteiten,omschrijving,text
+kolom,activiteiten,startuur,time without time zone
+kolom,activiteiten,status,USER-DEFINED NOT NULL default 'gepland'::activiteit_status
+kolom,activiteiten,titel,text NOT NULL
+kolom,activiteiten,toelichting,text
+kolom,activiteiten,wanneer,date NOT NULL
+kolom,admins,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,admins,user_id,uuid NOT NULL
+kolom,doelgroepen,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,doelgroepen,id,uuid NOT NULL default gen_random_uuid()
+kolom,doelgroepen,omschrijving,text
+kolom,doelgroepen,titel,text NOT NULL
+kolom,ezelwandeling_deelnemers,aangemeld_op,timestamp with time zone NOT NULL default now()
+kolom,ezelwandeling_deelnemers,id,uuid NOT NULL default gen_random_uuid()
+kolom,ezelwandeling_deelnemers,opmerking,text
+kolom,ezelwandeling_deelnemers,vrijwilliger_id,uuid NOT NULL
+kolom,ezelwandeling_deelnemers,wandeling_id,uuid NOT NULL
+kolom,ezelwandelingen,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,ezelwandelingen,bijgewerkt_op,timestamp with time zone NOT NULL default now()
+kolom,ezelwandelingen,einduur,text
+kolom,ezelwandelingen,id,uuid NOT NULL default gen_random_uuid()
+kolom,ezelwandelingen,omschrijving,text
+kolom,ezelwandelingen,startuur,text
+kolom,ezelwandelingen,status,text NOT NULL default 'gepland'::text
+kolom,ezelwandelingen,titel,text NOT NULL
+kolom,ezelwandelingen,wanneer,date NOT NULL
+kolom,interesses,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,interesses,bijgewerkt_op,timestamp with time zone NOT NULL default now()
+kolom,interesses,id,uuid NOT NULL default gen_random_uuid()
+kolom,interesses,omschrijving,text
+kolom,interesses,titel,text NOT NULL
+kolom,klant_doelgroepen,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,klant_doelgroepen,doelgroep_id,uuid NOT NULL
+kolom,klant_doelgroepen,klant_id,uuid NOT NULL
+kolom,klanten,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,klanten,aanspreekpunt_vrijwilliger_id,uuid
+kolom,klanten,actief,boolean NOT NULL default true
+kolom,klanten,adres,text
+kolom,klanten,bijgewerkt_op,timestamp with time zone NOT NULL default now()
+kolom,klanten,contactpersoon_email,text
+kolom,klanten,contactpersoon_naam,text
+kolom,klanten,contactpersoon_telefoon,text
+kolom,klanten,doelgroep_id,uuid
+kolom,klanten,gearchiveerd_op,timestamp with time zone
+kolom,klanten,id,uuid NOT NULL default gen_random_uuid()
+kolom,klanten,naam,text NOT NULL
+kolom,klanten,opmerkingen,text
+kolom,meedoen,aangemeld_op,timestamp with time zone NOT NULL default now()
+kolom,meedoen,activiteit_id,uuid NOT NULL
+kolom,meedoen,id,uuid NOT NULL default gen_random_uuid()
+kolom,meedoen,opmerking,text
+kolom,meedoen,vrijwilliger_id,uuid NOT NULL
+kolom,meedoen_met_naam,activiteit_id,uuid
+kolom,meedoen_met_naam,naam,text
+kolom,meedoen_met_naam,vrijwilliger_id,uuid
+kolom,prikbord_antwoorden,aangemaakt_op,timestamp with time zone default now()
+kolom,prikbord_antwoorden,beschikbaar,text NOT NULL
+kolom,prikbord_antwoorden,bijgewerkt_op,timestamp with time zone default now()
+kolom,prikbord_antwoorden,id,uuid NOT NULL default gen_random_uuid()
+kolom,prikbord_antwoorden,moment_id,uuid
+kolom,prikbord_antwoorden,naam,text NOT NULL
+kolom,prikbord_momenten,aangemaakt_op,timestamp with time zone default now()
+kolom,prikbord_momenten,beginuur,text
+kolom,prikbord_momenten,datum,date NOT NULL
+kolom,prikbord_momenten,einduur,text
+kolom,prikbord_momenten,id,uuid NOT NULL default gen_random_uuid()
+kolom,prikbord_momenten,prikbord_id,uuid
+kolom,prikborden,aangemaakt_door,uuid
+kolom,prikborden,aangemaakt_op,timestamp with time zone default now()
+kolom,prikborden,gesloten,boolean default false
+kolom,prikborden,id,uuid NOT NULL default gen_random_uuid()
+kolom,prikborden,titel,text NOT NULL
+kolom,prikborden,toelichting,text
+kolom,prikborden,werkgroep_id,uuid
+kolom,roles,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,roles,code,text NOT NULL
+kolom,roles,id,uuid NOT NULL default gen_random_uuid()
+kolom,roles,titel,text NOT NULL
+kolom,themas,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,themas,aanspreekpunt_vrijwilliger_id,uuid
+kolom,themas,id,uuid NOT NULL default gen_random_uuid()
+kolom,themas,omschrijving,text
+kolom,themas,titel,text NOT NULL
+kolom,todos,aangemaakt_door,uuid
+kolom,todos,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,todos,bijgewerkt_door,uuid
+kolom,todos,bijgewerkt_op,timestamp with time zone NOT NULL default now()
+kolom,todos,id,uuid NOT NULL default gen_random_uuid()
+kolom,todos,prioriteit,USER-DEFINED NOT NULL default 'normaal'::todo_prioriteit
+kolom,todos,status,USER-DEFINED NOT NULL default 'gepland'::todo_status
+kolom,todos,streefdatum,date
+kolom,todos,thema_id,uuid
+kolom,todos,wat,text NOT NULL
+kolom,todos,werkgroep_id,uuid
+kolom,todos,wie_vrijwilliger_id,uuid NOT NULL
+kolom,vakantie_perioden,aangemaakt_op,timestamp with time zone default now()
+kolom,vakantie_perioden,begin_datum,date NOT NULL
+kolom,vakantie_perioden,eind_datum,date NOT NULL
+kolom,vakantie_perioden,id,uuid NOT NULL default gen_random_uuid()
+kolom,vakantie_perioden,vrijwilliger_id,uuid
+kolom,vrijwilliger_interesses,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,vrijwilliger_interesses,interesse_id,uuid NOT NULL
+kolom,vrijwilliger_interesses,vrijwilliger_id,uuid NOT NULL
+kolom,vrijwilliger_roles,rol_id,uuid NOT NULL
+kolom,vrijwilliger_roles,toegekend_door,uuid
+kolom,vrijwilliger_roles,toegekend_op,timestamp with time zone NOT NULL default now()
+kolom,vrijwilliger_roles,vrijwilliger_id,uuid NOT NULL
+kolom,vrijwilliger_themas,gekozen_op,timestamp with time zone NOT NULL default now()
+kolom,vrijwilliger_themas,thema_id,uuid NOT NULL
+kolom,vrijwilliger_themas,vrijwilliger_id,uuid NOT NULL
+kolom,vrijwilligers,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,vrijwilligers,achternaam,text
+kolom,vrijwilligers,actief,boolean NOT NULL default true
+kolom,vrijwilligers,adres,text
+kolom,vrijwilligers,bijgewerkt_op,timestamp with time zone NOT NULL default now()
+kolom,vrijwilligers,gearchiveerd_op,timestamp with time zone
+kolom,vrijwilligers,id,uuid NOT NULL
+kolom,vrijwilligers,naam,text
+kolom,vrijwilligers,profiel_afgewerkt,boolean NOT NULL default false
+kolom,vrijwilligers,roepnaam,text
+kolom,vrijwilligers,telefoon,text
+kolom,vrijwilligers,toestemming_privacy,boolean NOT NULL default false
+kolom,vrijwilligers,toestemming_privacy_op,timestamp with time zone
+kolom,vrijwilligers,user_id,uuid NOT NULL
+kolom,vrijwilligers,voornaam,text
+kolom,vrijwilligers_public,achternaam,text
+kolom,vrijwilligers_public,adres,text
+kolom,vrijwilligers_public,id,uuid
+kolom,vrijwilligers_public,naam,text
+kolom,vrijwilligers_public,roepnaam,text
+kolom,vrijwilligers_public,telefoon,text
+kolom,vrijwilligers_public,user_id,uuid
+kolom,vrijwilligers_public,voornaam,text
+kolom,vrijwilligers_public__bak,id,uuid NOT NULL
+kolom,vrijwilligers_public__bak,naam,text
+kolom,werkgroep_deelnemers,toegevoegd_op,timestamp with time zone NOT NULL default now()
+kolom,werkgroep_deelnemers,vrijwilliger_id,uuid NOT NULL
+kolom,werkgroep_deelnemers,werkgroep_id,uuid NOT NULL
+kolom,werkgroepen,aangemaakt_op,timestamp with time zone NOT NULL default now()
+kolom,werkgroepen,bijgewerkt_op,timestamp with time zone NOT NULL default now()
+kolom,werkgroepen,coordinator_id,uuid
+kolom,werkgroepen,id,uuid NOT NULL default gen_random_uuid()
+kolom,werkgroepen,meer_info_url,text
+kolom,werkgroepen,opdracht,text
+kolom,werkgroepen,titel,text NOT NULL
+kolom,werkgroepen,trekker,text
+kolom,werkgroepen,uitgebreide_info,text
+policy,activiteiten,activiteiten_beheren,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,activiteiten,activiteiten_delete_admin,"DELETE voor authenticated | USING: (EXISTS ( SELECT 1
+   FROM admins a
+  WHERE (a.user_id = auth.uid()))) | CHECK: -"
+policy,activiteiten,activiteiten_insert_admin,"INSERT voor authenticated | USING: - | CHECK: (EXISTS ( SELECT 1
+   FROM admins a
+  WHERE (a.user_id = auth.uid())))"
+policy,activiteiten,activiteiten_lezen,SELECT voor public | USING: true | CHECK: -
+policy,activiteiten,activiteiten_lezen_auth,SELECT voor authenticated | USING: true | CHECK: -
+policy,activiteiten,activiteiten_select_auth,SELECT voor authenticated | USING: true | CHECK: -
+policy,activiteiten,activiteiten_update_admin,"UPDATE voor authenticated | USING: (EXISTS ( SELECT 1
+   FROM admins a
+  WHERE (a.user_id = auth.uid()))) | CHECK: (EXISTS ( SELECT 1
+   FROM admins a
+  WHERE (a.user_id = auth.uid())))"
+policy,admins,admins_delete_by_admin,DELETE voor authenticated | USING: (is_admin() AND (user_id <> auth.uid())) | CHECK: -
+policy,admins,admins_insert_by_admin,INSERT voor authenticated | USING: - | CHECK: is_admin()
+policy,admins,admins_select_self_or_admin,SELECT voor authenticated | USING: ((user_id = auth.uid()) OR is_admin()) | CHECK: -
+policy,doelgroepen,doelgroepen_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,doelgroepen,doelgroepen_schrijven,ALL voor authenticated | USING: is_doenker_or_admin(auth.uid()) | CHECK: is_doenker_or_admin(auth.uid())
+policy,ezelwandeling_deelnemers,ezelwandeling_deelnemers_beheer_doenker,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,ezelwandeling_deelnemers,ezelwandeling_deelnemers_inschrijven,INSERT voor authenticated | USING: - | CHECK: (vrijwilliger_id = my_vrijwilliger_id())
+policy,ezelwandeling_deelnemers,ezelwandeling_deelnemers_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,ezelwandeling_deelnemers,ezelwandeling_deelnemers_opmerking,UPDATE voor authenticated | USING: (vrijwilliger_id = my_vrijwilliger_id()) | CHECK: (vrijwilliger_id = my_vrijwilliger_id())
+policy,ezelwandeling_deelnemers,ezelwandeling_deelnemers_uitschrijven,DELETE voor authenticated | USING: (vrijwilliger_id = my_vrijwilliger_id()) | CHECK: -
+policy,ezelwandelingen,ezelwandelingen_beheren,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,ezelwandelingen,ezelwandelingen_lezen,SELECT voor public | USING: true | CHECK: -
+policy,interesses,interesses_select_authenticated,SELECT voor authenticated | USING: true | CHECK: -
+policy,klant_doelgroepen,klant_doelgroepen_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,klant_doelgroepen,klant_doelgroepen_schrijven,ALL voor authenticated | USING: is_doenker_or_admin(auth.uid()) | CHECK: is_doenker_or_admin(auth.uid())
+policy,klanten,beheer_schrijven_klanten,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,klanten,klanten_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,klanten,klanten_schrijven,ALL voor authenticated | USING: is_doenker_or_admin(auth.uid()) | CHECK: is_doenker_or_admin(auth.uid())
+policy,meedoen,admin_meedoen_all,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,meedoen,meedoen_delete_own,DELETE voor authenticated | USING: (vrijwilliger_id = my_vrijwilliger_id()) | CHECK: -
+policy,meedoen,meedoen_insert_own,INSERT voor authenticated | USING: - | CHECK: (vrijwilliger_id = my_vrijwilliger_id())
+policy,meedoen,meedoen_lezen_alles,SELECT voor authenticated | USING: true | CHECK: -
+policy,prikbord_antwoorden,prikbord_antwoorden_bijwerken,UPDATE voor public | USING: true | CHECK: -
+policy,prikbord_antwoorden,prikbord_antwoorden_lezen,SELECT voor public | USING: true | CHECK: -
+policy,prikbord_antwoorden,prikbord_antwoorden_schrijven,INSERT voor public | USING: - | CHECK: true
+policy,prikbord_antwoorden,prikbord_antwoorden_verwijderen,DELETE voor public | USING: true | CHECK: -
+policy,prikbord_momenten,prikbord_momenten_lezen,SELECT voor public | USING: true | CHECK: -
+policy,prikbord_momenten,prikbord_momenten_schrijven,"ALL voor public | USING: (EXISTS ( SELECT 1
+   FROM ((vrijwilliger_roles vr
+     JOIN roles r ON ((r.id = vr.rol_id)))
+     JOIN vrijwilligers v ON ((v.id = vr.vrijwilliger_id)))
+  WHERE ((v.user_id = auth.uid()) AND (r.code = ANY (ARRAY['doenker'::text, 'admin'::text]))))) | CHECK: -"
+policy,prikborden,prikborden_lezen,SELECT voor public | USING: true | CHECK: -
+policy,prikborden,prikborden_schrijven,"ALL voor public | USING: (EXISTS ( SELECT 1
+   FROM ((vrijwilliger_roles vr
+     JOIN roles r ON ((r.id = vr.rol_id)))
+     JOIN vrijwilligers v ON ((v.id = vr.vrijwilliger_id)))
+  WHERE ((v.user_id = auth.uid()) AND (r.code = ANY (ARRAY['doenker'::text, 'admin'::text]))))) | CHECK: -"
+policy,roles,roles readable,SELECT voor authenticated | USING: true | CHECK: -
+policy,roles,roles_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,themas,beheer_lezen,SELECT voor public | USING: true | CHECK: -
+policy,themas,beheer_schrijven_themas,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,todos,todo_admin_all,ALL voor authenticated | USING: is_admin(auth.uid()) | CHECK: is_admin(auth.uid())
+policy,todos,todo_doenker_insert,INSERT voor authenticated | USING: - | CHECK: is_doenker(auth.uid())
+policy,todos,todo_doenker_select,SELECT voor authenticated | USING: is_doenker(auth.uid()) | CHECK: -
+policy,todos,todo_doenker_update,UPDATE voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,vakantie_perioden,vakantie_perioden_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,vakantie_perioden,vakantie_perioden_schrijven,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,vrijwilliger_interesses,vi_delete_own,"DELETE voor authenticated | USING: (EXISTS ( SELECT 1
+   FROM vrijwilligers v
+  WHERE ((v.id = vrijwilliger_interesses.vrijwilliger_id) AND (v.user_id = auth.uid())))) | CHECK: -"
+policy,vrijwilliger_interesses,vi_insert_own,"INSERT voor authenticated | USING: - | CHECK: (EXISTS ( SELECT 1
+   FROM vrijwilligers v
+  WHERE ((v.id = vrijwilliger_interesses.vrijwilliger_id) AND (v.user_id = auth.uid()))))"
+policy,vrijwilliger_interesses,vi_select_admin,SELECT voor authenticated | USING: is_admin(auth.uid()) | CHECK: -
+policy,vrijwilliger_interesses,vi_select_own,"SELECT voor authenticated | USING: (EXISTS ( SELECT 1
+   FROM vrijwilligers v
+  WHERE ((v.id = vrijwilliger_interesses.vrijwilliger_id) AND (v.user_id = auth.uid())))) | CHECK: -"
+policy,vrijwilliger_roles,admin delete roles,DELETE voor authenticated | USING: is_admin_uid(auth.uid()) | CHECK: -
+policy,vrijwilliger_roles,admin insert roles,INSERT voor authenticated | USING: - | CHECK: is_admin_uid(auth.uid())
+policy,vrijwilliger_roles,admin read all roles,SELECT voor authenticated | USING: is_admin_uid(auth.uid()) | CHECK: -
+policy,vrijwilliger_roles,admin update roles,UPDATE voor authenticated | USING: is_admin_uid(auth.uid()) | CHECK: is_admin_uid(auth.uid())
+policy,vrijwilliger_roles,read own roles,SELECT voor authenticated | USING: (vrijwilliger_id = auth.uid()) | CHECK: -
+policy,vrijwilliger_roles,vrijwilliger_roles_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,vrijwilliger_themas,vrijwilliger_themas_eigen,"ALL voor authenticated | USING: (vrijwilliger_id = ( SELECT vrijwilligers.id
+   FROM vrijwilligers
+  WHERE (vrijwilligers.user_id = auth.uid()))) | CHECK: -"
+policy,vrijwilligers,auth read vrijwilligers,SELECT voor authenticated | USING: true | CHECK: -
+policy,vrijwilligers,read own vrijwilliger,SELECT voor authenticated | USING: (id = auth.uid()) | CHECK: -
+policy,vrijwilligers,vrijwilligers_admin_all,ALL voor authenticated | USING: is_admin(auth.uid()) | CHECK: is_admin(auth.uid())
+policy,vrijwilligers,vrijwilligers_doenker_select_all,SELECT voor authenticated | USING: is_doenker(auth.uid()) | CHECK: -
+policy,vrijwilligers,vrijwilligers_insert_own,INSERT voor authenticated | USING: - | CHECK: (id = auth.uid())
+policy,vrijwilligers,vrijwilligers_select_own,SELECT voor authenticated | USING: (id = auth.uid()) | CHECK: -
+policy,vrijwilligers,vrijwilligers_update_doenker,UPDATE voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,vrijwilligers,vrijwilligers_update_own,UPDATE voor authenticated | USING: (id = auth.uid()) | CHECK: (id = auth.uid())
+policy,vrijwilligers_public__bak,vrijwilligers_public_select_authenticated,SELECT voor authenticated | USING: true | CHECK: -
+policy,werkgroep_deelnemers,beheer_schrijven_wd,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,werkgroep_deelnemers,werkgroep_deelnemers_delete_own,DELETE voor authenticated | USING: (vrijwilliger_id = auth.uid()) | CHECK: -
+policy,werkgroep_deelnemers,werkgroep_deelnemers_insert_own,INSERT voor authenticated | USING: - | CHECK: (vrijwilliger_id = auth.uid())
+policy,werkgroep_deelnemers,werkgroep_deelnemers_lezen,SELECT voor authenticated | USING: true | CHECK: -
+policy,werkgroepen,beheer_schrijven_werkgroepen,ALL voor authenticated | USING: is_doenker(auth.uid()) | CHECK: is_doenker(auth.uid())
+policy,werkgroepen,werkgroepen_lezen,SELECT voor authenticated | USING: true | CHECK: -
+rls,activiteiten,aan,
+rls,admins,aan,
+rls,doelgroepen,aan,
+rls,ezelwandeling_deelnemers,aan,
+rls,ezelwandelingen,aan,
+rls,interesses,aan,
+rls,klant_doelgroepen,aan,
+rls,klanten,aan,
+rls,meedoen,aan,
+rls,prikbord_antwoorden,aan,
+rls,prikbord_momenten,aan,
+rls,prikborden,aan,
+rls,roles,aan,
+rls,themas,aan,
+rls,todos,aan,
+rls,vakantie_perioden,aan,
+rls,vrijwilliger_interesses,aan,
+rls,vrijwilliger_roles,aan,
+rls,vrijwilliger_themas,aan,
+rls,vrijwilligers,aan,
+rls,vrijwilligers_public__bak,aan,
+rls,werkgroep_deelnemers,aan,
+rls,werkgroepen,aan,
+trigger,activiteiten,trg_activiteiten_bijgewerkt_op,BEFORE UPDATE -> EXECUTE FUNCTION tg_set_bijgewerkt_op()
+trigger,ezelwandelingen,trg_ezelwandelingen_bijgewerkt_op,BEFORE UPDATE -> EXECUTE FUNCTION tg_set_bijgewerkt_op()
+trigger,klanten,trg_klanten_bijgewerkt_op,BEFORE UPDATE -> EXECUTE FUNCTION tg_set_bijgewerkt_op()
+trigger,todos,trg_todos_bijgewerkt_op,BEFORE UPDATE -> EXECUTE FUNCTION tg_set_bijgewerkt_op()
+trigger,vrijwilligers,trg_set_default_rol_vrijwilliger,AFTER INSERT -> EXECUTE FUNCTION set_default_rol_vrijwilliger()
+trigger,vrijwilligers,trg_set_vrijwilliger_naam_from_parts,BEFORE INSERT -> EXECUTE FUNCTION set_vrijwilliger_naam_from_parts()
+trigger,vrijwilligers,trg_set_vrijwilliger_naam_from_parts,BEFORE UPDATE -> EXECUTE FUNCTION set_vrijwilliger_naam_from_parts()
+trigger,vrijwilligers,trg_vrijwilligers_bijgewerkt_op,BEFORE UPDATE -> EXECUTE FUNCTION tg_set_bijgewerkt_op()
+trigger,werkgroepen,trg_werkgroepen_bijgewerkt_op,BEFORE UPDATE -> EXECUTE FUNCTION tg_set_bijgewerkt_op()
