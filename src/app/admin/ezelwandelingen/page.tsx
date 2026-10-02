@@ -12,6 +12,7 @@ type Ezelwandeling = {
   startuur: string | null;
   einduur: string | null;
   omschrijving: string | null;
+  route_id: string | null;
 };
 
 type Deelnemer = {
@@ -98,6 +99,7 @@ export default function AdminEzelwandelingenPage() {
   const [items, setItems] = useState<Ezelwandeling[]>([]);
   const [deelnemers, setDeelnemers] = useState<Deelnemer[]>([]);
   const [vrijwilligerInfo, setVrijwilligerInfo] = useState<Map<string, VrijwilligerInfo>>(new Map());
+  const [routes, setRoutes] = useState<{ id: string; titel: string }[]>([]);
 
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -111,6 +113,7 @@ export default function AdminEzelwandelingenPage() {
   const [formWanneer, setFormWanneer] = useState("");
   const [formStartuur, setFormStartuur] = useState("");
   const [formEinduur, setFormEinduur] = useState("");
+  const [formRouteId, setFormRouteId] = useState<string>("");
   const [formBezig, setFormBezig] = useState(false);
   const [formFout, setFormFout] = useState<string | null>(null);
 
@@ -168,9 +171,15 @@ export default function AdminEzelwandelingenPage() {
     setAllowed(ok);
     if (!ok) { setLoading(false); return; }
 
+    const { data: routesData } = await supabase
+      .from("wandelroutes")
+      .select("id,titel")
+      .order("titel", { ascending: true });
+    setRoutes((routesData ?? []) as { id: string; titel: string }[]);
+
     const { data: wandelingen, error: e1 } = await supabase
       .from("ezelwandelingen")
-      .select("id,titel,wanneer,startuur,einduur,omschrijving")
+      .select("id,titel,wanneer,startuur,einduur,omschrijving,route_id")
       .gte("wanneer", todayISODate())
       .order("wanneer", { ascending: true })
       .order("startuur", { ascending: true });
@@ -219,14 +228,14 @@ export default function AdminEzelwandelingenPage() {
   // --- Formulier ---
   function openNieuw() {
     setFormTitel(""); setFormOmschrijving(""); setFormWanneer("");
-    setFormStartuur("00:00"); setFormEinduur("00:00"); setFormFout(null);
+    setFormStartuur("00:00"); setFormEinduur("00:00"); setFormRouteId(""); setFormFout(null);
     setFormModal({ mode: "nieuw" });
   }
 
   function openBewerken(w: Ezelwandeling) {
     setFormTitel(w.titel); setFormOmschrijving(w.omschrijving ?? "");
     setFormWanneer(w.wanneer); setFormStartuur(hhmm(w.startuur) || "00:00");
-    setFormEinduur(hhmm(w.einduur) || "00:00"); setFormFout(null);
+    setFormEinduur(hhmm(w.einduur) || "00:00"); setFormRouteId(w.route_id ?? ""); setFormFout(null);
     setFormModal({ mode: "bewerken", wandelingId: w.id });
   }
 
@@ -242,6 +251,7 @@ export default function AdminEzelwandelingenPage() {
       wanneer: formWanneer,
       startuur: formStartuur,
       einduur: formEinduur,
+      route_id: formRouteId || null,
     };
 
     let dbError = null;
@@ -362,6 +372,20 @@ export default function AdminEzelwandelingenPage() {
                 <label className="text-sm font-medium block mb-1">Einduur</label>
                 <TijdPicker value={formEinduur} onChange={setFormEinduur} disabled={formBezig} />
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1">Route (optioneel)</label>
+              <select
+                className="w-full border rounded-xl p-3 bg-white text-sm"
+                value={formRouteId}
+                onChange={(e) => setFormRouteId(e.target.value)}
+                disabled={formBezig}
+              >
+                <option value="">— Geen route —</option>
+                {routes.map((r) => (
+                  <option key={r.id} value={r.id}>{r.titel}</option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2 pt-2">
               <button
