@@ -512,10 +512,10 @@ export default function AdminEzelwandelingenPage() {
               key={t}
               onClick={() => setSubTab(t)}
               className={[
-                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                "flex-1 px-3 py-1 text-xs font-medium rounded-xl border transition-colors",
                 subTab === t
-                  ? "bg-blue-900 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200",
+                  ? "bg-blue-900 text-white border-blue-900"
+                  : "bg-white text-blue-900 border-blue-900 hover:bg-blue-50",
               ].join(" ")}
             >
               {t === "wandelingen" ? "Wandelingen" : "Routes"}
