@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { isDoenkerOrAdmin } from "@/lib/auth";
 import RoutesSectie from "@/components/wandelroutes/RoutesSectie";
 
 type Ezelwandeling = {
@@ -191,7 +190,6 @@ export default function EzelwandelingenPage() {
 
   const [activeTab, setActiveTab] = useState<"lijst" | "kalender" | "routes">("lijst");
   const [scrollToId, setScrollToId] = useState<string | null>(null);
-  const [beheer, setBeheer] = useState(false);
   const [openRouteId, setOpenRouteId] = useState<string | null>(null);
 
   // Opmerking modal
@@ -266,8 +264,6 @@ export default function EzelwandelingenPage() {
     if (!user) { window.location.href = "/login"; return; }
 
     setMyId(user.id);
-
-    setBeheer(await isDoenkerOrAdmin());
 
     const { data: vRow, error: vErr } = await supabase
       .from("vrijwilligers")
@@ -499,7 +495,7 @@ export default function EzelwandelingenPage() {
 
         {activeTab === "routes" ? (
           <RoutesSectie
-            beheer={beheer}
+            beheer={false}
             openRouteId={openRouteId}
             onOpenRouteGesloten={() => setOpenRouteId(null)}
           />
