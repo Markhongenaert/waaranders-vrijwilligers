@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import { stuurMailNaarDeelnemers } from "./actions";
+import RoutesSectie from "@/components/wandelroutes/RoutesSectie";
 
 type Ezelwandeling = {
   id: string;
@@ -100,6 +101,7 @@ export default function AdminEzelwandelingenPage() {
   const [deelnemers, setDeelnemers] = useState<Deelnemer[]>([]);
   const [vrijwilligerInfo, setVrijwilligerInfo] = useState<Map<string, VrijwilligerInfo>>(new Map());
   const [routes, setRoutes] = useState<{ id: string; titel: string }[]>([]);
+  const [subTab, setSubTab] = useState<"wandelingen" | "routes">("wandelingen");
 
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -504,21 +506,42 @@ export default function AdminEzelwandelingenPage() {
       })()}
 
       <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">Ezelwandelingen beheren</h1>
-          <button
-            className="wa-btn-action px-3 py-2 text-sm"
-            onClick={openNieuw}
-            disabled={busy}
-          >
-            Wandeling toevoegen
-          </button>
+        <div className="flex gap-2 mb-4">
+          {(["wandelingen", "routes"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setSubTab(t)}
+              className={[
+                "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+                subTab === t
+                  ? "bg-blue-900 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200",
+              ].join(" ")}
+            >
+              {t === "wandelingen" ? "Wandelingen" : "Routes"}
+            </button>
+          ))}
         </div>
 
-        {error && <div className="wa-alert-error mb-4">Fout: {error}</div>}
-        {msg && <div className="wa-alert-success mb-4">{msg}</div>}
+        {subTab === "routes" ? (
+          <RoutesSectie beheer />
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h1 className="text-3xl font-semibold tracking-tight mb-1">Ezelwandelingen beheren</h1>
+              <button
+                className="wa-btn-action px-3 py-2 text-sm"
+                onClick={openNieuw}
+                disabled={busy}
+              >
+                Wandeling toevoegen
+              </button>
+            </div>
 
-        {items.length === 0 ? (
+            {error && <div className="wa-alert-error mb-4">Fout: {error}</div>}
+            {msg && <div className="wa-alert-success mb-4">{msg}</div>}
+
+            {items.length === 0 ? (
           <p className="text-gray-700">Geen toekomstige ezelwandelingen.</p>
         ) : (
           <div className="space-y-8">
@@ -616,6 +639,8 @@ export default function AdminEzelwandelingenPage() {
               </section>
             ))}
           </div>
+            )}
+          </>
         )}
       </main>
     </>
