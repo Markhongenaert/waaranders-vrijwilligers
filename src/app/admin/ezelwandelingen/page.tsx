@@ -330,7 +330,7 @@ export default function AdminEzelwandelingenPage() {
     <>
       {/* Formulier modal */}
       {formModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full space-y-4 overflow-y-auto max-h-[90vh]">
             <h2 className="font-semibold text-lg">
               {formModal.mode === "nieuw" ? "Wandeling toevoegen" : "Wandeling bewerken"}
@@ -411,7 +411,7 @@ export default function AdminEzelwandelingenPage() {
 
       {/* Mail modal */}
       {mailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4">
             <h2 className="font-semibold text-lg">Mail versturen naar deelnemers</h2>
             <p className="text-sm text-gray-600">{mailModal.titel}</p>
@@ -460,7 +460,7 @@ export default function AdminEzelwandelingenPage() {
         const metNummer = dl.filter((d) => vrijwilligerInfo.get(d.vrijwilliger_id)?.telefoon);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full space-y-4 overflow-y-auto max-h-[90vh]">
               <h2 className="font-semibold text-lg">WhatsApp naar deelnemers</h2>
               <p className="text-sm text-gray-600">{waModal.titel}</p>

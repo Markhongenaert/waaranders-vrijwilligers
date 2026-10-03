@@ -150,7 +150,7 @@ export default function RouteKaart({ gpxUrl, onStartpunt }: Props) {
     <div className="space-y-2">
       <div
         ref={containerRef}
-        className="h-[350px] sm:h-[450px] w-full rounded-2xl overflow-hidden border border-gray-200"
+        className="relative z-0 isolate h-[350px] sm:h-[450px] w-full rounded-2xl overflow-hidden border border-gray-200"
       />
 
       {laadFout && <div className="wa-alert-error">{laadFout}</div>}

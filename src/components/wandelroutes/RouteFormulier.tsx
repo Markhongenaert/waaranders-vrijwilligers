@@ -297,7 +297,7 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center overflow-y-auto bg-black/50 p-4">
       <div className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full space-y-4 overflow-y-auto max-h-[90vh]">
         <h2 className="font-semibold text-lg">
           {mode === "nieuw" ? "Route toevoegen" : "Route bewerken"}

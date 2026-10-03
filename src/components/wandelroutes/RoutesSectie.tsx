@@ -141,7 +141,7 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
         const src = publiekeUrl(fotoPreview.pad);
         return (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 print:hidden"
+            className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/70 p-4 print:hidden"
             onClick={() => setFotoPreview(null)}
           >
             <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
