@@ -147,7 +147,11 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
             <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
               {src && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={src} alt={fotoPreview.bijschrift ?? ""} className="w-full rounded-2xl" />
+                <img
+                  src={src}
+                  alt={fotoPreview.bijschrift ?? ""}
+                  className="block mx-auto max-w-full max-h-[85vh] object-contain rounded-2xl"
+                />
               )}
               {fotoPreview.bijschrift && (
                 <p className="text-white text-center mt-3">{fotoPreview.bijschrift}</p>
@@ -247,7 +251,7 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
                         src={src}
                         alt={f.bijschrift ?? ""}
                         loading="lazy"
-                        className="w-full h-40 object-cover rounded-xl print:h-24"
+                        className="w-full h-auto rounded-xl bg-gray-50 sm:max-h-[500px] sm:object-contain print:h-24 print:object-contain"
                       />
                       {f.bijschrift && (
                         <p className="text-sm text-gray-700 mt-1">{f.bijschrift}</p>
@@ -376,7 +380,7 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
                   >
                     {foto && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={foto} alt="" className="w-full h-36 object-cover" />
+                      <img src={foto} alt="" className="w-full aspect-[4/3] object-cover" />
                     )}
                     <div className="p-4 space-y-2">
                       <div className="flex items-start justify-between gap-2">

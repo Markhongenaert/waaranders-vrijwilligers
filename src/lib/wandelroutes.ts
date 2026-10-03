@@ -113,35 +113,43 @@ export function navigatieLink(lat: number, lon: number): string {
  * Verkleint een foto in de browser tot maximaal 1600px aan de langste zijde,
  * en zet ze om naar JPEG (kwaliteit 0,8). Foto's van een gsm zijn vaak groot,
  * en in het bos is er weinig bereik — kleinere foto's laden veel sneller.
+ *
+ * Gebruikt `createImageBitmap(..., { imageOrientation: "from-image" })` in
+ * plaats van een gewoon `Image`-element: dat past de EXIF-draairichting van
+ * de foto correct toe vóór het verkleinen. Zonder dit kon een staande
+ * gsm-foto (sensor neemt liggend op, EXIF zegt "90° draaien") plat worden
+ * getrokken, omdat het canvas dan op de ongedraaide (liggende) afmetingen
+ * werd opgezet terwijl de browser de inhoud wél gedraaid tekende.
  */
-export function verkleinFoto(bestand: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const MAX = 1600;
-    const img = new Image();
-    const url = URL.createObjectURL(bestand);
+export async function verkleinFoto(bestand: File): Promise<Blob> {
+  const MAX = 1600;
 
-    img.onload = () => {
-      URL.revokeObjectURL(url);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(bestand, { imageOrientation: "from-image" });
+  } catch {
+    throw new Error("Deze foto kon niet gelezen worden.");
+  }
 
-      let { width, height } = img;
-      if (width > height && width > MAX) {
-        height = Math.round((height * MAX) / width);
-        width = MAX;
-      } else if (height >= width && height > MAX) {
-        width = Math.round((width * MAX) / height);
-        height = MAX;
-      }
+  try {
+    let { width, height } = bitmap;
+    if (width > height && width > MAX) {
+      height = Math.round((height * MAX) / width);
+      width = MAX;
+    } else if (height >= width && height > MAX) {
+      width = Math.round((width * MAX) / height);
+      height = MAX;
+    }
 
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Kon de foto niet verwerken."));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Kon de foto niet verwerken.");
 
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    return await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
         (blob) => {
           if (blob) resolve(blob);
@@ -150,13 +158,8 @@ export function verkleinFoto(bestand: File): Promise<Blob> {
         "image/jpeg",
         0.8
       );
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Kon de foto niet lezen."));
-    };
-
-    img.src = url;
-  });
+    });
+  } finally {
+    bitmap.close();
+  }
 }
