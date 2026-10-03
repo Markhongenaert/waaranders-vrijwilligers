@@ -10,6 +10,7 @@ import {
   navigatieLink,
   publiekeUrl,
   type Wandelroute,
+  type WandelrouteFoto,
 } from "@/lib/wandelroutes";
 import RouteKaart from "./RouteKaart";
 import RouteFormulier from "./RouteFormulier";
@@ -27,6 +28,8 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [startpunt, setStartpunt] = useState<{ lat: number; lon: number } | null>(null);
+  const [fotos, setFotos] = useState<WandelrouteFoto[]>([]);
+  const [fotoPreview, setFotoPreview] = useState<WandelrouteFoto | null>(null);
 
   const [verwijderBezig, setVerwijderBezig] = useState<string | null>(null);
 
@@ -63,6 +66,21 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
 
   useEffect(() => {
     setStartpunt(null);
+    setFotoPreview(null);
+
+    if (!selectedId) {
+      setFotos([]);
+      return;
+    }
+
+    (async () => {
+      const { data } = await supabase
+        .from("wandelroute_fotos")
+        .select("id,route_id,pad,bijschrift,volgorde,aangemaakt_op")
+        .eq("route_id", selectedId)
+        .order("volgorde", { ascending: true });
+      setFotos((data ?? []) as WandelrouteFoto[]);
+    })();
   }, [selectedId]);
 
   function sluitDetail() {
@@ -91,7 +109,14 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
     setErr(null);
 
     try {
-      const paden = [r.gpx_pad, r.foto_pad].filter((p): p is string => !!p);
+      const { data: fotoRows } = await supabase
+        .from("wandelroute_fotos")
+        .select("pad")
+        .eq("route_id", r.id);
+
+      const paden = [r.gpx_pad, r.foto_pad, ...(fotoRows ?? []).map((f) => f.pad)].filter(
+        (p): p is string => !!p
+      );
       if (paden.length > 0) {
         await supabase.storage.from(BUCKET).remove(paden);
       }
@@ -112,6 +137,33 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
 
   return (
     <div className="space-y-4">
+      {fotoPreview && (() => {
+        const src = publiekeUrl(fotoPreview.pad);
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 print:hidden"
+            onClick={() => setFotoPreview(null)}
+          >
+            <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+              {src && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={src} alt={fotoPreview.bijschrift ?? ""} className="w-full rounded-2xl" />
+              )}
+              {fotoPreview.bijschrift && (
+                <p className="text-white text-center mt-3">{fotoPreview.bijschrift}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => setFotoPreview(null)}
+                className="wa-btn wa-btn-ghost w-full mt-3 py-2 text-sm"
+              >
+                Sluiten
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {formulierOpen && (
         <RouteFormulier
           mode={formulierOpen.mode}
@@ -166,6 +218,46 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
               <p className="text-sm text-gray-600">Nog geen kaart beschikbaar voor deze route.</p>
             );
           })()}
+
+          {selectedRoute.routebeschrijving && (
+            <div className="wa-card p-4">
+              <div className="font-semibold mb-2">Routebeschrijving</div>
+              <p className="text-base leading-relaxed whitespace-pre-line">
+                {selectedRoute.routebeschrijving}
+              </p>
+            </div>
+          )}
+
+          {fotos.length > 0 && (
+            <div>
+              <div className="font-semibold mb-2">Foto's onderweg</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-3 gap-3">
+                {fotos.map((f) => {
+                  const src = publiekeUrl(f.pad);
+                  if (!src) return null;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setFotoPreview(f)}
+                      className="text-left print:break-inside-avoid"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt={f.bijschrift ?? ""}
+                        loading="lazy"
+                        className="w-full h-40 object-cover rounded-xl print:h-24"
+                      />
+                      {f.bijschrift && (
+                        <p className="text-sm text-gray-700 mt-1">{f.bijschrift}</p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {(selectedRoute.goed_om_te_weten || selectedRoute.seizoensinfo) && (
             <div className="space-y-4">
