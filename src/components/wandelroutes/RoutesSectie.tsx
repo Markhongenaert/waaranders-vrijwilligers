@@ -230,7 +230,7 @@ export default function RoutesSectie({ beheer, openRouteId, onOpenRouteGesloten 
 
           {fotos.length > 0 && (
             <div>
-              <div className="font-semibold mb-2">Foto's onderweg</div>
+              <div className="font-semibold mb-2">Foto&apos;s onderweg</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-3 gap-3">
                 {fotos.map((f) => {
                   const src = publiekeUrl(f.pad);

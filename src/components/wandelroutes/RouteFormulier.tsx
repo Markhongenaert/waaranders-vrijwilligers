@@ -446,7 +446,7 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-medium">Foto's onderweg</label>
+            <label className="text-sm font-medium">Foto&apos;s onderweg</label>
             <label className="wa-btn wa-btn-ghost px-3 py-1.5 text-xs cursor-pointer">
               ＋ Foto toevoegen
               <input
@@ -461,9 +461,9 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
           </div>
 
           {fotosLaden ? (
-            <p className="text-sm text-gray-500">Foto's laden…</p>
+            <p className="text-sm text-gray-500">Foto&apos;s laden…</p>
           ) : fotos.length === 0 ? (
-            <p className="text-sm text-gray-500">Nog geen foto's toegevoegd.</p>
+            <p className="text-sm text-gray-500">Nog geen foto&apos;s toegevoegd.</p>
           ) : (
             <ul className="space-y-2">
               {fotos.map((f, i) => {
