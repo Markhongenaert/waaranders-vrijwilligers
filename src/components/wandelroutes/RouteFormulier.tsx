@@ -22,10 +22,13 @@ type Props = {
 
 type FotoItem =
   | { soort: "bestaand"; id: string; pad: string; bijschrift: string }
+  | { soort: "legacy"; pad: string; bijschrift: string }
   | { soort: "nieuw"; tempId: string; file: File; preview: string; bijschrift: string };
 
 function fotoKey(f: FotoItem): string {
-  return f.soort === "bestaand" ? f.id : f.tempId;
+  if (f.soort === "bestaand") return f.id;
+  if (f.soort === "legacy") return `legacy:${f.pad}`;
+  return f.tempId;
 }
 
 function sanitizeBestandsnaam(naam: string): string {
@@ -49,12 +52,6 @@ async function uploadBestand(id: string, file: File): Promise<string> {
   const { error } = await supabase.storage.from(BUCKET).upload(pad, file);
   if (error) throw error;
   return pad;
-}
-
-async function uploadHoofdfoto(routeId: string, file: File): Promise<string> {
-  const klein = await verkleinFoto(file);
-  const jpgFile = new File([klein], naarJpgNaam(file.name), { type: "image/jpeg" });
-  return uploadBestand(routeId, jpgFile);
 }
 
 async function uploadFotoOnderweg(routeId: string, file: File): Promise<string> {
@@ -83,11 +80,12 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
 
   const [gpxFile, setGpxFile] = useState<File | null>(null);
   const [gpxFout, setGpxFout] = useState<string | null>(null);
-  const [fotoFile, setFotoFile] = useState<File | null>(null);
 
   const [fotos, setFotos] = useState<FotoItem[]>([]);
   const [fotosLaden, setFotosLaden] = useState(mode === "bewerken");
   const [origFotoIds, setOrigFotoIds] = useState<Set<string>>(new Set());
+  const [sterKey, setSterKey] = useState<string | null>(null);
+  const origLegacyPadRef = useRef<string | null>(null);
   const previewUrlsRef = useRef<string[]>([]);
 
   const [busy, setBusy] = useState(false);
@@ -104,19 +102,52 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
         .order("volgorde", { ascending: true });
 
       const rows = (data ?? []) as WandelrouteFoto[];
-      setFotos(
-        rows.map((r) => ({
-          soort: "bestaand" as const,
-          id: r.id,
-          pad: r.pad,
-          bijschrift: r.bijschrift ?? "",
-        }))
-      );
+      const bestaande = rows.map((r) => ({
+        soort: "bestaand" as const,
+        id: r.id,
+        pad: r.pad,
+        bijschrift: r.bijschrift ?? "",
+      }));
+
+      let initieel: FotoItem[] = bestaande;
+      let initieleSter: string | null = null;
+
+      if (route.foto_pad) {
+        const matchend = bestaande.find((f) => f.pad === route.foto_pad);
+        if (matchend) {
+          initieleSter = fotoKey(matchend);
+        } else {
+          // Oude, apart opgeladen hoofdfoto die niet (meer) in wandelroute_fotos staat.
+          const legacyItem: FotoItem = { soort: "legacy", pad: route.foto_pad, bijschrift: "" };
+          initieel = [legacyItem, ...bestaande];
+          initieleSter = fotoKey(legacyItem);
+          origLegacyPadRef.current = route.foto_pad;
+        }
+      }
+
+      if (!initieleSter && initieel.length > 0) {
+        initieleSter = fotoKey(initieel[0]);
+      }
+
+      setFotos(initieel);
       setOrigFotoIds(new Set(rows.map((r) => r.id)));
+      setSterKey(initieleSter);
       setFotosLaden(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Veiligheidsnet: als er nog geen ster gekozen is (of de gekozen foto bestaat niet
+  // meer), valt de ster automatisch op de eerste foto in de lijst.
+  useEffect(() => {
+    if (fotos.length === 0) {
+      if (sterKey !== null) setSterKey(null);
+      return;
+    }
+    if (sterKey === null || !fotos.some((f) => fotoKey(f) === sterKey)) {
+      setSterKey(fotoKey(fotos[0]));
+    }
+  }, [fotos, sterKey]);
 
   useEffect(() => {
     return () => {
@@ -153,10 +184,6 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
     }
   }
 
-  function onFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFotoFile(e.target.files?.[0] ?? null);
-  }
-
   function fotosToevoegen(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
@@ -190,7 +217,8 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
     });
   }
 
-  async function slaFotosOp(routeId: string) {
+  /** Verwerkt alle foto's (nieuw/bestaand/legacy) en geeft het pad van de gekozen hoofdfoto terug. */
+  async function slaFotosOp(routeId: string): Promise<string | null> {
     const huidigeBestaandeIds = new Set(
       fotos.filter((f): f is FotoItem & { soort: "bestaand" } => f.soort === "bestaand").map((f) => f.id)
     );
@@ -209,25 +237,47 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
       if (error) throw error;
     }
 
+    // Oude, apart opgeladen hoofdfoto die de gebruiker nu verwijderd heeft: bestand opruimen.
+    const legacyPad = origLegacyPadRef.current;
+    const legacyNogAanwezig =
+      legacyPad != null && fotos.some((f) => f.soort === "legacy" && f.pad === legacyPad);
+    if (legacyPad && !legacyNogAanwezig) {
+      await supabase.storage.from(BUCKET).remove([legacyPad]);
+    }
+
+    const opgeslagen: { key: string; pad: string }[] = [];
+
     for (let i = 0; i < fotos.length; i++) {
       const f = fotos[i];
+      const bijschrift = f.bijschrift.trim() || null;
+
       if (f.soort === "bestaand") {
         const { error } = await supabase
           .from("wandelroute_fotos")
-          .update({ bijschrift: f.bijschrift.trim() || null, volgorde: i })
+          .update({ bijschrift, volgorde: i })
           .eq("id", f.id);
         if (error) throw error;
+        opgeslagen.push({ key: fotoKey(f), pad: f.pad });
+      } else if (f.soort === "legacy") {
+        // Wordt nu een "echte" foto onderweg (met eigen rij), het bestand blijft ongewijzigd.
+        const { error } = await supabase
+          .from("wandelroute_fotos")
+          .insert({ route_id: routeId, pad: f.pad, bijschrift, volgorde: i });
+        if (error) throw error;
+        opgeslagen.push({ key: fotoKey(f), pad: f.pad });
       } else {
         const pad = await uploadFotoOnderweg(routeId, f.file);
-        const { error } = await supabase.from("wandelroute_fotos").insert({
-          route_id: routeId,
-          pad,
-          bijschrift: f.bijschrift.trim() || null,
-          volgorde: i,
-        });
+        const { error } = await supabase
+          .from("wandelroute_fotos")
+          .insert({ route_id: routeId, pad, bijschrift, volgorde: i });
         if (error) throw error;
+        opgeslagen.push({ key: fotoKey(f), pad });
       }
     }
+
+    if (opgeslagen.length === 0) return null;
+    const gekozen = opgeslagen.find((p) => p.key === sterKey);
+    return (gekozen ?? opgeslagen[0]).pad;
   }
 
   async function save() {
@@ -248,12 +298,9 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
       const oudeFotoPad = mode === "bewerken" ? route?.foto_pad ?? null : null;
 
       let gpxPad = oudeGpxPad;
-      let fotoPad = oudeFotoPad;
-
       if (gpxFile) gpxPad = await uploadBestand(id, gpxFile);
-      if (fotoFile) fotoPad = await uploadHoofdfoto(id, fotoFile);
 
-      const payload = {
+      const basisPayload = {
         titel: t,
         korte_omschrijving: korteOmschrijving.trim() || null,
         afstand_km: afstand.trim() ? Number(afstand) : null,
@@ -263,30 +310,33 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
         seizoensinfo: seizoensinfo.trim() || null,
         routebeschrijving: routebeschrijving.trim() || null,
         gpx_pad: gpxPad,
-        foto_pad: fotoPad,
         mapy_link: mapyLink.trim() || null,
         volgorde: Number.isFinite(volgorde) ? volgorde : 0,
         zichtbaar,
       };
 
       if (mode === "nieuw") {
+        // Eerst de route aanmaken (zonder foto_pad): wandelroute_fotos verwijst via
+        // een foreign key naar deze rij en kan dus pas daarna ingevoegd worden.
         const { error } = await supabase
           .from("wandelroutes")
-          .insert({ id, ...payload, aangemaakt_door: userId });
+          .insert({ id, ...basisPayload, foto_pad: null, aangemaakt_door: userId });
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("wandelroutes").update(payload).eq("id", id);
+        const { error } = await supabase.from("wandelroutes").update(basisPayload).eq("id", id);
         if (error) throw error;
 
-        const teVerwijderen: string[] = [];
-        if (gpxFile && oudeGpxPad && oudeGpxPad !== gpxPad) teVerwijderen.push(oudeGpxPad);
-        if (fotoFile && oudeFotoPad && oudeFotoPad !== fotoPad) teVerwijderen.push(oudeFotoPad);
-        if (teVerwijderen.length > 0) {
-          await supabase.storage.from(BUCKET).remove(teVerwijderen);
+        if (gpxFile && oudeGpxPad && oudeGpxPad !== gpxPad) {
+          await supabase.storage.from(BUCKET).remove([oudeGpxPad]);
         }
       }
 
-      await slaFotosOp(id);
+      const fotoPad = await slaFotosOp(id);
+
+      if (fotoPad !== oudeFotoPad) {
+        const { error } = await supabase.from("wandelroutes").update({ foto_pad: fotoPad }).eq("id", id);
+        if (error) throw error;
+      }
 
       await onSaved();
     } catch (e) {
@@ -405,10 +455,10 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
           />
         </div>
 
-        {/* Foto's onderweg — bewust direct na Routebeschrijving, met een duidelijke tussentitel */}
+        {/* Foto's — bewust direct na Routebeschrijving, met een duidelijke tussentitel */}
         <div className="border-t border-gray-200 pt-4">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-base font-semibold">Foto&apos;s onderweg</h3>
+            <h3 className="text-base font-semibold">Foto&apos;s</h3>
             <label className="wa-btn wa-btn-ghost px-3 py-1.5 text-xs cursor-pointer">
               ＋ Foto toevoegen
               <input
@@ -421,6 +471,10 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
               />
             </label>
           </div>
+          <p className="text-xs text-gray-500 mb-2">
+            Voeg foto&apos;s toe van belangrijke punten onderweg, elk met een korte uitleg. Tik op ☆
+            om de foto te kiezen die bovenaan het routekaartje komt.
+          </p>
 
           {fotosLaden ? (
             <p className="text-sm text-gray-500">Foto&apos;s laden…</p>
@@ -430,49 +484,72 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
             <ul className="space-y-2">
               {fotos.map((f, i) => {
                 const key = fotoKey(f);
-                const src = f.soort === "bestaand" ? publiekeUrl(f.pad) : f.preview;
+                const src = f.soort === "nieuw" ? f.preview : publiekeUrl(f.pad);
+                const isSter = sterKey === key;
                 return (
-                  <li key={key} className="flex gap-3 border rounded-xl p-2 bg-white">
-                    {src && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={src} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" />
-                    )}
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs text-gray-500 block">Uitleg bij deze foto</label>
-                      <input
-                        type="text"
-                        className="w-full border rounded-lg p-2 text-sm"
-                        placeholder="bv. Aan deze kapel ga je links"
-                        value={f.bijschrift}
-                        onChange={(e) => fotoBijschriftWijzigen(key, e.target.value)}
-                        disabled={busy}
-                      />
+                  <li key={key} className="border rounded-xl p-2 bg-white space-y-2">
+                    <div className="flex gap-3">
+                      {src && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={src} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" />
+                      )}
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs text-gray-500 block">Uitleg bij deze foto</label>
+                        <input
+                          type="text"
+                          className="w-full border rounded-lg p-2 text-sm"
+                          placeholder="bv. Aan deze kapel ga je links"
+                          value={f.bijschrift}
+                          onChange={(e) => fotoBijschriftWijzigen(key, e.target.value)}
+                          disabled={busy}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => fotoVerplaatsen(key, -1)}
+                          disabled={busy || i === 0}
+                          className="wa-btn wa-btn-ghost px-2 py-0.5 text-xs"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fotoVerplaatsen(key, 1)}
+                          disabled={busy || i === fotos.length - 1}
+                          className="wa-btn wa-btn-ghost px-2 py-0.5 text-xs"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fotoVerwijderen(key)}
+                          disabled={busy}
+                          className="wa-btn-danger px-2 py-0.5 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1 shrink-0">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => fotoVerplaatsen(key, -1)}
-                        disabled={busy || i === 0}
-                        className="wa-btn wa-btn-ghost px-2 py-0.5 text-xs"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fotoVerplaatsen(key, 1)}
-                        disabled={busy || i === fotos.length - 1}
-                        className="wa-btn wa-btn-ghost px-2 py-0.5 text-xs"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fotoVerwijderen(key)}
+                        onClick={() => setSterKey(key)}
                         disabled={busy}
-                        className="wa-btn-danger px-2 py-0.5 text-xs"
+                        className={[
+                          "text-lg leading-none",
+                          isSter ? "text-amber-500" : "text-gray-300 hover:text-gray-400",
+                        ].join(" ")}
+                        aria-label={isSter ? "Foto op routekaartje" : "Kies als foto op routekaartje"}
+                        title={isSter ? "Foto op routekaartje" : "Kies als foto op routekaartje"}
                       >
-                        ✕
+                        {isSter ? "★" : "☆"}
                       </button>
+                      {isSter && (
+                        <span className="text-xs font-medium text-amber-700">
+                          {f.soort === "legacy" ? "Huidige foto op routekaartje" : "Foto op routekaartje"}
+                        </span>
+                      )}
                     </div>
                   </li>
                 );
@@ -503,20 +580,6 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
             value={seizoensinfo}
             onChange={(e) => setSeizoensinfo(e.target.value)}
             disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Hoofdfoto (op het routekaartje)</label>
-          {mode === "bewerken" && route?.foto_pad && !fotoFile && (
-            <p className="text-xs text-gray-500 mb-1">Huidige foto: {basisNaam(route.foto_pad)}</p>
-          )}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={onFotoChange}
-            disabled={busy}
-            className="w-full text-sm"
           />
         </div>
 
