@@ -558,7 +558,7 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
           </span>
         </label>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-3 pb-1 sticky bottom-0 bg-white border-t">
           <button
             type="button"
             className="wa-btn wa-btn-brand flex-1 py-2 text-sm"
