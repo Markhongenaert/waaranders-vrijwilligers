@@ -13,6 +13,7 @@ export type Wandelroute = {
   moeilijkheid: Moeilijkheid | null;
   goed_om_te_weten: string | null;
   seizoensinfo: string | null;
+  routebeschrijving: string | null;
   gpx_pad: string | null;
   foto_pad: string | null;
   mapy_link: string | null;
@@ -21,6 +22,15 @@ export type Wandelroute = {
   aangemaakt_door: string | null;
   aangemaakt_op: string;
   bijgewerkt_op: string;
+};
+
+export type WandelrouteFoto = {
+  id: string;
+  route_id: string;
+  pad: string;
+  bijschrift: string | null;
+  volgorde: number;
+  aangemaakt_op: string;
 };
 
 export const MOEILIJKHEID_LABEL: Record<Moeilijkheid, string> = {
@@ -97,4 +107,56 @@ export function formatDuur(minuten: number | null): string {
 /** Opent de gewone Google Maps-navigatie naar een punt. */
 export function navigatieLink(lat: number, lon: number): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+}
+
+/**
+ * Verkleint een foto in de browser tot maximaal 1600px aan de langste zijde,
+ * en zet ze om naar JPEG (kwaliteit 0,8). Foto's van een gsm zijn vaak groot,
+ * en in het bos is er weinig bereik — kleinere foto's laden veel sneller.
+ */
+export function verkleinFoto(bestand: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const MAX = 1600;
+    const img = new Image();
+    const url = URL.createObjectURL(bestand);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      let { width, height } = img;
+      if (width > height && width > MAX) {
+        height = Math.round((height * MAX) / width);
+        width = MAX;
+      } else if (height >= width && height > MAX) {
+        width = Math.round((width * MAX) / height);
+        height = MAX;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Kon de foto niet verwerken."));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Kon de foto niet verkleinen."));
+        },
+        "image/jpeg",
+        0.8
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Kon de foto niet lezen."));
+    };
+
+    img.src = url;
+  });
 }
