@@ -405,48 +405,10 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
           />
         </div>
 
-        <div>
-          <label className="text-sm font-medium block mb-1">Goed om te weten</label>
-          <p className="text-xs text-gray-500 mb-1">
-            bv. modderige stukken, beekjes, drukke fietspaden, waar je kan pauzeren
-          </p>
-          <textarea
-            className="w-full border rounded-xl p-3 bg-white text-sm"
-            rows={4}
-            value={goedOmTeWeten}
-            onChange={(e) => setGoedOmTeWeten(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Seizoensinfo</label>
-          <textarea
-            className="w-full border rounded-xl p-3 bg-white text-sm"
-            rows={3}
-            value={seizoensinfo}
-            onChange={(e) => setSeizoensinfo(e.target.value)}
-            disabled={busy}
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium block mb-1">Hoofdfoto (op het routekaartje)</label>
-          {mode === "bewerken" && route?.foto_pad && !fotoFile && (
-            <p className="text-xs text-gray-500 mb-1">Huidige foto: {basisNaam(route.foto_pad)}</p>
-          )}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={onFotoChange}
-            disabled={busy}
-            className="w-full text-sm"
-          />
-        </div>
-
-        <div>
+        {/* Foto's onderweg — bewust direct na Routebeschrijving, met een duidelijke tussentitel */}
+        <div className="border-t border-gray-200 pt-4">
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-medium">Foto&apos;s onderweg</label>
+            <h3 className="text-base font-semibold">Foto&apos;s onderweg</h3>
             <label className="wa-btn wa-btn-ghost px-3 py-1.5 text-xs cursor-pointer">
               ＋ Foto toevoegen
               <input
@@ -517,6 +479,45 @@ export default function RouteFormulier({ mode, route, onClose, onSaved }: Props)
               })}
             </ul>
           )}
+        </div>
+
+        <div className="border-t border-gray-200 pt-4">
+          <label className="text-sm font-medium block mb-1">Goed om te weten</label>
+          <p className="text-xs text-gray-500 mb-1">
+            bv. modderige stukken, beekjes, drukke fietspaden, waar je kan pauzeren
+          </p>
+          <textarea
+            className="w-full border rounded-xl p-3 bg-white text-sm"
+            rows={4}
+            value={goedOmTeWeten}
+            onChange={(e) => setGoedOmTeWeten(e.target.value)}
+            disabled={busy}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">Seizoensinfo</label>
+          <textarea
+            className="w-full border rounded-xl p-3 bg-white text-sm"
+            rows={3}
+            value={seizoensinfo}
+            onChange={(e) => setSeizoensinfo(e.target.value)}
+            disabled={busy}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium block mb-1">Hoofdfoto (op het routekaartje)</label>
+          {mode === "bewerken" && route?.foto_pad && !fotoFile && (
+            <p className="text-xs text-gray-500 mb-1">Huidige foto: {basisNaam(route.foto_pad)}</p>
+          )}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={onFotoChange}
+            disabled={busy}
+            className="w-full text-sm"
+          />
         </div>
 
         <div>
