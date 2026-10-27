@@ -161,8 +161,8 @@ export default function AdminEzelwandelingenPage() {
     return map;
   }, [deelnemers]);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     setError(null);
     setMsg(null);
 
@@ -269,7 +269,7 @@ export default function AdminEzelwandelingenPage() {
 
     setFormModal(null);
     setFormBezig(false);
-    await load();
+    await load({ silent: true });
   }
 
   async function verwijder(id: string) {
@@ -281,7 +281,7 @@ export default function AdminEzelwandelingenPage() {
     const { error } = await supabase.from("ezelwandelingen").delete().eq("id", id);
     if (error) { setError(error.message); setBusy(false); return; }
     setMsg("Wandeling verwijderd.");
-    await load();
+    await load({ silent: true });
     setBusy(false);
   }
 
