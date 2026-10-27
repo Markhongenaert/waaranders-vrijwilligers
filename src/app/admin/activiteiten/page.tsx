@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import { stuurMailNaarDeelnemers } from "./actions";
 import DeelnemersBeheer from "./_components/DeelnemersBeheer";
+import { consumeActiviteitenScrollTarget } from "@/lib/scrollTarget";
 
 type Activiteit = {
   id: string;
@@ -105,6 +106,9 @@ export default function AdminActiviteitenPage() {
 
   const todayRef = useRef<HTMLLIElement | null>(null);
   const hasScrolled = useRef(false);
+  const [explicitTargetId, setExplicitTargetId] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : consumeActiviteitenScrollTarget()
+  );
 
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
@@ -134,6 +138,11 @@ export default function AdminActiviteitenPage() {
       }
     }
     return null;
+  }, [grouped]);
+
+  const lastItemId = useMemo(() => {
+    const last = grouped.at(-1)?.items.at(-1);
+    return last ? last.id : null;
   }, [grouped]);
 
   const load = async () => {
@@ -217,10 +226,13 @@ export default function AdminActiviteitenPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading && !hasScrolled.current && todayRef.current) {
-      hasScrolled.current = true;
+    if (loading || hasScrolled.current) return;
+    hasScrolled.current = true;
+    if (todayRef.current) {
       todayRef.current.scrollIntoView({ behavior: "auto", block: "start" });
     }
+    if (explicitTargetId) setExplicitTargetId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
   const executeDelete = async (scope: "enkel" | "reeks", id: string, reeksId: string | null) => {
@@ -228,6 +240,7 @@ export default function AdminActiviteitenPage() {
     setReeksModal(null);
     setError(null);
     setMsg(null);
+    hasScrolled.current = false;
 
     let dbError = null;
 
@@ -427,9 +440,16 @@ export default function AdminActiviteitenPage() {
                     const s = hhmm(a.startuur);
                     const e = hhmm(a.einduur);
                     const isFirstFuture = a.id === firstFutureId;
+                    const isCardScrollTarget =
+                      a.id === explicitTargetId ||
+                      (!explicitTargetId && !firstFutureId && a.id === lastItemId);
 
                     const vandaagDivider = isFirstFuture ? (
-                      <li key="vandaag-divider" ref={todayRef} className="flex items-center gap-3 py-1 select-none">
+                      <li
+                        key="vandaag-divider"
+                        ref={!explicitTargetId ? todayRef : undefined}
+                        className="flex items-center gap-3 py-1 select-none"
+                      >
                         <div className="flex-1 h-px bg-emerald-600" />
                         <span className="text-xs font-semibold uppercase tracking-widest text-emerald-700 whitespace-nowrap">
                           Vandaag
@@ -439,7 +459,7 @@ export default function AdminActiviteitenPage() {
                     ) : null;
 
                     const card = (
-                      <li key={a.id} className="wa-card p-4">
+                      <li key={a.id} ref={isCardScrollTarget ? todayRef : undefined} className="wa-card p-4">
                         <div className="space-y-3">
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-semibold whitespace-pre-line break-words text-base sm:text-lg">

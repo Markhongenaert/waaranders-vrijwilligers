@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
+import { setActiviteitenScrollTarget } from "@/lib/scrollTarget";
 import HerhalingVelden from "@/components/HerhalingVelden";
 import {
   datumsVoorWaarden,
@@ -197,6 +198,7 @@ export default function BewerkActiviteitPage() {
 
     if (dbError) { setError(dbError.message); setBusy(false); return; }
 
+    setActiviteitenScrollTarget(id);
     router.push("/admin/activiteiten");
   };
 
@@ -267,6 +269,7 @@ export default function BewerkActiviteitPage() {
             if (e2) { setError(e2.message); setBusy(false); return; }
           }
 
+          setActiviteitenScrollTarget(id);
           router.push("/admin/activiteiten");
         },
       });
@@ -370,6 +373,7 @@ export default function BewerkActiviteitPage() {
           if (e4) { setError(e4.message); setBusy(false); return; }
         }
 
+        setActiviteitenScrollTarget(id);
         router.push("/admin/activiteiten");
       },
     });
