@@ -6,7 +6,13 @@ import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import { stuurMailNaarDeelnemers } from "./actions";
 import DeelnemersBeheer from "./_components/DeelnemersBeheer";
-import { consumeActiviteitenScrollTarget } from "@/lib/scrollTarget";
+import {
+  consumeActiviteitenScrollTarget,
+  consumeActiviteitenWeergave,
+  setActiviteitenWeergave,
+  type ActiviteitenWeergave,
+} from "@/lib/scrollTarget";
+import ActiviteitenKalender from "@/components/ActiviteitenKalender";
 
 type Activiteit = {
   id: string;
@@ -109,6 +115,29 @@ export default function AdminActiviteitenPage() {
   const [explicitTargetId, setExplicitTargetId] = useState<string | null>(() =>
     typeof window === "undefined" ? null : consumeActiviteitenScrollTarget()
   );
+
+  const [weergave, setWeergave] = useState<ActiviteitenWeergave>(() =>
+    typeof window === "undefined" ? "lijst" : consumeActiviteitenWeergave() ?? "lijst"
+  );
+
+  const goBewerken = (id: string) => {
+    setActiviteitenWeergave(weergave);
+    router.push(`/admin/activiteiten/${id}`);
+  };
+
+  const aantalIngeschrevenByActId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [actId, namen] of inschrijvingen) map.set(actId, namen.length);
+    return map;
+  }, [inschrijvingen]);
+
+  const kalenderInitialeMaand = useMemo(() => {
+    if (!explicitTargetId) return undefined;
+    const a = items.find((it) => it.id === explicitTargetId);
+    if (!a) return undefined;
+    const d = asLocalDate(a.wanneer);
+    return { jaar: d.getFullYear(), maand: d.getMonth() };
+  }, [explicitTargetId, items]);
 
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) => (a.wanneer < b.wanneer ? -1 : a.wanneer > b.wanneer ? 1 : 0));
@@ -413,15 +442,49 @@ export default function AdminActiviteitenPage() {
         {/* Vaste balk: blijft zichtbaar tijdens scrollen. top-[61px] = hoogte van de sticky AppHeader erboven. */}
         <div className="sticky top-[61px] z-40 -mx-4 sm:-mx-6 md:-mx-10 bg-white border-b border-gray-200 px-4 sm:px-6 md:px-10 py-3 mb-4 flex items-center justify-between gap-3 flex-wrap">
           <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Activiteiten beheren</h1>
-          <a className="wa-btn wa-btn-brand px-4 py-2 text-sm whitespace-nowrap shrink-0" href="/admin/toevoegen">
-            + Nieuwe activiteit
-          </a>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="inline-flex rounded-xl border border-gray-300 overflow-hidden text-sm">
+              <button
+                onClick={() => setWeergave("lijst")}
+                className={[
+                  "px-3 py-1.5 font-medium transition",
+                  weergave === "lijst" ? "bg-emerald-800 text-white" : "bg-white text-gray-700 hover:bg-gray-50",
+                ].join(" ")}
+              >
+                Lijst
+              </button>
+              <button
+                onClick={() => setWeergave("kalender")}
+                className={[
+                  "px-3 py-1.5 font-medium transition border-l border-gray-300",
+                  weergave === "kalender" ? "bg-emerald-800 text-white" : "bg-white text-gray-700 hover:bg-gray-50",
+                ].join(" ")}
+              >
+                Kalender
+              </button>
+            </div>
+            <a className="wa-btn wa-btn-brand px-4 py-2 text-sm whitespace-nowrap shrink-0" href="/admin/toevoegen">
+              + Nieuwe activiteit
+            </a>
+          </div>
         </div>
 
         {error && <div className="wa-alert-error mb-4">Fout: {error}</div>}
         {msg && <div className="wa-alert-success mb-4">{msg}</div>}
 
-        {items.length === 0 ? (
+        {weergave === "kalender" ? (
+          items.length === 0 ? (
+            <p className="text-gray-700">Geen activiteiten gevonden.</p>
+          ) : (
+            <ActiviteitenKalender
+              items={items}
+              aantalIngeschrevenByActId={aantalIngeschrevenByActId}
+              onActiviteitClick={goBewerken}
+              magVerledenBekijken
+              initialeMaand={kalenderInitialeMaand}
+            />
+          )
+        ) : items.length === 0 ? (
           <p className="text-gray-700">Geen activiteiten gevonden.</p>
         ) : (
           <div className="space-y-8">
@@ -515,7 +578,7 @@ export default function AdminActiviteitenPage() {
                             })()}
                             <button
                               className="wa-btn wa-btn-ghost flex-1 px-4 py-2 text-sm"
-                              onClick={() => router.push(`/admin/activiteiten/${a.id}`)}
+                              onClick={() => goBewerken(a.id)}
                               disabled={busy}
                             >
                               Bewerken

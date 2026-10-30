@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { isDoenkerOrAdmin } from "@/lib/auth";
 import { stuurOpmerkingMail } from "./actions";
+import ActiviteitenKalender from "@/components/ActiviteitenKalender";
 
 type Activiteit = {
   id: string;
@@ -32,9 +33,6 @@ type MijnMeedoenRow = {
 const WEEKDAY_FMT = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
 const DAY_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "short" });
 const MONTH_HEADER_FMT = new Intl.DateTimeFormat("nl-BE", { month: "long", year: "numeric" });
-const CAL_MONTH_FMT = new Intl.DateTimeFormat("nl-BE", { month: "long", year: "numeric" });
-
-const WEEKDAY_SHORT = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
 function capitalize(s: string) {
   if (!s) return s;
@@ -72,147 +70,6 @@ function todayISODate() {
 function hhmm(t: string | null): string | null {
   if (!t) return null;
   return t.length >= 5 ? t.slice(0, 5) : t;
-}
-
-function calMonthLabel(year: number, month: number) {
-  return capitalize(CAL_MONTH_FMT.format(new Date(year, month, 1)));
-}
-
-function daysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-// Returns 0=Ma … 6=Zo for the first day of the month
-function firstWeekday(year: number, month: number) {
-  const d = new Date(year, month, 1).getDay(); // 0=Sun
-  return (d + 6) % 7;
-}
-
-function isoDate(year: number, month: number, day: number) {
-  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-// --- Kalender sub-component ---
-function Kalender({
-  items,
-  meedoenByAct,
-  onBadgeClick,
-}: {
-  items: Activiteit[];
-  meedoenByAct: Map<string, { vrijwilligerIds: Set<string>; namen: string[] }>;
-  onBadgeClick: (id: string) => void;
-}) {
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
-
-  const activiteitenByDate = useMemo(() => {
-    const map = new Map<string, Activiteit[]>();
-    for (const a of items) {
-      if (!map.has(a.wanneer)) map.set(a.wanneer, []);
-      map.get(a.wanneer)!.push(a);
-    }
-    return map;
-  }, [items]);
-
-  const totalDays = daysInMonth(year, month);
-  const startOffset = firstWeekday(year, month);
-  const totalCells = Math.ceil((startOffset + totalDays) / 7) * 7;
-  const todayStr = todayISODate();
-
-  const prevMonth = () => {
-    if (month === 0) {
-      setYear((y) => y - 1);
-      setMonth(11);
-    } else {
-      setMonth((m) => m - 1);
-    }
-  };
-  const nextMonth = () => {
-    if (month === 11) {
-      setYear((y) => y + 1);
-      setMonth(0);
-    } else {
-      setMonth((m) => m + 1);
-    }
-  };
-
-  return (
-    <div>
-      {/* Maandnavigatie */}
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="wa-btn wa-btn-ghost px-4 py-1 text-xl leading-none">
-          ‹
-        </button>
-        <span className="font-semibold text-base sm:text-lg">{calMonthLabel(year, month)}</span>
-        <button onClick={nextMonth} className="wa-btn wa-btn-ghost px-4 py-1 text-xl leading-none">
-          ›
-        </button>
-      </div>
-
-      {/* Weekdagkoppen */}
-      <div className="grid grid-cols-7 mb-1">
-        {WEEKDAY_SHORT.map((d) => (
-          <div key={d} className="text-center text-xs font-semibold text-gray-500 py-1">
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Kalendergrid */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden">
-        {Array.from({ length: totalCells }, (_, i) => {
-          const dayNum = i - startOffset + 1;
-          const isInMonth = dayNum >= 1 && dayNum <= totalDays;
-          const dateStr = isInMonth ? isoDate(year, month, dayNum) : null;
-          const acts = dateStr ? (activiteitenByDate.get(dateStr) ?? []) : [];
-          const isToday = dateStr === todayStr;
-
-          return (
-            <div
-              key={i}
-              className={[
-                "min-h-[60px] sm:min-h-[80px] p-1",
-                isInMonth ? "bg-white" : "bg-gray-50",
-              ].join(" ")}
-            >
-              {isInMonth && (
-                <>
-                  <div
-                    className={[
-                      "text-xs font-medium mb-1 w-5 h-5 flex items-center justify-center rounded-full mx-auto",
-                      isToday ? "wa-brand rounded-full" : "text-gray-700",
-                    ].join(" ")}
-                  >
-                    {dayNum}
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    {acts.map((a) => {
-                      const inschrijvingen = meedoenByAct.get(a.id)?.vrijwilligerIds.size ?? 0;
-                      const tekort = a.aantal_vrijwilligers != null && a.aantal_vrijwilligers - inschrijvingen > 0;
-                      return (
-                      <button
-                        key={a.id}
-                        onClick={() => onBadgeClick(a.id)}
-                        className={[
-                          "text-left text-xs text-white rounded px-1 py-0.5 leading-tight truncate w-full transition-colors",
-                          tekort ? "bg-red-600 hover:bg-red-700" : "bg-lime-600 hover:bg-lime-700",
-                        ].join(" ")}
-                        title={a.titel}
-                      >
-                        {a.titel.split(/\s+/)[0]}
-                      </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 // --- Hoofdpagina ---
@@ -278,6 +135,12 @@ export default function ActiviteitenPage() {
     const entry = meedoenByAct.get(activiteitId);
     return entry ? entry.vrijwilligerIds.has(myId) : false;
   };
+
+  const aantalIngeschrevenByActId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [actId, entry] of meedoenByAct) map.set(actId, entry.vrijwilligerIds.size);
+    return map;
+  }, [meedoenByAct]);
 
   const grouped = useMemo(() => {
     const sorted = [...items].sort((a, b) =>
@@ -614,7 +477,12 @@ export default function ActiviteitenPage() {
         items.length === 0 ? (
           <p className="text-gray-700">Geen toekomstige activiteiten.</p>
         ) : (
-          <Kalender items={items} meedoenByAct={meedoenByAct} onBadgeClick={handleBadgeClick} />
+          <ActiviteitenKalender
+            items={items}
+            aantalIngeschrevenByActId={aantalIngeschrevenByActId}
+            onActiviteitClick={handleBadgeClick}
+            magVerledenBekijken={false}
+          />
         )
       ) : items.length === 0 ? (
         <p className="text-gray-700">Geen toekomstige activiteiten.</p>
