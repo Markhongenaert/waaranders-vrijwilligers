@@ -410,13 +410,12 @@ export default function AdminActiviteitenPage() {
       )}
 
       <main className="mx-auto max-w-4xl p-4 sm:p-6 md:p-10">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">Activiteiten beheren</h1>
-          <div className="flex gap-2">
-            <a className="wa-btn-action px-3 py-2 text-sm text-center" href="/admin/toevoegen">
-              Activiteit toevoegen
-            </a>
-          </div>
+        {/* Vaste balk: blijft zichtbaar tijdens scrollen. top-[61px] = hoogte van de sticky AppHeader erboven. */}
+        <div className="sticky top-[61px] z-40 -mx-4 sm:-mx-6 md:-mx-10 bg-white border-b border-gray-200 px-4 sm:px-6 md:px-10 py-3 mb-4 flex items-center justify-between gap-3 flex-wrap">
+          <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Activiteiten beheren</h1>
+          <a className="wa-btn wa-btn-brand px-4 py-2 text-sm whitespace-nowrap shrink-0" href="/admin/toevoegen">
+            + Nieuwe activiteit
+          </a>
         </div>
 
         {error && <div className="wa-alert-error mb-4">Fout: {error}</div>}
